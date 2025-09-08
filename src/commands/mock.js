@@ -1,9 +1,10 @@
 import MockServer from '../mock-server/server.js';
 import ContractParser from '../core/parser.js';
 import ConfigLoader from '../core/config.js';
+import { ErrorHandler, SpecJetError } from '../core/errors.js';
 
 async function mockCommand(options = {}) {
-  try {
+  return ErrorHandler.withErrorHandling(async () => {
     console.log('🎭 Starting mock server...\n');
 
     // 1. Load configuration
@@ -12,20 +13,43 @@ async function mockCommand(options = {}) {
     ConfigLoader.validateConfig(config);
     
     const contractPath = ConfigLoader.resolveContractPath(config);
+    ErrorHandler.validateContractFile(contractPath);
     console.log(`   Contract: ${contractPath}`);
 
     // 2. Parse OpenAPI contract
     console.log('\n📖 Parsing OpenAPI contract...');
     const parser = new ContractParser();
-    const parsedContract = await parser.parseContract(contractPath);
+    let parsedContract;
+    try {
+      parsedContract = await parser.parseContract(contractPath);
+    } catch (error) {
+      throw SpecJetError.contractInvalid(contractPath, error);
+    }
     
     console.log(`   Found ${Object.keys(parsedContract.schemas).length} schemas`);
     console.log(`   Found ${parsedContract.endpoints.length} endpoints`);
 
     // 3. Setup mock server
-    const port = parseInt(options.port) || config.mock?.port || 3001;
+    const port = ErrorHandler.validatePort(options.port || config.mock?.port || 3001);
     const scenario = options.scenario || config.mock?.scenario || 'demo';
     const corsEnabled = options.cors || config.mock?.cors || false;
+    
+    // Validate scenario
+    const validScenarios = ['demo', 'realistic', 'large', 'errors'];
+    if (!validScenarios.includes(scenario)) {
+      throw new SpecJetError(
+        `Invalid scenario: ${scenario}`,
+        'INVALID_SCENARIO',
+        null,
+        [
+          `Valid scenarios are: ${validScenarios.join(', ')}`,
+          'Use --scenario demo for small predictable data',
+          'Use --scenario realistic for varied realistic data',
+          'Use --scenario large for performance testing',
+          'Use --scenario errors for testing error handling'
+        ]
+      );
+    }
     
     console.log(`\n🔧 Configuring mock server...`);
     console.log(`   Port: ${port}`);
@@ -40,7 +64,24 @@ async function mockCommand(options = {}) {
       console.log('   CORS middleware enabled');
     }
 
-    const serverUrl = await mockServer.start(port);
+    let serverUrl;
+    try {
+      serverUrl = await mockServer.start(port);
+    } catch (error) {
+      if (error.code === 'EADDRINUSE') {
+        throw SpecJetError.portInUse(port);
+      }
+      throw new SpecJetError(
+        `Failed to start mock server: ${error.message}`,
+        'SERVER_START_FAILED',
+        error,
+        [
+          'Check if another process is using the port',
+          'Try a different port with --port option',
+          'Ensure you have permission to bind to the port'
+        ]
+      );
+    }
 
     console.log(`\n✅ Mock server running successfully!`);
     console.log(`   🌐 Server: ${serverUrl}`);
@@ -68,29 +109,7 @@ async function mockCommand(options = {}) {
       console.log('\n\n👋 Shutting down mock server...');
       process.exit(0);
     });
-
-  } catch (error) {
-    console.error('\n❌ Mock server failed to start:');
-    console.error(`   ${error.message}`);
-    
-    if (error.code === 'EADDRINUSE') {
-      console.error('\n💡 Suggestions:');
-      console.error(`   • Try a different port: specjet mock --port 3002`);
-      console.error(`   • Check what's running on port ${options.port || 3001}: lsof -i :${options.port || 3001}`);
-    } else if (error.message.includes('Contract')) {
-      console.error('\n💡 Suggestions:');
-      console.error(`   • Check your OpenAPI contract file exists`);
-      console.error(`   • Validate your contract: specjet generate`);
-      console.error(`   • Run 'specjet init' to create a new contract`);
-    }
-    
-    if (options.verbose) {
-      console.error('\nFull error details:');
-      console.error(error.stack);
-    }
-    
-    process.exit(1);
-  }
+  }, options);
 }
 
 export default mockCommand;

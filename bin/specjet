@@ -5,6 +5,7 @@ import commands from '../src/commands/index.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { ErrorHandler } from '../src/core/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,49 +15,159 @@ const program = new Command();
 
 program
   .name('specjet')
-  .description('API contract collaboration tool - Design APIs together, build separately, integrate seamlessly')
-  .version(packageJson.version);
+  .description('🚀 SpecJet - API contract collaboration tool\nDesign APIs together, build separately, integrate seamlessly')
+  .version(packageJson.version)
+  .option('--verbose', 'Enable verbose output for debugging and error details')
+  .option('--config <path>', 'Path to configuration file (default: ./specjet.config.js)')
+  .addHelpText('after', `
+Examples:
+  $ specjet init my-api              Initialize a new project
+  $ specjet generate                 Generate TypeScript types from contract
+  $ specjet generate --watch        Generate and watch for changes
+  $ specjet mock --port 3001        Start mock server on port 3001
+  $ specjet mock --scenario large   Start mock server with large dataset
+  $ specjet validate http://api.com Validate real API against contract
+
+Documentation:
+  https://docs.specjet.dev
+
+For more help on a specific command:
+  $ specjet <command> --help
+`);
 
 // specjet init [project-name]
 program
   .command('init')
-  .description('Initialize a new SpecJet project')
-  .argument('[project-name]', 'Name of the project to create')
-  .option('--template <template>', 'Template to use (basic)', 'basic')
-  .option('--project <id>', 'Link to existing web platform project')
+  .description('🎯 Initialize a new SpecJet project with contract and configuration')
+  .argument('[project-name]', 'Name of the project directory to create (default: current directory)')
+  .option('--template <template>', 'Template to use: basic (default: basic)', 'basic')
+  .option('--project <id>', 'Link to existing web platform project ID (future feature)')
+  .addHelpText('after', `
+Examples:
+  $ specjet init                    Initialize in current directory
+  $ specjet init my-awesome-api     Create new project in ./my-awesome-api/
+  $ specjet init --template basic  Use the basic template (default)
+
+What this creates:
+  • specjet.config.js     Configuration file
+  • api-contract.yaml     OpenAPI contract template
+  • src/types/            Generated TypeScript types (gitignored)
+  • src/api/              Generated API client (gitignored)
+`)
   .action(commands.init);
 
 // specjet generate [options]
 program
   .command('generate')
-  .description('Generate TypeScript types and API client from contract')
-  .option('--watch', 'Watch mode - regenerate on contract changes')
-  .option('--with-mock', 'Also generate mock server')
-  .option('--output <dir>', 'Custom output directory')
+  .description('🔧 Generate TypeScript types and API client from OpenAPI contract')
+  .option('-w, --watch', 'Watch mode - automatically regenerate when contract changes')
+  .option('--with-mock', 'Also generate mock server code (coming soon)')
+  .option('-o, --output <dir>', 'Custom output directory for generated files')
+  .option('--docs', 'Generate usage documentation (default: true)', true)
+  .option('-c, --config <path>', 'Path to configuration file')
+  .addHelpText('after', `
+Examples:
+  $ specjet generate                Generate once and exit
+  $ specjet generate --watch       Generate and watch for changes
+  $ specjet generate --output dist Custom output directory
+  $ specjet generate --no-docs     Skip documentation generation
+
+Generated files:
+  • src/types/api.ts      TypeScript interfaces for all schemas
+  • src/api/client.ts     Typed API client with all endpoints
+  • SPECJET_USAGE.md      Usage examples and documentation
+
+Watch mode:
+  Automatically regenerates when your OpenAPI contract changes.
+  Perfect for development workflows. Press Ctrl+C to stop watching.
+`)
   .action(commands.generate);
 
 // specjet mock [options]
 program
   .command('mock')
-  .description('Start local mock server')
-  .option('--port <port>', 'Port to run mock server on', '3001')
-  .option('--scenario <scenario>', 'Data scenario (demo, realistic, large, errors)', 'demo')
-  .option('--cors', 'Enable CORS')
+  .description('🎭 Start a local mock server with realistic API responses')
+  .option('-p, --port <port>', 'Port to run mock server on (default: 3001)', '3001')
+  .option('-s, --scenario <scenario>', 'Data scenario: demo|realistic|large|errors (default: demo)', 'demo')
+  .option('--cors', 'Enable CORS headers for browser requests')
+  .option('-c, --config <path>', 'Path to configuration file')
+  .addHelpText('after', `
+Examples:
+  $ specjet mock                        Start on port 3001 with demo data
+  $ specjet mock --port 8080           Start on custom port
+  $ specjet mock --scenario realistic  Use varied, realistic data
+  $ specjet mock --scenario large      Use large datasets for performance testing
+  $ specjet mock --scenario errors     Include error responses for testing
+  $ specjet mock --cors                Enable CORS for browser development
+
+Data Scenarios:
+  • demo       Small, predictable data perfect for demos and presentations
+  • realistic  Varied, realistic data that mimics production usage patterns
+  • large      Large datasets for performance and load testing
+  • errors     Mix of successful and error responses for robust testing
+
+Server Features:
+  • 🌐 REST API endpoints based on your OpenAPI contract
+  • 📄 Interactive API docs at /docs (Swagger UI)
+  • 🔧 Admin panel at /admin for server monitoring
+  • 🔄 Real-time request logging and statistics
+  • ⚡ Fast response times with realistic data
+`)
   .action(commands.mock);
 
 // specjet validate <api-url>
 program
   .command('validate')
-  .description('Validate real API against contract')
-  .argument('<api-url>', 'URL of the API to validate')
-  .option('--header <header>', 'HTTP header to include (can be used multiple times)')
+  .description('🔍 Validate a real API implementation against your contract (coming soon)')
+  .argument('<api-url>', 'Base URL of the API to validate (e.g., https://api.example.com)')
+  .option('-H, --header <header>', 'HTTP header to include (can be used multiple times)')
+  .option('--timeout <ms>', 'Request timeout in milliseconds (default: 5000)', '5000')
+  .addHelpText('after', `
+Examples:
+  $ specjet validate http://localhost:8000
+  $ specjet validate https://api.example.com
+  $ specjet validate https://api.example.com --header "Authorization: Bearer token123"
+  $ specjet validate https://api.example.com --header "X-API-Key: secret" --timeout 10000
+
+What this validates:
+  • Endpoint availability (all paths return expected status codes)
+  • Response schema compliance (responses match OpenAPI schemas)  
+  • Required fields presence (all required fields are present)
+  • Data type correctness (field types match schema definitions)
+  • HTTP method support (endpoints support specified methods)
+
+Note: This feature is planned for a future release.
+`)
   .action(commands.validate);
 
 // specjet sync (Future)
 program
   .command('sync')
-  .description('Sync contract from web platform')
-  .option('--force', 'Overwrite local changes')
+  .description('🔄 Sync contract from web platform (coming in Phase 2)')
+  .option('--force', 'Overwrite local changes without confirmation')
+  .option('--project <id>', 'Project ID to sync from (overrides config)')
+  .addHelpText('after', `
+Examples:
+  $ specjet sync                    Sync from linked project
+  $ specjet sync --force           Overwrite local changes
+  $ specjet sync --project proj_123 Sync from specific project
+
+Note: This feature requires the SpecJet web platform (Phase 2).
+      Currently, SpecJet CLI works with local OpenAPI files only.
+`)
   .action(commands.sync);
+
+// Handle uncaught exceptions and rejections
+process.on('uncaughtException', (error) => {
+  console.error('\n🚨 Uncaught Exception:');
+  ErrorHandler.handle(error, { verbose: program.opts().verbose });
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('\n🚨 Unhandled Promise Rejection:');
+  ErrorHandler.handle(reason, { verbose: program.opts().verbose });
+  process.exit(1);
+});
 
 program.parse();
