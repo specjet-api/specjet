@@ -1,0 +1,62 @@
+#!/usr/bin/env node
+
+import { Command } from 'commander';
+import commands from '../src/commands/index.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8'));
+
+const program = new Command();
+
+program
+  .name('specjet')
+  .description('API contract collaboration tool - Design APIs together, build separately, integrate seamlessly')
+  .version(packageJson.version);
+
+// specjet init [project-name]
+program
+  .command('init')
+  .description('Initialize a new SpecJet project')
+  .argument('[project-name]', 'Name of the project to create')
+  .option('--template <template>', 'Template to use (basic)', 'basic')
+  .option('--project <id>', 'Link to existing web platform project')
+  .action(commands.init);
+
+// specjet generate [options]
+program
+  .command('generate')
+  .description('Generate TypeScript types and API client from contract')
+  .option('--watch', 'Watch mode - regenerate on contract changes')
+  .option('--with-mock', 'Also generate mock server')
+  .option('--output <dir>', 'Custom output directory')
+  .action(commands.generate);
+
+// specjet mock [options]
+program
+  .command('mock')
+  .description('Start local mock server')
+  .option('--port <port>', 'Port to run mock server on', '3001')
+  .option('--scenario <scenario>', 'Data scenario (demo, realistic, large, errors)', 'demo')
+  .option('--cors', 'Enable CORS')
+  .action(commands.mock);
+
+// specjet validate <api-url>
+program
+  .command('validate')
+  .description('Validate real API against contract')
+  .argument('<api-url>', 'URL of the API to validate')
+  .option('--header <header>', 'HTTP header to include (can be used multiple times)')
+  .action(commands.validate);
+
+// specjet sync (Future)
+program
+  .command('sync')
+  .description('Sync contract from web platform')
+  .option('--force', 'Overwrite local changes')
+  .action(commands.sync);
+
+program.parse();

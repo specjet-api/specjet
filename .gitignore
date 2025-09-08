@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Test coverage
+coverage/
+
+# Environment variables
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+.claude/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# SpecJet CLI specific - generated files that should be regenerated
+examples/**/src/types/
+examples/**/src/api/
+examples/**/src/mocks/
