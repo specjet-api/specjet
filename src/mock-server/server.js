@@ -18,41 +18,13 @@ class MockServer {
   }
   
   setupRoutes() {
-    // TODO: Setup Express app with routes from contract
     if (!this.contract?.endpoints) return;
     
     for (const endpoint of this.contract.endpoints) {
       this.addRoute(endpoint);
     }
-    
-    // Add docs and admin endpoints
-    this.app.get('/docs', (_req, res) => {
-      const endpoints = this.contract?.endpoints || [];
-      const apiInfo = {
-        title: this.contract?.info?.title || 'Mock API',
-        version: this.contract?.info?.version || '1.0.0',
-        description: this.contract?.info?.description || 'Generated mock API',
-        scenario: this.scenario,
-        endpoints: endpoints.map(ep => ({
-          method: ep.method,
-          path: ep.path,
-          summary: ep.summary,
-          description: ep.description
-        }))
-      };
-      res.json(apiInfo);
-    });
-    
-    this.app.get('/admin', (_req, res) => {
-      res.json({ 
-        status: 'running',
-        scenario: this.scenario,
-        endpoints: this.contract?.endpoints?.length || 0,
-        uptime: process.uptime(),
-        memory: process.memoryUsage()
-      });
-    });
   }
+  
   
   addRoute(endpoint) {
     const method = endpoint.method.toLowerCase();
@@ -340,15 +312,11 @@ class MockServer {
   }
   
   start(port = 3001) {
-    // TODO: Start server and return URL
     return new Promise((resolve, reject) => {
       this.app.listen(port, (err) => {
         if (err) {
           reject(err);
         } else {
-          console.log(`✅ Mock server started at http://localhost:${port}`);
-          console.log(`📄 Interactive docs: http://localhost:${port}/docs`);
-          console.log(`🔧 Admin panel: http://localhost:${port}/admin`);
           resolve(`http://localhost:${port}`);
         }
       });
