@@ -212,6 +212,20 @@ class MockServer {
       return faker.internet.email();
     }
     
+    // Token/Auth patterns - Enhanced with better faker methods
+    if (propLower.includes('token') || propLower.includes('jwt') || propLower.includes('accesstoken') || propLower.includes('refreshtoken')) {
+      return faker.internet.jwt();
+    }
+    if (propLower.includes('apikey') || propLower.includes('api_key')) {
+      return faker.string.alphanumeric(32);
+    }
+    if (propLower.includes('secret') || propLower.includes('key')) {
+      return faker.string.alphanumeric(64);
+    }
+    if (propLower.includes('bearer') || propLower.includes('authorization')) {
+      return `Bearer ${faker.internet.jwt()}`;
+    }
+    
     // Date/time patterns
     if (schema.format === 'date-time' || propLower.includes('createdat') || propLower.includes('updatedat')) {
       return faker.date.recent().toISOString();

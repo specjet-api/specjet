@@ -86,25 +86,7 @@ async function performGeneration(config, options) {
     throw SpecJetError.fileWriteError(outputPaths.client, error);
   }
 
-  // Generate and write documentation if requested
-  if (options.docs !== false && !options.watch) {
-    console.log('📚 Generating usage documentation...');
-    try {
-      const docsContent = DocumentationGenerator.generateUsageExamples(
-        parsedContract.info,
-        config
-      );
-      
-      const docsResult = await FileGenerator.writeDocumentation(
-        '.', // Write to project root
-        docsContent,
-        config.typescript
-      );
-      writeResults.push(docsResult);
-    } catch (error) {
-      throw SpecJetError.fileWriteError('./SPECJET_USAGE.md', error);
-    }
-  }
+  // Documentation generation is now handled by the 'docs' command only
 
   // Generate summary report
   const report = FileGenerator.generateSummaryReport(writeResults);

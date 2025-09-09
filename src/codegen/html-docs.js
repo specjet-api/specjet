@@ -207,6 +207,8 @@ class HtmlDocumentationGenerator {
             position: sticky;
             top: 100px;
             height: fit-content;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
         }
 
 
@@ -913,13 +915,13 @@ const api = new ApiClient('http://localhost:3001');
 
         // Active navigation highlighting
         function highlightActiveSection() {
-            const sections = document.querySelectorAll('.section');
+            const sections = document.querySelectorAll('.section, .endpoint');
             const navLinks = document.querySelectorAll('.nav-link');
             
             let current = '';
             
             sections.forEach(section => {
-                const sectionTop = section.offsetTop - 120;
+                const sectionTop = section.offsetTop - 150; // Increased offset for better visibility
                 if (window.scrollY >= sectionTop) {
                     current = section.getAttribute('id');
                 }
@@ -933,10 +935,32 @@ const api = new ApiClient('http://localhost:3001');
             });
         }
 
+        // Smooth scroll with proper offset for anchor links
+        function smoothScrollToAnchor(event) {
+            const link = event.target.closest('a[href^="#"]');
+            if (!link) return;
+            
+            const targetId = link.getAttribute('href').substring(1);
+            const targetElement = document.getElementById(targetId);
+            
+            if (targetElement) {
+                event.preventDefault();
+                const headerOffset = 130; // Account for sticky header + some padding
+                const elementPosition = targetElement.offsetTop;
+                const offsetPosition = elementPosition - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             loadTheme();
             window.addEventListener('scroll', highlightActiveSection);
+            document.addEventListener('click', smoothScrollToAnchor);
             highlightActiveSection(); // Run once on load
         });
     `;
