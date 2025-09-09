@@ -1,0 +1,9 @@
+openapi: 3.0.0
+info:
+  title: Invalid Test API
+  # Missing required version field
+paths:
+  /test:
+    get:
+      # Missing required responses field
+      summary: Test endpoint

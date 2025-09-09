@@ -557,7 +557,7 @@ specjet validate https://api.example.com --header "Authorization: Bearer token"
 Customize SpecJet with a `specjet.config.js` file in your project root:
 
 ```javascript
-module.exports = {
+export default {
   // Contract file location (defaults to './api-contract.yaml')
   contract: './api-contract.yaml',
   
