@@ -65,19 +65,15 @@ program
   .description('🔧 Generate TypeScript types and API client from OpenAPI contract')
   .option('-w, --watch', 'Watch mode - automatically regenerate when contract changes')
   .option('-o, --output <dir>', 'Custom output directory for generated files')
-  .option('--docs', 'Generate usage documentation (default: true)', true)
   .option('-c, --config <path>', 'Path to configuration file')
   .addHelpText('after', `
 Examples:
   $ specjet generate                Generate once and exit
   $ specjet generate --watch       Generate and watch for changes
   $ specjet generate --output dist Custom output directory
-  $ specjet generate --no-docs     Skip documentation generation
-
 Generated files:
   • src/types/api.ts      TypeScript interfaces for all schemas
   • src/api/client.ts     Typed API client with all endpoints
-  • SPECJET_USAGE.md      Usage examples and documentation
 
 Watch mode:
   Automatically regenerates when your OpenAPI contract changes.
