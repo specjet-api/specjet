@@ -210,7 +210,6 @@ specjet docs --port 3003
 - Live server on specified port
 - Auto-refresh when contract changes (future feature)
 - CORS headers for development
-- Health check endpoint
 
 **Use Cases:**
 - Development documentation server

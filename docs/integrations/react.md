@@ -925,7 +925,7 @@ npx tsc --noEmit
 **3. Mock Server Connection**
 ```bash
 # Check if mock server is running
-curl http://localhost:3001/health
+curl http://localhost:3001/users
 
 # Check network tab in browser devtools
 ```

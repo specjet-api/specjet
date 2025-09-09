@@ -68,17 +68,6 @@ async function docsCommand(options = {}) {
       res.send(htmlContent);
     });
     
-    // Health check endpoint
-    app.get('/health', (_req, res) => {
-      res.json({ 
-        status: 'ok', 
-        service: 'specjet-docs',
-        contract: parsedContract.info?.title || 'API Documentation',
-        version: parsedContract.info?.version || '1.0.0',
-        endpoints: parsedContract.endpoints.length,
-        schemas: Object.keys(parsedContract.schemas).length
-      });
-    });
 
     // Start the server
     const server = app.listen(port, (err) => {
@@ -90,7 +79,6 @@ async function docsCommand(options = {}) {
       const serverUrl = `http://localhost:${port}`;
       console.log(`\n✅ Documentation server started!`);
       console.log(`📖 Documentation: ${serverUrl}`);
-      console.log(`💚 Health check: ${serverUrl}/health`);
       console.log(`\n📊 API Overview:`);
       console.log(`   📝 ${parsedContract.info?.title || 'API Documentation'} v${parsedContract.info?.version || '1.0.0'}`);
       console.log(`   🔗 ${parsedContract.endpoints.length} endpoints`);

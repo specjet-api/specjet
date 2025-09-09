@@ -520,7 +520,7 @@ const waitForServer = (url: string, timeout: number) => {
     
     const check = async () => {
       try {
-        const response = await fetch(`${url}/health`);
+        const response = await fetch(`${url}/users`);
         if (response.ok) {
           resolve(true);
         } else {
@@ -553,7 +553,7 @@ specjet mock --scenario demo --port 3999
 
 ```bash
 # Make sure your API is running
-curl http://localhost:3000/health
+curl http://localhost:3000/users
 
 # Test validation manually first
 specjet validate http://localhost:3000/api --verbose
