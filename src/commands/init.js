@@ -9,8 +9,7 @@ const DEFAULT_CONFIG = `export default {
   // Output directories
   output: {
     types: './src/types',
-    client: './src/api',
-    mocks: './src/mocks'
+    client: './src/api'
   },
   
   // Mock server settings
@@ -322,7 +321,6 @@ Edit \`specjet.config.js\` to customize:
 const GITIGNORE_TEMPLATE = `# SpecJet generated files (optional - you can commit these if you prefer)
 # src/types/
 # src/api/
-# src/mocks/
 
 # Dependencies
 node_modules/
@@ -449,7 +447,6 @@ async function initCommand(projectName, options = {}) {
     // Create src directory structure
     await fs.ensureDir(path.join(targetDir, 'src', 'types'));
     await fs.ensureDir(path.join(targetDir, 'src', 'api'));
-    await fs.ensureDir(path.join(targetDir, 'src', 'mocks'));
     
     // Show created files
     if (filesToCreate.length > 0) {
@@ -460,7 +457,6 @@ async function initCommand(projectName, options = {}) {
     console.log('\n📁 Created directories:');
     console.log('   📂 src/types/ (for generated TypeScript interfaces)');
     console.log('   📂 src/api/ (for generated API client)');
-    console.log('   📂 src/mocks/ (for generated mock server)');
     
     // Success message with next steps
     console.log(`\n🎉 SpecJet project '${projectTitle}' initialized successfully!\n`);

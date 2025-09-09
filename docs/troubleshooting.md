@@ -242,15 +242,15 @@ ls -la .
 
 # Fix permissions
 chmod 755 src/
-mkdir -p src/types src/api src/mocks
-chmod 755 src/types src/api src/mocks
+mkdir -p src/types src/api
+chmod 755 src/types src/api
 ```
 
 **Issue**: Generated files are read-only
 
 ```bash
 # Make generated files writable for regeneration
-chmod 644 src/types/* src/api/* src/mocks/*
+chmod 644 src/types/* src/api/*
 ```
 
 ## Mock Server Issues
@@ -776,7 +776,7 @@ specjet validate http://localhost:3000/api --verbose
 
 ```bash
 # Verify generated files are correct
-ls -la src/types/ src/api/ src/mocks/
+ls -la src/types/ src/api/
 
 # Check file contents
 cat src/types/api.ts | head -20

@@ -39,8 +39,7 @@ export default {
   
   output: {
     types: './src/types/api',    // Group API types together
-    client: './src/lib/api',     // Common lib pattern
-    mocks: './src/mocks'
+    client: './src/lib/api'      // Common lib pattern
   },
   
   typescript: {

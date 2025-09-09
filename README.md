@@ -70,7 +70,7 @@ specjet init my-app
 cd my-app
 
 # Generate TypeScript types and mock server
-specjet generate --with-mock
+specjet generate 
 
 # Start the mock server
 specjet mock
@@ -88,7 +88,7 @@ npm install --save-dev specjet
 npx specjet init .
 
 # Generate TypeScript types
-npx specjet generate --with-mock
+npx specjet generate 
 
 # Start the mock server
 npx specjet mock
@@ -102,8 +102,7 @@ my-app/
 ├── specjet.config.js      # Configuration (optional)
 └── src/
     ├── types/             # Generated TypeScript types (auto-generated)
-    ├── api/               # Generated API client (auto-generated)
-    └── mocks/             # Generated mock server (auto-generated)
+    └── api/               # Generated API client (auto-generated)
 ```
 
 **That's it!** In under 2 minutes you have:
@@ -135,7 +134,6 @@ export default {
   output: {
     types: './src/types',      // Put types with your other types
     client: './src/lib/api',   // Put client in your lib folder
-    mocks: './src/mocks'
   },
   typescript: {
     strictMode: true,
@@ -225,7 +223,6 @@ export default {
   output: {
     types: './src/types',
     client: './src/api',
-    mocks: './src/mocks'
   }
 };
 ```
@@ -529,7 +526,6 @@ Generate TypeScript types and API client:
 ```bash
 specjet generate                    # Generate types and client
 specjet generate --watch            # Watch for contract changes
-specjet generate --with-mock        # Also generate mock server
 specjet generate --output ./dist    # Custom output directory
 ```
 
@@ -576,7 +572,6 @@ export default {
   output: {
     types: './src/types',
     client: './src/api',
-    mocks: './src/mocks'
   },
   
   // Mock server settings
@@ -690,7 +685,7 @@ export function useCreateUser() {
 Make sure to run `specjet generate` after creating or modifying your contract:
 
 ```bash
-specjet generate --with-mock
+specjet generate 
 ```
 
 ### TypeScript errors?

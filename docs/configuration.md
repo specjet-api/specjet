@@ -16,8 +16,7 @@ export default {
   // Output directories
   output: {
     types: './src/types',
-    client: './src/api',
-    mocks: './src/mocks'
+    client: './src/api'
   },
   
   // Mock server settings
@@ -97,7 +96,7 @@ export default {
   output: {
     types: './src/types',      // TypeScript interfaces
     client: './src/api',       // API client code
-    mocks: './src/mocks'       // Mock server code (optional)
+    
   }
 };
 ```
@@ -110,7 +109,7 @@ export default {
   output: {
     types: './src/types/api',
     client: './src/lib/api',
-    mocks: './src/mocks'
+    
   }
 };
 
@@ -572,7 +571,7 @@ export default {
   output: {
     types: `./src/types/${process.env.API_VERSION || 'v1'}`,
     client: './src/api',
-    mocks: './src/mocks'
+    
   }
 };
 ```
@@ -688,7 +687,7 @@ export default {
   output: {
     types: './src/types/api',
     client: './src/lib/api',
-    mocks: './src/mocks'
+    
   },
   
   typescript: {

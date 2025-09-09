@@ -9,8 +9,7 @@ class ConfigLoader {
       contract: './api-contract.yaml',
       output: {
         types: './src/types',
-        client: './src/api',
-        mocks: './src/mocks'
+        client: './src/api'
       },
       typescript: {
         strictMode: true,
@@ -140,8 +139,7 @@ class ConfigLoader {
   static resolveOutputPaths(config) {
     return {
       types: resolve(config.output.types),
-      client: resolve(config.output.client),
-      mocks: config.output.mocks ? resolve(config.output.mocks) : null
+      client: resolve(config.output.client)
     };
   }
 }

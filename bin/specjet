@@ -64,7 +64,6 @@ program
   .command('generate')
   .description('🔧 Generate TypeScript types and API client from OpenAPI contract')
   .option('-w, --watch', 'Watch mode - automatically regenerate when contract changes')
-  .option('--with-mock', 'Also generate mock server code (coming soon)')
   .option('-o, --output <dir>', 'Custom output directory for generated files')
   .option('--docs', 'Generate usage documentation (default: true)', true)
   .option('-c, --config <path>', 'Path to configuration file')

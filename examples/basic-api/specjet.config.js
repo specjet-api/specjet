@@ -5,8 +5,7 @@ export default {
   // Output directories
   output: {
     types: './src/types',
-    client: './src/api',
-    mocks: './src/mocks'
+    client: './src/api'
   },
   
   // Mock server settings

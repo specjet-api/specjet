@@ -26,7 +26,6 @@ export default [
       'node_modules/**',
       'examples/**/src/types/**',
       'examples/**/src/api/**',
-      'examples/**/src/mocks/**',
       'coverage/**',
       'dist/**'
     ]

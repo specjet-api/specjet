@@ -39,8 +39,7 @@ export default {
   
   output: {
     types: './types',           // Nuxt auto-imports from here
-    client: './composables',    // Vue composables directory
-    mocks: './server/mocks'     // Nuxt server directory (or ./src/mocks for Vue)
+    client: './composables'     // Vue composables directory
   },
   
   typescript: {

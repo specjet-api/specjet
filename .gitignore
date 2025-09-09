@@ -23,4 +23,3 @@ Thumbs.db
 # SpecJet CLI specific - generated files that should be regenerated
 examples/**/src/types/
 examples/**/src/api/
-examples/**/src/mocks/

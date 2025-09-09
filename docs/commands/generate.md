@@ -33,12 +33,12 @@ specjet generate --watch
 
 ### Generate with Mock Server
 ```bash
-# Generate types AND mock server code
-specjet generate --with-mock
+# Generate types and API client
+specjet generate
 
-# Creates additional files:
-# src/mocks/server.ts
-# src/mocks/data.ts
+# Files are created in:
+# src/types/api.ts
+# src/api/client.ts
 ```
 
 ### Custom Output Directory
@@ -49,7 +49,6 @@ specjet generate --output ./generated
 # Files created in:
 # ./generated/types/
 # ./generated/api/
-# ./generated/mocks/ (if --with-mock)
 ```
 
 ## Command Options
@@ -57,7 +56,6 @@ specjet generate --output ./generated
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--watch` | Watch contract file for changes and auto-regenerate | `false` |
-| `--with-mock` | Also generate mock server implementation | `false` |
 | `--output <dir>` | Custom output directory | From config |
 | `--config <path>` | Custom configuration file | `./specjet.config.js` |
 | `--verbose` | Show detailed generation process | `false` |
@@ -130,39 +128,9 @@ export interface GetUsersParams {
 }
 ```
 
-### Mock Server (`src/mocks/server.ts`) - with `--with-mock`
+### Mock Server
 
-Complete Express.js mock server implementation:
-
-```typescript
-import express from 'express';
-import cors from 'cors';
-import { generateMockData } from './data.js';
-
-export class MockServer {
-  constructor(scenario: string = 'realistic') {
-    this.app = express();
-    this.scenario = scenario;
-    this.setupRoutes();
-  }
-
-  // Auto-generated routes matching your contract
-  private setupRoutes() {
-    // GET /users
-    this.app.get('/users', (req, res) => {
-      const users = generateMockData('User[]', this.scenario);
-      res.json(users);
-    });
-
-    // POST /users  
-    this.app.post('/users', (req, res) => {
-      const newUser = generateMockData('User', this.scenario);
-      res.status(201).json(newUser);
-    });
-    // ... more routes
-  }
-}
-```
+SpecJet provides a built-in mock server via the `specjet mock` command. No code generation required - the mock server automatically reads your OpenAPI contract and provides realistic endpoints with generated data.
 
 ### Usage Documentation (`SPECJET_USAGE.md`)
 
@@ -277,8 +245,7 @@ export default {
   // Output paths (used by --output override)
   output: {
     types: './src/types',
-    client: './src/api', 
-    mocks: './src/mocks'
+    client: './src/api'
   },
   
   // TypeScript generation options

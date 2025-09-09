@@ -119,8 +119,7 @@ export default {
   // Output directories
   output: {
     types: './src/types',
-    client: './src/api',
-    mocks: './src/mocks'
+    client: './src/api'
   },
   
   // Mock server settings
@@ -205,8 +204,7 @@ Detects common frameworks and provides customized output paths:
 // Suggested config for React projects
 output: {
   types: './src/types',
-  client: './src/lib/api',
-  mocks: './src/mocks'
+  client: './src/lib/api'
 }
 ```
 
