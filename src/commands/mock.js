@@ -32,7 +32,6 @@ async function mockCommand(options = {}) {
     // 3. Setup mock server
     const port = ErrorHandler.validatePort(options.port || config.mock?.port || 3001);
     const scenario = options.scenario || config.mock?.scenario || 'demo';
-    const corsEnabled = options.cors || config.mock?.cors || false;
     
     // Validate scenario
     const validScenarios = ['demo', 'realistic', 'large', 'errors'];
@@ -54,15 +53,11 @@ async function mockCommand(options = {}) {
     console.log(`\n🔧 Configuring mock server...`);
     console.log(`   Port: ${port}`);
     console.log(`   Scenario: ${scenario}`);
-    console.log(`   CORS: ${corsEnabled ? 'enabled' : 'disabled'}`);
+    console.log(`   CORS: enabled (always)`);
 
     // 4. Start mock server
     console.log('\n🚀 Starting mock server...');
     const mockServer = new MockServer(parsedContract, scenario);
-    
-    if (corsEnabled) {
-      console.log('   CORS middleware enabled');
-    }
 
     let serverUrl;
     try {
@@ -85,12 +80,9 @@ async function mockCommand(options = {}) {
 
     console.log(`\n✅ Mock server running successfully!`);
     console.log(`   🌐 Server: ${serverUrl}`);
-    console.log(`   📄 API docs: ${serverUrl}/docs`);
-    console.log(`   🔧 Admin panel: ${serverUrl}/admin`);
     console.log(`\n💡 Tips:`);
     console.log(`   • Try different scenarios: --scenario realistic|large|errors`);
-    console.log(`   • View API documentation at /docs`);
-    console.log(`   • Monitor server status at /admin`);
+    console.log(`   • For API documentation, run: specjet docs --port 3002`);
     console.log(`\n📊 Endpoints available:`);
     
     parsedContract.endpoints.forEach(ep => {
