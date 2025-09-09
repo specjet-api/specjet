@@ -53,6 +53,7 @@ Or add scripts to your `package.json`:
   "scripts": {
     "api:generate": "specjet generate",
     "api:mock": "specjet mock",
+    "api:docs": "specjet docs",
     "api:watch": "specjet generate --watch"
   }
 }
@@ -540,7 +541,17 @@ Start the mock server:
 specjet mock                        # Start on default port 3001
 specjet mock --port 3002            # Custom port
 specjet mock --scenario realistic   # Use realistic data
-specjet mock --cors                 # Enable CORS headers
+```
+
+### `specjet docs [options]`
+
+Generate beautiful documentation for your API:
+
+```bash
+specjet docs                        # Generate static HTML documentation
+specjet docs --port 3003            # Start documentation server
+specjet docs --open                 # Generate and open in browser
+specjet docs --output ./public/     # Custom output location
 ```
 
 ### `specjet validate <api-url>`

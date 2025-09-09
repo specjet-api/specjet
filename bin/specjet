@@ -24,8 +24,10 @@ Examples:
   $ specjet init my-api              Initialize a new project
   $ specjet generate                 Generate TypeScript types from contract
   $ specjet generate --watch        Generate and watch for changes
-  $ specjet mock --port 3001        Start mock server on port 3001
-  $ specjet mock --scenario large   Start mock server with large dataset
+  $ specjet mock                    Start mock server on port 3001
+  $ specjet mock --scenario large   Start mock server with large dataset  
+  $ specjet docs                    Start documentation server on port 3002
+  $ specjet docs --port 3003        Start docs server on custom port
   $ specjet validate http://api.com Validate real API against contract
 
 Documentation:
@@ -90,7 +92,6 @@ program
   .description('🎭 Start a local mock server with realistic API responses')
   .option('-p, --port <port>', 'Port to run mock server on (default: 3001)', '3001')
   .option('-s, --scenario <scenario>', 'Data scenario: demo|realistic|large|errors (default: demo)', 'demo')
-  .option('--cors', 'Enable CORS headers for browser requests')
   .option('-c, --config <path>', 'Path to configuration file')
   .addHelpText('after', `
 Examples:
@@ -99,7 +100,6 @@ Examples:
   $ specjet mock --scenario realistic  Use varied, realistic data
   $ specjet mock --scenario large      Use large datasets for performance testing
   $ specjet mock --scenario errors     Include error responses for testing
-  $ specjet mock --cors                Enable CORS for browser development
 
 Data Scenarios:
   • demo       Small, predictable data perfect for demos and presentations
@@ -107,14 +107,49 @@ Data Scenarios:
   • large      Large datasets for performance and load testing
   • errors     Mix of successful and error responses for robust testing
 
-Server Features:
+Features:
   • 🌐 REST API endpoints based on your OpenAPI contract
-  • 📄 Interactive API docs at /docs (Swagger UI)
-  • 🔧 Admin panel at /admin for server monitoring
-  • 🔄 Real-time request logging and statistics
-  • ⚡ Fast response times with realistic data
+  • 🚀 Fast, realistic mock responses using faker.js
+  • 🌐 CORS headers always enabled for frontend development
+  • 📊 Different data scenarios for comprehensive testing
+  
+  For API documentation, run: specjet docs --port 3002
 `)
   .action(commands.mock);
+
+// specjet docs [options]
+program
+  .command('docs')
+  .description('📖 Start a beautiful documentation server for your API')
+  .option('-p, --port <port>', 'Port to run documentation server on (default: 3002)')
+  .option('--open', 'Automatically open documentation in browser')
+  .option('-o, --output <file>', 'Generate static HTML file instead of starting server (e.g. docs.html)')
+  .option('-c, --config <path>', 'Path to configuration file')
+  .addHelpText('after', `
+Examples:
+  $ specjet docs                        Start documentation server on port 3002
+  $ specjet docs --port 8080           Start on custom port  
+  $ specjet docs --open                Start server and open in browser
+  $ specjet docs --output docs.html    Generate static HTML file
+  $ specjet docs --output ./dist/api-docs.html  Generate to custom path
+
+Features:
+  • 📖 Beautiful single-page documentation with all endpoints
+  • 🎨 Dark/light theme toggle for comfortable viewing
+  • 📋 Clean sidebar navigation organized by endpoint categories  
+  • 💻 Copy-to-clipboard code examples (curl + TypeScript client)
+  • 🎭 Mock data preview for each endpoint
+  • 📱 Responsive design that works on desktop and mobile
+  • ⚡ Zero dependencies - works offline as a single HTML file
+
+Documentation Features:
+  • 📊 API overview with endpoint and schema statistics
+  • 🔗 Complete endpoint documentation with parameters and responses
+  • 📝 Data model schemas with property descriptions and types
+  • 🎯 Smart code examples using your generated TypeScript client
+  • 📋 Clean mock response examples for development
+`)
+  .action(commands.docs);
 
 // specjet validate <api-url>
 program

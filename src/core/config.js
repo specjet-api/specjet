@@ -21,6 +21,9 @@ class ConfigLoader {
         port: 3001,
         cors: true,
         scenario: 'realistic'
+      },
+      docs: {
+        port: 3002
       }
     };
 
@@ -113,6 +116,13 @@ class ConfigLoader {
       const validScenarios = ['demo', 'realistic', 'large', 'errors'];
       if (config.mock.scenario && !validScenarios.includes(config.mock.scenario)) {
         errors.push(`mock.scenario must be one of: ${validScenarios.join(', ')}, got: ${config.mock.scenario}`);
+      }
+    }
+
+    // Validate docs server configuration if present
+    if (config.docs) {
+      if (config.docs.port && (isNaN(config.docs.port) || config.docs.port < 1 || config.docs.port > 65535)) {
+        errors.push(`docs.port must be a valid port number (1-65535), got: ${config.docs.port}`);
       }
     }
 

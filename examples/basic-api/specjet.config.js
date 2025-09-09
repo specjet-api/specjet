@@ -16,6 +16,11 @@ export default {
     scenario: 'realistic'
   },
   
+  // Docs server settings
+  docs: {
+    port: 3010
+  },
+  
   // TypeScript generation options
   typescript: {
     strictMode: true,
