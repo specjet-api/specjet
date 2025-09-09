@@ -1,0 +1,1630 @@
+openapi: 3.0.0
+info:
+  title: Advanced E-commerce API
+  version: 1.0.0
+  description: |
+    A comprehensive e-commerce API demonstrating advanced SpecJet patterns including:
+    - Multiple related entities with complex relationships
+    - Authentication and authorization with JWT
+    - Advanced query patterns (search, filtering, pagination)
+    - File upload operations
+    - Role-based access control
+    - Complex business logic workflows
+  contact:
+    name: SpecJet Team
+    url: https://specjet.dev
+
+servers:
+  - url: http://localhost:3001
+    description: Local mock server
+  - url: https://api.ecommerce-demo.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  # Authentication endpoints
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and return JWT token
+      security: []
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: User registration
+      description: Register new user account
+      security: []
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Registration failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh JWT token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required:
+                - refreshToken
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  # User management
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List users (Admin only)
+      operationId: getUsers
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserRole'
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or email
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsers'
+
+  /users/profile:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+    put:
+      tags:
+        - Users
+      summary: Update current user profile
+      operationId: updateCurrentUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID (Admin only)
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # Categories
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: Get all categories
+      operationId: getCategories
+      security: []
+      parameters:
+        - name: includeProducts
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Include product count for each category
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+    post:
+      tags:
+        - Categories
+      summary: Create category (Admin only)
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+
+  /categories/{id}:
+    get:
+      tags:
+        - Categories
+      summary: Get category by ID
+      operationId: getCategoryById
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Category retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+
+  # Products
+  /products:
+    get:
+      tags:
+        - Products
+      summary: List products with advanced filtering
+      operationId: getProducts
+      security: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: category
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by category ID
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+            format: decimal
+            minimum: 0
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+            format: decimal
+            minimum: 0
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in name and description
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [name, price, createdAt, rating]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: inStock
+          in: query
+          schema:
+            type: boolean
+          description: Filter by stock availability
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProducts'
+
+    post:
+      tags:
+        - Products
+      summary: Create product (Admin only)
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      operationId: getProductById
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetails'
+
+    put:
+      tags:
+        - Products
+      summary: Update product (Admin only)
+      operationId: updateProduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /products/{id}/images:
+    post:
+      tags:
+        - Products
+      summary: Upload product images (Admin only)
+      operationId: uploadProductImages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 10
+              required:
+                - images
+      responses:
+        '200':
+          description: Images uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  urls:
+                    type: array
+                    items:
+                      type: string
+                      format: uri
+
+  # Reviews
+  /products/{id}/reviews:
+    get:
+      tags:
+        - Reviews
+      summary: Get product reviews
+      operationId: getProductReviews
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Reviews retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReviews'
+
+    post:
+      tags:
+        - Reviews
+      summary: Add product review
+      operationId: addProductReview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReviewRequest'
+      responses:
+        '201':
+          description: Review added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+
+  # Shopping Cart
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: Get user's cart
+      operationId: getCart
+      responses:
+        '200':
+          description: Cart retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+
+    delete:
+      tags:
+        - Cart
+      summary: Clear cart
+      operationId: clearCart
+      responses:
+        '204':
+          description: Cart cleared successfully
+
+  /cart/items:
+    post:
+      tags:
+        - Cart
+      summary: Add item to cart
+      operationId: addToCart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddToCartRequest'
+      responses:
+        '200':
+          description: Item added to cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItem'
+
+  /cart/items/{itemId}:
+    put:
+      tags:
+        - Cart
+      summary: Update cart item quantity
+      operationId: updateCartItem
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+              required:
+                - quantity
+      responses:
+        '200':
+          description: Cart item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItem'
+
+    delete:
+      tags:
+        - Cart
+      summary: Remove item from cart
+      operationId: removeFromCart
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Item removed from cart
+
+  # Orders
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Get user's orders
+      operationId: getUserOrders
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+      responses:
+        '200':
+          description: Orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrders'
+
+    post:
+      tags:
+        - Orders
+      summary: Create order from cart
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Get order details
+      operationId: getOrderById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetails'
+
+  /orders/{id}/cancel:
+    post:
+      tags:
+        - Orders
+      summary: Cancel order
+      operationId: cancelOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  # Webhooks
+  /webhooks/order-status:
+    post:
+      tags:
+        - Webhooks
+      summary: Order status webhook
+      description: Webhook endpoint for order status updates from payment processor
+      operationId: handleOrderStatusWebhook
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderStatusWebhook'
+      responses:
+        '200':
+          description: Webhook processed successfully
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    # Base schemas
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+      required:
+        - message
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+                  code:
+                    type: string
+      required:
+        - message
+        - details
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+        totalItems:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+      required:
+        - page
+        - limit
+        - totalPages
+        - totalItems
+        - hasNext
+        - hasPrev
+
+    # Authentication
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required:
+        - email
+        - password
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        firstName:
+          type: string
+          maxLength: 50
+        lastName:
+          type: string
+          maxLength: 50
+        dateOfBirth:
+          type: string
+          format: date
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+        - user
+
+    # Users
+    UserRole:
+      type: string
+      enum: [customer, admin, moderator]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        fullName:
+          type: string
+          readOnly: true
+        role:
+          $ref: '#/components/schemas/UserRole'
+        isActive:
+          type: boolean
+        dateOfBirth:
+          type: string
+          format: date
+        address:
+          $ref: '#/components/schemas/Address'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - role
+        - isActive
+        - createdAt
+        - updatedAt
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          maxLength: 50
+        lastName:
+          type: string
+          maxLength: 50
+        dateOfBirth:
+          type: string
+          format: date
+        address:
+          $ref: '#/components/schemas/Address'
+
+    PaginatedUsers:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+        - data
+        - meta
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zipCode:
+          type: string
+        country:
+          type: string
+      required:
+        - street
+        - city
+        - state
+        - zipCode
+        - country
+
+    # Categories
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        productCount:
+          type: integer
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - name
+        - description
+        - createdAt
+        - updatedAt
+
+    CreateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        imageUrl:
+          type: string
+          format: uri
+        parentId:
+          type: string
+          format: uuid
+      required:
+        - name
+        - description
+
+    # Products
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+        compareAtPrice:
+          type: number
+          format: decimal
+          minimum: 0
+          nullable: true
+        sku:
+          type: string
+        inventory:
+          $ref: '#/components/schemas/ProductInventory'
+        category:
+          $ref: '#/components/schemas/Category'
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+        tags:
+          type: array
+          items:
+            type: string
+        attributes:
+          type: object
+          additionalProperties: true
+        isActive:
+          type: boolean
+        rating:
+          $ref: '#/components/schemas/ProductRating'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - name
+        - description
+        - price
+        - sku
+        - inventory
+        - category
+        - images
+        - isActive
+        - createdAt
+        - updatedAt
+
+    ProductDetails:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            reviews:
+              type: array
+              items:
+                $ref: '#/components/schemas/Review'
+              maxItems: 5
+              description: Recent reviews (max 5)
+            relatedProducts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Product'
+              maxItems: 4
+
+    CreateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+        compareAtPrice:
+          type: number
+          format: decimal
+          minimum: 0
+        sku:
+          type: string
+          maxLength: 50
+        categoryId:
+          type: string
+          format: uuid
+        inventory:
+          $ref: '#/components/schemas/ProductInventoryInput'
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        attributes:
+          type: object
+          additionalProperties: true
+      required:
+        - name
+        - description
+        - price
+        - sku
+        - categoryId
+        - inventory
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+        compareAtPrice:
+          type: number
+          format: decimal
+          minimum: 0
+        sku:
+          type: string
+          maxLength: 50
+        categoryId:
+          type: string
+          format: uuid
+        inventory:
+          $ref: '#/components/schemas/ProductInventoryInput'
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        attributes:
+          type: object
+          additionalProperties: true
+        isActive:
+          type: boolean
+
+    ProductInventory:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 0
+        reserved:
+          type: integer
+          minimum: 0
+          readOnly: true
+        available:
+          type: integer
+          minimum: 0
+          readOnly: true
+        trackQuantity:
+          type: boolean
+        allowBackorder:
+          type: boolean
+      required:
+        - quantity
+        - trackQuantity
+        - allowBackorder
+
+    ProductInventoryInput:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 0
+        trackQuantity:
+          type: boolean
+        allowBackorder:
+          type: boolean
+      required:
+        - quantity
+        - trackQuantity
+        - allowBackorder
+
+    ProductRating:
+      type: object
+      properties:
+        average:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 5
+        count:
+          type: integer
+          minimum: 0
+        distribution:
+          type: object
+          properties:
+            1:
+              type: integer
+            2:
+              type: integer
+            3:
+              type: integer
+            4:
+              type: integer
+            5:
+              type: integer
+      required:
+        - average
+        - count
+
+    PaginatedProducts:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+        - data
+        - meta
+
+    # Reviews
+    Review:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: string
+        comment:
+          type: string
+        isVerifiedPurchase:
+          type: boolean
+        user:
+          type: object
+          properties:
+            firstName:
+              type: string
+            lastName:
+              type: string
+            fullName:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - productId
+        - userId
+        - rating
+        - title
+        - comment
+        - isVerifiedPurchase
+        - user
+        - createdAt
+        - updatedAt
+
+    CreateReviewRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: string
+          maxLength: 100
+        comment:
+          type: string
+          maxLength: 1000
+      required:
+        - rating
+        - title
+        - comment
+
+    PaginatedReviews:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Review'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+        - data
+        - meta
+
+    # Cart
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        totals:
+          $ref: '#/components/schemas/CartTotals'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - userId
+        - items
+        - totals
+        - createdAt
+        - updatedAt
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        product:
+          $ref: '#/components/schemas/Product'
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: number
+          format: decimal
+        totalPrice:
+          type: number
+          format: decimal
+          readOnly: true
+        addedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - productId
+        - product
+        - quantity
+        - unitPrice
+        - addedAt
+
+    CartTotals:
+      type: object
+      properties:
+        subtotal:
+          type: number
+          format: decimal
+        taxAmount:
+          type: number
+          format: decimal
+        shippingAmount:
+          type: number
+          format: decimal
+        discountAmount:
+          type: number
+          format: decimal
+        total:
+          type: number
+          format: decimal
+      required:
+        - subtotal
+        - taxAmount
+        - shippingAmount
+        - discountAmount
+        - total
+
+    AddToCartRequest:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+      required:
+        - productId
+
+    # Orders
+    OrderStatus:
+      type: string
+      enum: [pending, confirmed, processing, shipped, delivered, cancelled, refunded]
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderNumber:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        totals:
+          $ref: '#/components/schemas/OrderTotals'
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        billingAddress:
+          $ref: '#/components/schemas/Address'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        trackingNumber:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - orderNumber
+        - userId
+        - status
+        - items
+        - totals
+        - shippingAddress
+        - billingAddress
+        - paymentMethod
+        - createdAt
+        - updatedAt
+
+    OrderDetails:
+      allOf:
+        - $ref: '#/components/schemas/Order'
+        - type: object
+          properties:
+            user:
+              type: object
+              properties:
+                email:
+                  type: string
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+            statusHistory:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderStatusHistory'
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        product:
+          type: object
+          properties:
+            name:
+              type: string
+            imageUrl:
+              type: string
+              format: uri
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: number
+          format: decimal
+        totalPrice:
+          type: number
+          format: decimal
+      required:
+        - id
+        - productId
+        - product
+        - quantity
+        - unitPrice
+        - totalPrice
+
+    OrderTotals:
+      type: object
+      properties:
+        subtotal:
+          type: number
+          format: decimal
+        taxAmount:
+          type: number
+          format: decimal
+        shippingAmount:
+          type: number
+          format: decimal
+        discountAmount:
+          type: number
+          format: decimal
+        total:
+          type: number
+          format: decimal
+      required:
+        - subtotal
+        - taxAmount
+        - shippingAmount
+        - discountAmount
+        - total
+
+    OrderStatusHistory:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        timestamp:
+          type: string
+          format: date-time
+        note:
+          type: string
+          nullable: true
+      required:
+        - status
+        - timestamp
+
+    PaymentMethod:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [credit_card, debit_card, paypal, apple_pay, google_pay]
+        last4:
+          type: string
+        brand:
+          type: string
+        expiryMonth:
+          type: integer
+        expiryYear:
+          type: integer
+      required:
+        - type
+
+    CreateOrderRequest:
+      type: object
+      properties:
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        billingAddress:
+          $ref: '#/components/schemas/Address'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        notes:
+          type: string
+          maxLength: 500
+      required:
+        - shippingAddress
+        - billingAddress
+        - paymentMethod
+
+    PaginatedOrders:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+        - data
+        - meta
+
+    # Webhooks
+    OrderStatusWebhook:
+      type: object
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        trackingNumber:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+      required:
+        - orderId
+        - status
+        - timestamp
