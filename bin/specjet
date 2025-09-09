@@ -42,6 +42,7 @@ program
   .argument('[project-name]', 'Name of the project directory to create (default: current directory)')
   .option('--template <template>', 'Template to use: basic (default: basic)', 'basic')
   .option('--project <id>', 'Link to existing web platform project ID (future feature)')
+  .option('--force', 'Overwrite existing files')
   .addHelpText('after', `
 Examples:
   $ specjet init                    Initialize in current directory
