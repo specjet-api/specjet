@@ -6,11 +6,11 @@ class SpecJetAPI {
   }
   
   // TODO: API methods for web platform integration
-  async syncContract(_projectId) {
+  async syncContract() {
     throw new Error('Web platform integration not yet implemented');
   }
   
-  async uploadContract(_projectId, _contract) {
+  async uploadContract() {
     throw new Error('Web platform integration not yet implemented');
   }
 }

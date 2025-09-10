@@ -533,7 +533,7 @@ class MockServer {
     return faker.commerce.productDescription();
   }
   
-  generateReviewTitle(_scenario) {
+  generateReviewTitle(scenario) {
     const titles = [
       'Great product, highly recommend!',
       'Perfect for my needs',
@@ -547,7 +547,12 @@ class MockServer {
       'Outstanding performance'
     ];
     
-    return titles[Math.floor(Math.random() * titles.length)];
+    if (scenario === 'demo') {
+      return titles[Math.floor(Math.random() * titles.length)];
+    }
+    
+    // For non-demo scenarios, generate more varied titles
+    return faker.lorem.words(faker.number.int({ min: 3, max: 8 }));
   }
   
   generateReviewComment(scenario) {

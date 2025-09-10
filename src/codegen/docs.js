@@ -255,16 +255,16 @@ export async function syncUserData(userId: number) {
 `;
   }
 
-  static generateQuickReference(endpoints, _schemas) {
+  static generateQuickReference(endpoints, schemas) {
     const methods = endpoints.map(endpoint => {
       const methodName = this.getMethodName(endpoint);
       const params = this.getMethodParameters(endpoint);
-      const returnType = this.getReturnTypeName(endpoint, _schemas);
+      const returnType = this.getReturnTypeName(endpoint, schemas);
       
       return `- \`${methodName}(${params}): Promise<${returnType}>\`${endpoint.summary ? ` - ${endpoint.summary}` : ''}`;
     }).join('\n');
 
-    const interfaces = Object.keys(_schemas).map(name => `- \`${name}\``).join('\n');
+    const interfaces = Object.keys(schemas).map(name => `- \`${name}\``).join('\n');
 
     return `## Quick Reference
 
@@ -305,7 +305,7 @@ ${interfaces}`;
     return params.join(', ');
   }
 
-  static getReturnTypeName(endpoint, _schemas) {
+  static getReturnTypeName(endpoint, schemas) {
     const successResponse = endpoint.responses?.['200'] || endpoint.responses?.['201'];
     if (!successResponse?.schema) {
       return 'void';
