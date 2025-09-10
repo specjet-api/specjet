@@ -108,8 +108,9 @@ class ConfigLoader {
 
     // Validate mock server configuration if present
     if (config.mock) {
-      if (config.mock.port && (isNaN(config.mock.port) || config.mock.port < 1 || config.mock.port > 65535)) {
-        errors.push(`mock.port must be a valid port number (1-65535), got: ${config.mock.port}`);
+      if (config.mock.port) {
+        const portError = SpecJetError.validatePortNumber(config.mock.port, 'mock.port');
+        if (portError) errors.push(portError);
       }
       
       const validScenarios = ['demo', 'realistic', 'large', 'errors'];
@@ -120,8 +121,9 @@ class ConfigLoader {
 
     // Validate docs server configuration if present
     if (config.docs) {
-      if (config.docs.port && (isNaN(config.docs.port) || config.docs.port < 1 || config.docs.port > 65535)) {
-        errors.push(`docs.port must be a valid port number (1-65535), got: ${config.docs.port}`);
+      if (config.docs.port) {
+        const portError = SpecJetError.validatePortNumber(config.docs.port, 'docs.port');
+        if (portError) errors.push(portError);
       }
     }
 

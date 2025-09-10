@@ -2,7 +2,6 @@ import ContractParser from '../core/parser.js';
 import TypeScriptGenerator from '../codegen/typescript.js';
 import ConfigLoader from '../core/config.js';
 import FileGenerator from '../codegen/files.js';
-import DocumentationGenerator from '../codegen/docs.js';
 import { ErrorHandler, SpecJetError } from '../core/errors.js';
 import FileWatcher from '../core/watcher.js';
 

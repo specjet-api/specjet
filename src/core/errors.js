@@ -183,6 +183,14 @@ export class ErrorHandler {
     return portNum;
   }
 
+  static validatePortNumber(port, context = 'port') {
+    const portNum = parseInt(port);
+    if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+      return `${context} must be a valid port number (1-65535), got: ${port}`;
+    }
+    return null;
+  }
+
   static async withErrorHandling(fn, options = {}) {
     try {
       return await fn();

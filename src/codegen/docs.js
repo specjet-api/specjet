@@ -305,7 +305,7 @@ ${interfaces}`;
     return params.join(', ');
   }
 
-  static getReturnTypeName(endpoint, schemas) {
+  static getReturnTypeName(endpoint, _schemas) {
     const successResponse = endpoint.responses?.['200'] || endpoint.responses?.['201'];
     if (!successResponse?.schema) {
       return 'void';

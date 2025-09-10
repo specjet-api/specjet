@@ -250,7 +250,7 @@ class MockServer {
     return parseInt(statusCodes[0] || '200');
   }
 
-  extractRequestParams(req, endpoint) {
+  extractRequestParams(req, _endpoint) {
     const params = {
       path: req.params || {},
       query: req.query || {},
@@ -322,7 +322,21 @@ class MockServer {
     }
     
     if (schema.type === 'array') {
-      const itemCount = this.getItemCount(scenario);
+      // Calculate appropriate memory limits based on item complexity
+      let maxItems = 1000; // Default limit
+      if (schema.items?.type === 'object' || schema.items?.properties) {
+        // Complex objects get lower limits
+        const propertyCount = Object.keys(schema.items?.properties || {}).length;
+        if (propertyCount > 10) {
+          maxItems = 50; // Very complex objects
+        } else if (propertyCount > 5) {
+          maxItems = 100; // Moderately complex objects
+        } else {
+          maxItems = 200; // Simple objects
+        }
+      }
+      
+      const itemCount = this.getItemCount(scenario, maxItems);
       const items = [];
       for (let i = 0; i < itemCount; i++) {
         const item = this.generateMockData(schema.items, scenario, params);
@@ -365,19 +379,27 @@ class MockServer {
     return this.generatePrimitiveValue(schema, scenario);
   }
   
-  getItemCount(scenario) {
+  getItemCount(scenario, maxItems = 1000) {
+    let count;
     switch (scenario) {
       case 'demo':
-        return 3;
+        count = 3;
+        break;
       case 'realistic':
-        return faker.number.int({ min: 5, max: 15 });
+        count = faker.number.int({ min: 5, max: 15 });
+        break;
       case 'large':
-        return faker.number.int({ min: 50, max: 100 });
+        count = faker.number.int({ min: 50, max: 100 });
+        break;
       case 'errors':
-        return faker.number.int({ min: 2, max: 8 });
+        count = faker.number.int({ min: 2, max: 8 });
+        break;
       default:
-        return 3;
+        count = 3;
     }
+    
+    // Apply memory safety limit
+    return Math.min(count, maxItems);
   }
   
   generateFallbackItem(schema) {

@@ -1,5 +1,5 @@
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 
 class FileGenerator {
   static async ensureDirectory(dirPath) {
@@ -10,8 +10,16 @@ class FileGenerator {
 
   static async writeFile(filePath, content, options = {}) {
     try {
+      // Validate file path to prevent directory traversal
+      const resolvedPath = resolve(filePath);
+      const cwd = process.cwd();
+      
+      if (!resolvedPath.startsWith(cwd)) {
+        throw new Error(`File path outside project directory: ${filePath}`);
+      }
+
       // Ensure the directory exists
-      const dir = dirname(filePath);
+      const dir = dirname(resolvedPath);
       await this.ensureDirectory(dir);
 
       // Format the content if needed
@@ -19,11 +27,11 @@ class FileGenerator {
         await this.formatTypeScript(content) : content;
 
       // Write the file
-      writeFileSync(filePath, formattedContent, 'utf8');
+      writeFileSync(resolvedPath, formattedContent, 'utf8');
       
       return {
         success: true,
-        path: filePath,
+        path: resolvedPath,
         size: formattedContent.length
       };
     } catch (error) {

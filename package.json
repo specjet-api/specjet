@@ -11,7 +11,10 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "lint": "eslint src/",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "audit": "npm audit --audit-level high",
+    "audit:fix": "npm audit fix --audit-level high",
+    "security:check": "npm audit && npm outdated"
   },
   "keywords": [
     "api",

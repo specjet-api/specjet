@@ -9,7 +9,14 @@ import { ErrorHandler } from '../src/core/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8'));
+
+let packageJson;
+try {
+  packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8'));
+} catch (error) {
+  console.error('Failed to read package.json:', error.message);
+  process.exit(1);
+}
 
 const program = new Command();
 
@@ -146,47 +153,49 @@ Documentation Features:
 `)
   .action(commands.docs);
 
-// specjet validate <api-url>
-program
-  .command('validate')
-  .description('🔍 Validate a real API implementation against your contract (coming soon)')
-  .argument('<api-url>', 'Base URL of the API to validate (e.g., https://api.example.com)')
-  .option('-H, --header <header>', 'HTTP header to include (can be used multiple times)')
-  .option('--timeout <ms>', 'Request timeout in milliseconds (default: 5000)', '5000')
-  .addHelpText('after', `
-Examples:
-  $ specjet validate http://localhost:8000
-  $ specjet validate https://api.example.com
-  $ specjet validate https://api.example.com --header "Authorization: Bearer token123"
-  $ specjet validate https://api.example.com --header "X-API-Key: secret" --timeout 10000
-
-What this validates:
-  • Endpoint availability (all paths return expected status codes)
-  • Response schema compliance (responses match OpenAPI schemas)  
-  • Required fields presence (all required fields are present)
-  • Data type correctness (field types match schema definitions)
-  • HTTP method support (endpoints support specified methods)
-
-Note: This feature is planned for a future release.
-`)
-  .action(commands.validate);
-
-// specjet sync (Future)
-program
-  .command('sync')
-  .description('🔄 Sync contract from web platform (coming in Phase 2)')
-  .option('--force', 'Overwrite local changes without confirmation')
-  .option('--project <id>', 'Project ID to sync from (overrides config)')
-  .addHelpText('after', `
-Examples:
-  $ specjet sync                    Sync from linked project
-  $ specjet sync --force           Overwrite local changes
-  $ specjet sync --project proj_123 Sync from specific project
-
-Note: This feature requires the SpecJet web platform (Phase 2).
-      Currently, SpecJet CLI works with local OpenAPI files only.
-`)
-  .action(commands.sync);
+// Future Phase 2 features - commented out for MVP
+// 
+// // specjet validate <api-url>
+// program
+//   .command('validate')
+//   .description('🔍 Validate a real API implementation against your contract (coming soon)')
+//   .argument('<api-url>', 'Base URL of the API to validate (e.g., https://api.example.com)')
+//   .option('-H, --header <header>', 'HTTP header to include (can be used multiple times)')
+//   .option('--timeout <ms>', 'Request timeout in milliseconds (default: 5000)', '5000')
+//   .addHelpText('after', `
+// Examples:
+//   $ specjet validate http://localhost:8000
+//   $ specjet validate https://api.example.com
+//   $ specjet validate https://api.example.com --header "Authorization: Bearer token123"
+//   $ specjet validate https://api.example.com --header "X-API-Key: secret" --timeout 10000
+// 
+// What this validates:
+//   • Endpoint availability (all paths return expected status codes)
+//   • Response schema compliance (responses match OpenAPI schemas)  
+//   • Required fields presence (all required fields are present)
+//   • Data type correctness (field types match schema definitions)
+//   • HTTP method support (endpoints support specified methods)
+// 
+// Note: This feature is planned for a future release.
+// `)
+//   .action(commands.validate);
+// 
+// // specjet sync (Future)
+// program
+//   .command('sync')
+//   .description('🔄 Sync contract from web platform (coming in Phase 2)')
+//   .option('--force', 'Overwrite local changes without confirmation')
+//   .option('--project <id>', 'Project ID to sync from (overrides config)')
+//   .addHelpText('after', `
+// Examples:
+//   $ specjet sync                    Sync from linked project
+//   $ specjet sync --force           Overwrite local changes
+//   $ specjet sync --project proj_123 Sync from specific project
+// 
+// Note: This feature requires the SpecJet web platform (Phase 2).
+//       Currently, SpecJet CLI works with local OpenAPI files only.
+// `)
+//   .action(commands.sync);
 
 // Handle uncaught exceptions and rejections
 process.on('uncaughtException', (error) => {

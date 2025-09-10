@@ -27,9 +27,9 @@ export default {
     clientName: 'ApiClient'
   },
   
-  // Future: Web platform integration
-  project: {
-    id: null,        // proj_abc123
-    syncUrl: null    // https://app.specjet.dev/api
-  }
+  // Future: Web platform integration (Phase 2)
+  // project: {
+  //   id: null,        // proj_abc123
+  //   syncUrl: null    // https://app.specjet.dev/api
+  // }
 };

@@ -26,11 +26,11 @@ const DEFAULT_CONFIG = `export default {
     clientName: 'ApiClient'
   },
   
-  // Future: Web platform integration
-  project: {
-    id: null,        // proj_abc123
-    syncUrl: null    // https://app.specjet.dev/api
-  }
+  // Future: Web platform integration (Phase 2)
+  // project: {
+  //   id: null,        // proj_abc123
+  //   syncUrl: null    // https://app.specjet.dev/api
+  // }
 };
 `;
 
@@ -375,6 +375,19 @@ async function initCommand(projectName, options = {}) {
     const targetDir = projectName === '.' ? process.cwd() : path.resolve(projectName || 'my-specjet-project');
     const projectTitle = projectName === '.' ? path.basename(process.cwd()) : (projectName || 'my-specjet-project');
     const isCurrentDir = projectName === '.';
+    
+    // Security: Validate target directory for safety (don't allow paths like '../../../etc')
+    if (projectName && projectName !== '.' && (projectName.includes('..') || path.isAbsolute(projectName))) {
+      // Allow absolute paths only if they're reasonable (within user's home or current working directory area)
+      const cwd = process.cwd();
+      if (!targetDir.startsWith(cwd) && !targetDir.includes('/tmp/') && !targetDir.startsWith(process.env.HOME || '/home')) {
+        throw new SpecJetError(
+          `Invalid project path: ${projectName}`,
+          'For security reasons, project paths cannot traverse outside the current working directory area.',
+          'Use a simple project name or relative path within the current directory.'
+        );
+      }
+    }
 
     console.log(`🚀 Initializing SpecJet project: ${projectTitle}`);
     console.log(`📁 Target directory: ${targetDir}\n`);

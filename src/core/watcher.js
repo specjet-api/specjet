@@ -22,7 +22,7 @@ export class FileWatcher {
 
     try {
       // Watch the contract file itself
-      const watcher = watch(absolutePath, { persistent: true }, (eventType, filename) => {
+      const watcher = watch(absolutePath, { persistent: true }, (eventType, _filename) => {
         if (eventType === 'change') {
           this.debounceCallback(contractPath, () => {
             console.log(`\n🔄 Contract file changed, regenerating...`);
@@ -87,13 +87,24 @@ export class FileWatcher {
   stopWatching() {
     console.log('\n⏹️  Stopping file watchers...');
     
+    const cleanupErrors = [];
+    
     for (const [path, { fileWatcher, dirWatcher }] of this.watchers) {
       try {
-        if (fileWatcher) fileWatcher.close();
-        if (dirWatcher) dirWatcher.close();
+        if (fileWatcher?.close) {
+          fileWatcher.close();
+        }
+        if (dirWatcher?.close) {
+          dirWatcher.close();
+        }
       } catch (error) {
-        // Ignore errors when closing watchers
+        cleanupErrors.push({ path, error: error.message });
       }
+    }
+    
+    // Log cleanup errors for debugging but don't throw
+    if (cleanupErrors.length > 0) {
+      console.warn('Warnings during watcher cleanup:', cleanupErrors);
     }
 
     // Clear all timers

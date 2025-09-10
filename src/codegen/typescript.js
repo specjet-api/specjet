@@ -1,3 +1,5 @@
+import { relative, dirname, resolve } from 'path';
+
 class TypeScriptGenerator {
   generateInterfaces(schemas) {
     const interfaces = [];
@@ -236,6 +238,16 @@ export class ${clientName} {
    * Configure authentication for API requests
    */
   setAuth(config: AuthConfig): ${clientName} {
+    // Add validation for auth config
+    if (config.type === 'bearer' && typeof config.token !== 'string') {
+      throw new Error('Bearer token must be a string');
+    }
+    if (config.type === 'bearer' && !config.token.trim()) {
+      throw new Error('Bearer token cannot be empty');
+    }
+    if (config.type === 'basic' && (typeof config.username !== 'string' || typeof config.password !== 'string')) {
+      throw new Error('Basic auth username and password must be strings');
+    }
     this.authConfig = config;
     return this;
   }
@@ -304,11 +316,11 @@ ${methods.join('\n\n')}
           headers[this.authConfig.headerName] = this.authConfig.apiKey;
           break;
         case 'bearer':
-          headers['Authorization'] = \`Bearer \${this.authConfig.token}\`;
+          headers['Authorization'] = 'Bearer ' + this.authConfig.token;
           break;
         case 'basic':
-          const credentials = btoa(\`\${this.authConfig.username}:\${this.authConfig.password}\`);
-          headers['Authorization'] = \`Basic \${credentials}\`;
+          const credentials = btoa(this.authConfig.username + ':' + this.authConfig.password);
+          headers['Authorization'] = 'Basic ' + credentials;
           break;
         case 'custom':
           Object.assign(headers, this.authConfig.headers);
@@ -593,18 +605,17 @@ ${methodBody}
   }
 
   calculateRelativeImportPath(config) {
-    // Default paths if config not provided
     const typesPath = config?.output?.types || './src/types';
     const clientPath = config?.output?.client || './src/api';
     
-    // For now, assume the standard structure where both are under src/
-    // In the future, we could use path.relative() for more complex cases
-    if (typesPath.includes('types') && clientPath.includes('api')) {
-      return '../types/api.js';
-    }
+    // Use path.relative for accurate path calculation
+    const relativePath = relative(
+      dirname(resolve(clientPath, 'client.ts')),
+      resolve(typesPath, 'api.ts')
+    );
     
-    // Fallback - assume types are in a sibling directory
-    return '../types/api.js';
+    // Ensure .js extension for ES modules and normalize path separators
+    return relativePath.replace(/\.ts$/, '.js').replace(/\\/g, '/');
   }
 
   generateAuthInterface() {

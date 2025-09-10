@@ -203,10 +203,10 @@ export default {
     }
   },
   
-  // Future: Web platform integration
-  platform: {
-    projectId: null,          // Project ID from app.specjet.dev
-    syncEnabled: false,       // Auto-sync with web platform
-    teamId: null              // Team ID for collaboration
-  }
+  // Future: Web platform integration (Phase 2)
+  // platform: {
+  //   projectId: null,          // Project ID from app.specjet.dev
+  //   syncEnabled: false,       // Auto-sync with web platform
+  //   teamId: null              // Team ID for collaboration
+  // }
 };

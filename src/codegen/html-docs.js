@@ -1065,7 +1065,7 @@ const api = new ApiClient('http://localhost:3001');
     if (schema.type === 'object' || schema.properties) {
       const obj = {};
       const properties = schema.properties || {};
-      const required = schema.required || [];
+      const _required = schema.required || [];
       
       Object.entries(properties).forEach(([propName, propSchema]) => {
         obj[propName] = this.generateExampleValue(propName, propSchema);
