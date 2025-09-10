@@ -62,6 +62,13 @@ class MockServer {
           return this.generateErrorResponse(res, endpoint);
         }
         
+        // Validate request body for POST/PUT/PATCH requests
+        const validation = this.validateRequestBody(req, endpoint);
+        if (!validation.isValid) {
+          const errorResponse = this.generateValidationErrorResponse(validation.errors);
+          return res.status(400).json(errorResponse);
+        }
+        
         // Validate and extract parameters
         const params = this.extractRequestParams(req, endpoint);
         const mockData = this.generateMockResponse(endpoint, params);
@@ -275,6 +282,108 @@ class MockServer {
         name: { type: 'string' }
       },
       required: ['id', 'name']
+    };
+  }
+
+  validateRequestBody(req, endpoint) {
+    const method = endpoint.method.toUpperCase();
+    
+    // Only validate methods that typically have request bodies
+    if (!['POST', 'PUT', 'PATCH'].includes(method)) {
+      return { isValid: true };
+    }
+    
+    // Check if endpoint expects a request body
+    const requestBody = endpoint.spec?.requestBody || endpoint.requestBody;
+    if (!requestBody || !requestBody.required) {
+      return { isValid: true };
+    }
+    
+    // Get the schema for the request body
+    const content = requestBody.content?.['application/json'];
+    if (!content?.schema) {
+      return { isValid: true };
+    }
+    
+    const schema = content.schema.$ref ? this.resolveSchemaRef(content.schema.$ref) : content.schema;
+    const body = req.body || {};
+    
+    // Validate required fields
+    const errors = [];
+    const required = schema.required || [];
+    
+    for (const field of required) {
+      if (!(field in body) || body[field] === null || body[field] === undefined || body[field] === '') {
+        errors.push({
+          field,
+          message: `'${field}' is required`,
+          code: 'required_field_missing'
+        });
+      }
+    }
+    
+    // Validate data types for provided fields
+    if (schema.properties) {
+      for (const [field, fieldSchema] of Object.entries(schema.properties)) {
+        if (field in body && body[field] !== null && body[field] !== undefined) {
+          const value = body[field];
+          const expectedType = fieldSchema.type;
+          
+          if (expectedType && !this.validateFieldType(value, expectedType, fieldSchema)) {
+            errors.push({
+              field,
+              message: `'${field}' must be of type ${expectedType}`,
+              code: 'invalid_type'
+            });
+          }
+        }
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors: errors
+    };
+  }
+  
+  validateFieldType(value, expectedType, schema = {}) {
+    switch (expectedType) {
+      case 'string':
+        if (schema.format === 'email') {
+          return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        }
+        if (schema.format === 'uuid') {
+          return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+        }
+        if (schema.format === 'date') {
+          return typeof value === 'string' && !isNaN(Date.parse(value));
+        }
+        if (schema.format === 'date-time') {
+          return typeof value === 'string' && !isNaN(Date.parse(value));
+        }
+        return typeof value === 'string';
+      case 'number':
+      case 'integer':
+        return typeof value === 'number' && !isNaN(value) && 
+               (expectedType === 'number' || Number.isInteger(value));
+      case 'boolean':
+        return typeof value === 'boolean';
+      case 'array':
+        return Array.isArray(value);
+      case 'object':
+        return typeof value === 'object' && value !== null && !Array.isArray(value);
+      default:
+        return true; // Unknown type, assume valid
+    }
+  }
+  
+  generateValidationErrorResponse(errors) {
+    return {
+      message: 'Validation failed',
+      code: 'validation_error',
+      details: {
+        errors: errors
+      }
     };
   }
 
