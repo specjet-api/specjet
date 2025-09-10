@@ -261,5 +261,225 @@ describe('TypeMapper', () => {
       const result = typeMapper.mapOpenApiTypeToTypeScript(schemas.Node, schemas);
       expect(result).toContain('children?: Array<Node>');
     });
+
+    test('should handle complex circular references', () => {
+      const schemas = {
+        Department: {
+          type: 'object',
+          properties: {
+            id: { type: 'number' },
+            employees: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/Employee' }
+            }
+          }
+        },
+        Employee: {
+          type: 'object',
+          properties: {
+            id: { type: 'number' },
+            department: { $ref: '#/components/schemas/Department' }
+          }
+        }
+      };
+      
+      const deptResult = typeMapper.mapOpenApiTypeToTypeScript(schemas.Department, schemas, new Set());
+      const empResult = typeMapper.mapOpenApiTypeToTypeScript(schemas.Employee, schemas, new Set());
+      
+      expect(deptResult).toContain('employees?:');
+      expect(empResult).toContain('department?:');
+    });
+
+    test('should handle invalid schemas gracefully', () => {
+      const invalidSchemas = [
+        { type: 'invalidType' },
+        { enum: [] }, // Empty enum
+        { oneOf: [] }, // Empty oneOf
+        { properties: null }
+      ];
+      
+      invalidSchemas.forEach(schema => {
+        expect(() => {
+          typeMapper.mapOpenApiTypeToTypeScript(schema);
+        }).not.toThrow();
+      });
+    });
+
+    test('should handle missing $ref targets', () => {
+      const schema = {
+        $ref: '#/components/schemas/NonExistent'
+      };
+      
+      const result = typeMapper.mapOpenApiTypeToTypeScript(schema, {});
+      expect(result).toBe('NonExistent'); // Current implementation returns ref name
+    });
+
+    test('should handle malformed $ref paths', () => {
+      const schemas = [
+        { $ref: 'invalid-ref' },
+        { $ref: '#/invalid/path' },
+        { $ref: '' }
+      ];
+      
+      schemas.forEach(schema => {
+        const result = typeMapper.mapOpenApiTypeToTypeScript(schema, {});
+        expect(typeof result).toBe('string'); // Should return some string value
+      });
+    });
+  });
+
+  describe('Advanced Format Handling', () => {
+    test('should handle date-time formats', () => {
+      expect(typeMapper.mapOpenApiTypeToTypeScript({
+        type: 'string',
+        format: 'date-time'
+      })).toBe('string'); // Should still be string in TypeScript
+    });
+
+    test('should handle binary formats', () => {
+      expect(typeMapper.mapOpenApiTypeToTypeScript({
+        type: 'string',
+        format: 'binary'
+      })).toBe('string');
+      
+      expect(typeMapper.mapOpenApiTypeToTypeScript({
+        type: 'string',
+        format: 'byte'
+      })).toBe('string');
+    });
+
+    test('should handle numeric formats', () => {
+      expect(typeMapper.mapOpenApiTypeToTypeScript({
+        type: 'number',
+        format: 'float'
+      })).toBe('number');
+      
+      expect(typeMapper.mapOpenApiTypeToTypeScript({
+        type: 'number',
+        format: 'double'
+      })).toBe('number');
+      
+      expect(typeMapper.mapOpenApiTypeToTypeScript({
+        type: 'integer',
+        format: 'int32'
+      })).toBe('number');
+      
+      expect(typeMapper.mapOpenApiTypeToTypeScript({
+        type: 'integer',
+        format: 'int64'
+      })).toBe('number');
+    });
+  });
+
+  describe('Deep Nesting Edge Cases', () => {
+    test('should handle deeply nested objects', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          level1: {
+            type: 'object',
+            properties: {
+              level2: {
+                type: 'object',
+                properties: {
+                  level3: {
+                    type: 'object',
+                    properties: {
+                      value: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+      
+      const result = typeMapper.mapOpenApiTypeToTypeScript(schema);
+      expect(result).toContain('level1?:');
+      expect(result).toContain('level2?:');
+      expect(result).toContain('level3?:');
+      expect(result).toContain('value?: string');
+    });
+
+    test('should handle arrays of nested objects', () => {
+      const schema = {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            nested: {
+              type: 'object',
+              properties: {
+                value: { type: 'string' }
+              }
+            }
+          }
+        }
+      };
+      
+      const result = typeMapper.mapOpenApiTypeToTypeScript(schema);
+      expect(result).toContain('Array<{');
+      expect(result).toContain('nested?:');
+      expect(result).toContain('value?: string');
+    });
+
+    test('should handle arrays of arrays', () => {
+      const schema = {
+        type: 'array',
+        items: {
+          type: 'array',
+          items: {
+            type: 'array',
+            items: { type: 'string' }
+          }
+        }
+      };
+      
+      const result = typeMapper.mapOpenApiTypeToTypeScript(schema);
+      expect(result).toBe('Array<Array<Array<string>>>');
+    });
+  });
+
+  describe('Performance Edge Cases', () => {
+    test('should handle large object schemas efficiently', () => {
+      const schema = {
+        type: 'object',
+        properties: {}
+      };
+      
+      // Generate a large schema with 100 properties
+      for (let i = 0; i < 100; i++) {
+        schema.properties[`prop${i}`] = { type: 'string' };
+      }
+      
+      const startTime = Date.now();
+      const result = typeMapper.mapOpenApiTypeToTypeScript(schema);
+      const endTime = Date.now();
+      
+      expect(endTime - startTime).toBeLessThan(1000); // Should complete in under 1 second
+      expect(result).toContain('prop0?: string');
+      expect(result).toContain('prop99?: string');
+    });
+
+    test('should handle large enum lists efficiently', () => {
+      const enumValues = [];
+      for (let i = 0; i < 500; i++) {
+        enumValues.push(`value${i}`);
+      }
+      
+      const schema = {
+        type: 'string',
+        enum: enumValues
+      };
+      
+      const startTime = Date.now();
+      const result = typeMapper.mapOpenApiTypeToTypeScript(schema);
+      const endTime = Date.now();
+      
+      expect(endTime - startTime).toBeLessThan(500); // Should complete quickly
+      expect(result).toContain("'value0'");
+      expect(result).toContain("'value499'");
+    });
   });
 });
