@@ -57,42 +57,9 @@ class ContractParser {
   }
   
   extractSchemas(contract) {
-    const schemas = contract.components?.schemas || {};
-    
-    // Also extract schemas from request/response bodies that might not be in components
-    for (const [path, methods] of Object.entries(contract.paths || {})) {
-      for (const [method, spec] of Object.entries(methods)) {
-        // Extract request body schemas
-        if (spec.requestBody?.content) {
-          for (const [_contentType, mediaType] of Object.entries(spec.requestBody.content)) {
-            if (mediaType.schema && !mediaType.schema.$ref) {
-              const schemaName = this.generateSchemaName(path, method, 'Request');
-              if (!schemas[schemaName]) {
-                schemas[schemaName] = mediaType.schema;
-              }
-            }
-          }
-        }
-
-        // Extract response schemas
-        if (spec.responses) {
-          for (const [statusCode, response] of Object.entries(spec.responses)) {
-            if (response.content) {
-              for (const [_contentType, mediaType] of Object.entries(response.content)) {
-                if (mediaType.schema && !mediaType.schema.$ref) {
-                  const schemaName = this.generateSchemaName(path, method, `${statusCode}Response`);
-                  if (!schemas[schemaName]) {
-                    schemas[schemaName] = mediaType.schema;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return schemas;
+    // After dereference(), all schemas should be fully resolved
+    // The components.schemas contains all the resolved schema definitions
+    return contract.components?.schemas || {};
   }
   
   extractEndpoints(contract) {

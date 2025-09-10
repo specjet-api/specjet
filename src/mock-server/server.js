@@ -8,6 +8,9 @@ class MockServer {
     this.contract = contract;
     this.scenario = scenario;
     
+    // Store resolved schemas for $ref resolution
+    this.schemas = contract.components?.schemas || {};
+    
     this.setupMiddleware();
     this.setupRoutes();
   }
@@ -68,11 +71,153 @@ class MockServer {
     
     // Get schema from either direct schema or content schema
     const schema = successResponse.schema || successResponse.content?.['application/json']?.schema;
-    return this.generateMockData(schema, this.scenario, params);
+    
+    // Extract endpoint context for smarter data generation
+    const context = this.extractEndpointContext(endpoint);
+    
+    return this.generateMockData(schema, this.scenario, { ...params, _context: context });
+  }
+  
+  extractEndpointContext(endpoint) {
+    const context = {
+      domain: 'generic',
+      entity: 'item',
+      tags: endpoint.tags || endpoint.spec?.tags || [],
+      path: endpoint.path,
+      method: endpoint.method,
+      operationId: endpoint.operationId || endpoint.spec?.operationId
+    };
+    
+    // Determine domain from tags
+    if (context.tags.length > 0) {
+      const primaryTag = context.tags[0].toLowerCase();
+      switch (primaryTag) {
+        case 'categories':
+          context.domain = 'commerce';
+          context.entity = 'category';
+          break;
+        case 'products':
+          context.domain = 'commerce';
+          context.entity = 'product';
+          break;
+        case 'users':
+          context.domain = 'users';
+          context.entity = 'user';
+          break;
+        case 'orders':
+          context.domain = 'commerce';
+          context.entity = 'order';
+          break;
+        case 'reviews':
+          context.domain = 'commerce';
+          context.entity = 'review';
+          break;
+        case 'cart':
+          context.domain = 'commerce';
+          context.entity = 'cart';
+          break;
+        case 'authentication':
+          context.domain = 'auth';
+          context.entity = 'auth';
+          break;
+        default:
+          // Try to infer from path
+          context.domain = this.inferDomainFromPath(context.path);
+          context.entity = this.inferEntityFromPath(context.path);
+      }
+    } else {
+      // Fallback to path analysis
+      context.domain = this.inferDomainFromPath(context.path);
+      context.entity = this.inferEntityFromPath(context.path);
+    }
+    
+    return context;
+  }
+  
+  inferDomainFromPath(path) {
+    const pathLower = path.toLowerCase();
+    if (pathLower.includes('/products') || pathLower.includes('/categories') || 
+        pathLower.includes('/orders') || pathLower.includes('/cart')) {
+      return 'commerce';
+    }
+    if (pathLower.includes('/users') || pathLower.includes('/profile')) {
+      return 'users';
+    }
+    if (pathLower.includes('/auth')) {
+      return 'auth';
+    }
+    return 'generic';
+  }
+  
+  inferEntityFromPath(path) {
+    const pathSegments = path.split('/').filter(segment => segment && !segment.startsWith('{'));
+    if (pathSegments.length > 0) {
+      const lastSegment = pathSegments[pathSegments.length - 1];
+      // Convert plural to singular
+      if (lastSegment.endsWith('ies')) {
+        return lastSegment.slice(0, -3) + 'y'; // categories -> category
+      } else if (lastSegment.endsWith('s')) {
+        return lastSegment.slice(0, -1); // products -> product
+      }
+      return lastSegment;
+    }
+    return 'item';
+  }
+  
+  inferNestedContext(propName, parentContext) {
+    if (!parentContext) {
+      return { domain: 'generic', entity: 'item', tags: [], path: '', method: '' };
+    }
+    
+    const propLower = propName.toLowerCase();
+    
+    // Detect nested entity types based on property name
+    if (propLower === 'category' || propLower === 'categories') {
+      return {
+        ...parentContext,
+        entity: 'category',
+        domain: 'commerce'
+      };
+    }
+    
+    if (propLower === 'product' || propLower === 'products') {
+      return {
+        ...parentContext,
+        entity: 'product',
+        domain: 'commerce'
+      };
+    }
+    
+    if (propLower === 'user' || propLower === 'users' || propLower === 'author' || propLower === 'customer') {
+      return {
+        ...parentContext,
+        entity: 'user',
+        domain: 'users'
+      };
+    }
+    
+    if (propLower === 'review' || propLower === 'reviews') {
+      return {
+        ...parentContext,
+        entity: 'review',
+        domain: 'commerce'
+      };
+    }
+    
+    if (propLower === 'order' || propLower === 'orders') {
+      return {
+        ...parentContext,
+        entity: 'order',
+        domain: 'commerce'
+      };
+    }
+    
+    // For address, payment info, etc., keep parent context but could add specific handling
+    return parentContext;
   }
 
-  generateErrorResponse(res, _endpoint) {
-    const errorResponses = Object.keys(_endpoint.responses || _endpoint.spec?.responses || {})
+  generateErrorResponse(res, endpoint) {
+    const errorResponses = Object.keys(endpoint.responses || endpoint.spec?.responses || {})
       .filter(code => code.startsWith('4') || code.startsWith('5'));
     
     if (errorResponses.length === 0) {
@@ -91,7 +236,7 @@ class MockServer {
     
     // Use defined error response
     const errorCode = errorResponses[Math.floor(Math.random() * errorResponses.length)];
-    const errorSpec = (_endpoint.responses || _endpoint.spec.responses)[errorCode];
+    const errorSpec = (endpoint.responses || endpoint.spec.responses)[errorCode];
     
     res.status(parseInt(errorCode)).json({
       error: errorSpec.description || 'An error occurred',
@@ -120,11 +265,40 @@ class MockServer {
     return params;
   }
   
+  resolveSchemaRef(ref) {
+    // Extract schema name from $ref path like "#/components/schemas/Product"
+    const parts = ref.split('/');
+    const schemaName = parts[parts.length - 1];
+    
+    // Look up in our resolved schemas
+    const resolvedSchema = this.schemas[schemaName];
+    if (resolvedSchema) {
+      return resolvedSchema;
+    }
+    
+    // Fallback: return a basic schema structure
+    console.warn(`⚠️  Schema reference not found: ${ref}`);
+    return {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        name: { type: 'string' }
+      },
+      required: ['id', 'name']
+    };
+  }
+
   generateMockData(schema, scenario, params = {}) {
-    // Handle schema references (simplified)
+    // Null safety: never return null/undefined from this method
+    if (!schema) {
+      console.warn('⚠️  generateMockData called with null/undefined schema');
+      return { _mock: true };
+    }
+    
+    // Handle $ref resolution
     if (schema.$ref) {
-      // For now, generate basic object for refs
-      return { id: faker.string.uuid(), name: faker.lorem.words(2) };
+      const resolvedSchema = this.resolveSchemaRef(schema.$ref);
+      return this.generateMockData(resolvedSchema, scenario, params);
     }
     
     // Handle oneOf - pick first option
@@ -151,7 +325,15 @@ class MockServer {
       const itemCount = this.getItemCount(scenario);
       const items = [];
       for (let i = 0; i < itemCount; i++) {
-        items.push(this.generateMockData(schema.items, scenario, params));
+        const item = this.generateMockData(schema.items, scenario, params);
+        // Never push null/undefined items - use fallback instead
+        if (item === null || item === undefined) {
+          // Generate a fallback item based on the schema type
+          const fallbackItem = this.generateFallbackItem(schema.items);
+          items.push(fallbackItem);
+        } else {
+          items.push(item);
+        }
       }
       return items;
     }
@@ -166,14 +348,14 @@ class MockServer {
         if (propName === 'id' && params._correlationId) {
           obj[propName] = params._correlationId;
         } else {
-          obj[propName] = this.generatePropertyValue(propName, propSchema, scenario);
+          obj[propName] = this.generatePropertyValue(propName, propSchema, scenario, params._context);
         }
       }
       
       // Add required properties that might be missing
       for (const reqProp of required) {
         if (!Object.prototype.hasOwnProperty.call(obj, reqProp)) {
-          obj[reqProp] = this.generatePropertyValue(reqProp, { type: 'string' }, scenario);
+          obj[reqProp] = this.generatePropertyValue(reqProp, { type: 'string' }, scenario, params._context);
         }
       }
       
@@ -198,10 +380,217 @@ class MockServer {
     }
   }
   
-  generatePropertyValue(propName, schema, scenario = 'demo') {
+  generateFallbackItem(schema) {
+    // Generate a basic fallback item when primary generation fails
+    if (schema?.type === 'object' || schema?.properties) {
+      return {
+        id: faker.string.uuid(),
+        name: faker.lorem.words(2),
+        _fallback: true
+      };
+    }
+    
+    if (schema?.$ref) {
+      // For $ref schemas, return a basic object
+      return {
+        id: faker.string.uuid(),
+        name: faker.lorem.words(2),
+        _fallback: true
+      };
+    }
+    
+    // For primitive types, use the primitive generator
+    return this.generatePrimitiveValue(schema || { type: 'string' });
+  }
+  
+  generateDomainSpecificValue(propName, schema, context, scenario = 'demo') {
+    const propLower = propName.toLowerCase();
+    const { entity } = context;
+    
+    // Generate context-aware names
+    if (propLower.includes('name') && !propLower.includes('firstname') && !propLower.includes('lastname')) {
+      switch (entity) {
+        case 'category':
+          return this.generateCategoryName(scenario);
+        case 'product':
+          return this.generateProductName(scenario);
+        case 'user':
+          return faker.person.fullName();
+        case 'review':
+          return this.generateReviewTitle(scenario);
+        default:
+          return scenario === 'demo' ? faker.lorem.words(2) : faker.lorem.sentence();
+      }
+    }
+    
+    // Generate context-aware descriptions
+    if (propLower.includes('description') || propLower.includes('bio')) {
+      switch (entity) {
+        case 'category':
+          return this.generateCategoryDescription(scenario);
+        case 'product':
+          return this.generateProductDescription(scenario);
+        case 'user':
+          return scenario === 'demo' ? faker.lorem.sentence() : faker.lorem.paragraphs();
+        case 'review':
+          return this.generateReviewComment(scenario);
+        default:
+          return scenario === 'demo' ? faker.lorem.sentence() : faker.lorem.paragraphs();
+      }
+    }
+    
+    // Generate context-aware titles
+    if (propLower.includes('title')) {
+      switch (entity) {
+        case 'review':
+          return this.generateReviewTitle(scenario);
+        case 'product':
+          return this.generateProductName(scenario);
+        default:
+          return faker.lorem.words(faker.number.int({ min: 3, max: 8 }));
+      }
+    }
+    
+    return null; // Let the generic handler take over
+  }
+  
+  generateCategoryName(scenario) {
+    const categories = [
+      'Electronics', 'Clothing & Apparel', 'Home & Garden', 'Sports & Outdoors', 
+      'Books & Media', 'Toys & Games', 'Health & Beauty', 'Automotive',
+      'Jewelry & Watches', 'Baby & Kids', 'Pet Supplies', 'Office Supplies',
+      'Musical Instruments', 'Arts & Crafts', 'Grocery & Food', 'Tools & Hardware'
+    ];
+    
+    const subcategories = {
+      'Electronics': ['Smartphones', 'Laptops', 'Headphones', 'Gaming', 'Smart Home'],
+      'Clothing & Apparel': ['Men\'s Fashion', 'Women\'s Fashion', 'Kids\' Clothing', 'Shoes', 'Accessories'],
+      'Home & Garden': ['Furniture', 'Kitchen & Dining', 'Bedding', 'Gardening', 'Home Decor'],
+      'Sports & Outdoors': ['Fitness Equipment', 'Team Sports', 'Outdoor Gear', 'Athletic Wear']
+    };
+    
+    if (scenario === 'demo') {
+      return categories[Math.floor(Math.random() * Math.min(categories.length, 8))];
+    }
+    
+    // For realistic scenario, sometimes return subcategories
+    if (Math.random() < 0.3) {
+      const parentCat = categories[Math.floor(Math.random() * categories.length)];
+      const subs = subcategories[parentCat];
+      if (subs) {
+        return subs[Math.floor(Math.random() * subs.length)];
+      }
+    }
+    
+    return categories[Math.floor(Math.random() * categories.length)];
+  }
+  
+  generateCategoryDescription(scenario) {
+    const descriptions = [
+      'Discover the latest and greatest in our curated collection.',
+      'Premium quality products for everyday needs.',
+      'Find everything you need in one convenient category.',
+      'Top-rated items with unbeatable prices.',
+      'Explore our extensive range of high-quality products.'
+    ];
+    
+    if (scenario === 'demo') {
+      return descriptions[Math.floor(Math.random() * descriptions.length)];
+    }
+    
+    return faker.lorem.paragraph();
+  }
+  
+  generateProductName(scenario) {
+    const productTypes = [
+      'iPhone 15 Pro', 'Samsung Galaxy S24', 'MacBook Air', 'Nike Air Max 270',
+      'Instant Pot Duo', 'Dyson V15 Cordless Vacuum', 'Sony WH-1000XM5 Headphones',
+      'Fitbit Charge 6', 'KitchenAid Stand Mixer', 'Patagonia Down Jacket',
+      'Levi\'s 501 Jeans', 'Kindle Paperwhite', 'AirPods Pro', 'Tesla Model 3 Accessories'
+    ];
+    
+    if (scenario === 'demo') {
+      return productTypes[Math.floor(Math.random() * Math.min(productTypes.length, 6))];
+    }
+    
+    // For realistic scenario, use faker with some real product names mixed in
+    return Math.random() < 0.4 
+      ? productTypes[Math.floor(Math.random() * productTypes.length)]
+      : faker.commerce.productName();
+  }
+  
+  generateProductDescription(scenario) {
+    if (scenario === 'demo') {
+      const descriptions = [
+        'High-quality product with excellent features.',
+        'Perfect for everyday use with premium materials.',
+        'Top-rated choice with outstanding performance.',
+        'Innovative design meets practical functionality.'
+      ];
+      return descriptions[Math.floor(Math.random() * descriptions.length)];
+    }
+    
+    return faker.commerce.productDescription();
+  }
+  
+  generateReviewTitle(_scenario) {
+    const titles = [
+      'Great product, highly recommend!',
+      'Perfect for my needs',
+      'Excellent quality and value',
+      'Love this purchase!',
+      'Fantastic product',
+      'Good value for money',
+      'Amazing quality',
+      'Exceeded expectations',
+      'Would buy again',
+      'Outstanding performance'
+    ];
+    
+    return titles[Math.floor(Math.random() * titles.length)];
+  }
+  
+  generateReviewComment(scenario) {
+    const comments = [
+      'This product exceeded my expectations. Great build quality and works perfectly.',
+      'Really happy with this purchase. Good value for the price.',
+      'Excellent product! Fast shipping and great customer service too.',
+      'Perfect for what I needed. Would definitely recommend to others.',
+      'High quality item that works exactly as described. Very satisfied.',
+      'Great purchase! The product is well-made and functions perfectly.'
+    ];
+    
+    if (scenario === 'demo') {
+      return comments[Math.floor(Math.random() * comments.length)];
+    }
+    
+    return faker.lorem.paragraphs(faker.number.int({ min: 1, max: 3 }));
+  }
+
+  generatePropertyValue(propName, schema, scenario = 'demo', context = null) {
     // Handle schema references in properties
     if (schema.$ref) {
-      return this.generateMockData(schema, scenario);
+      const resolvedSchema = this.resolveSchemaRef(schema.$ref);
+      return this.generateMockData(resolvedSchema, scenario, { _context: context });
+    }
+    
+    // Handle arrays - must use generateMockData to handle array type properly
+    if (schema.type === 'array') {
+      return this.generateMockData(schema, scenario, { _context: context });
+    }
+    
+    // Handle nested object relationships
+    if (schema.type === 'object' || schema.properties) {
+      const nestedContext = this.inferNestedContext(propName, context);
+      return this.generateMockData(schema, scenario, { _context: nestedContext });
+    }
+    
+    // Try domain-specific generation first if context is available
+    if (context) {
+      const domainValue = this.generateDomainSpecificValue(propName, schema, context, scenario);
+      if (domainValue !== null) {
+        return domainValue;
+      }
     }
     
     // Smart generation based on property name patterns
@@ -320,8 +709,14 @@ class MockServer {
       case 'boolean':
         return scenario === 'demo' ? true : faker.datatype.boolean();
         
+      case 'array':
+        // Arrays should not reach here - they should be handled in generateMockData
+        console.error('⚠️  Array type reached generatePrimitiveValue - this should not happen');
+        return [];
+        
       default:
-        return null;
+        console.warn(`⚠️  Unknown primitive type: ${type}, defaulting to string`);
+        return faker.lorem.words(2);
     }
   }
   
