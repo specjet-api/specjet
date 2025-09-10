@@ -25,12 +25,6 @@ const DEFAULT_CONFIG = `export default {
     exportType: 'named',
     clientName: 'ApiClient'
   },
-  
-  // Future: Web platform integration (Phase 2)
-  // project: {
-  //   id: null,        // proj_abc123
-  //   syncUrl: null    // https://app.specjet.dev/api
-  // }
 };
 `;
 

@@ -1,0 +1,2491 @@
+openapi: 3.0.0
+info:
+  title: Advanced Project Management API
+  version: 1.0.0
+  description: |
+    A comprehensive project management API demonstrating advanced SpecJet patterns including:
+    - Complex nested resources and relationships
+    - Advanced filtering, search, and aggregation
+    - File upload operations and webhooks
+    - Custom entity patterns for contextual mock data generation
+    - Realistic business workflows and status management
+    
+    This API showcases sophisticated patterns for team collaboration, task management,
+    and productivity tracking without the complexity of payment processing or multi-tenancy.
+  contact:
+    name: SpecJet Team
+    url: https://specjet.dev
+
+servers:
+  - url: http://localhost:3001
+    description: Local mock server
+  - url: https://api.projecthub-demo.com
+    description: Production server
+
+# Simplified auth - just basic token auth, no complex JWT flows
+security:
+  - BearerAuth: []
+
+paths:
+  # Workspaces - Top-level organization
+  /workspaces:
+    get:
+      tags:
+        - Workspaces
+      summary: List workspaces
+      description: Get all workspaces the user has access to
+      operationId: getWorkspaces
+      security: []
+      parameters:
+        - name: includeProjects
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Include project count for each workspace
+      responses:
+        '200':
+          description: Workspaces retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workspace'
+
+    post:
+      tags:
+        - Workspaces
+      summary: Create workspace
+      operationId: createWorkspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkspaceRequest'
+      responses:
+        '201':
+          description: Workspace created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+
+  /workspaces/{workspaceId}:
+    get:
+      tags:
+        - Workspaces
+      summary: Get workspace details
+      operationId: getWorkspaceById
+      security: []
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Workspace retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceDetails'
+
+  # Projects - Main collaboration spaces
+  /projects:
+    get:
+      tags:
+        - Projects
+      summary: List projects with advanced filtering
+      operationId: getProjects
+      security: []
+      parameters:
+        - name: workspaceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by workspace
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ProjectStatus'
+        - name: owner
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by project owner
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in project name and description
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [name, createdAt, updatedAt, dueDate]
+            default: updatedAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Projects retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProjects'
+
+    post:
+      tags:
+        - Projects
+      summary: Create new project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{projectId}:
+    get:
+      tags:
+        - Projects
+      summary: Get project details
+      operationId: getProjectById
+      security: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetails'
+
+    put:
+      tags:
+        - Projects
+      summary: Update project
+      operationId: updateProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{projectId}/members:
+    get:
+      tags:
+        - Projects
+      summary: Get project team members
+      operationId: getProjectMembers
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project members retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectMember'
+
+    post:
+      tags:
+        - Projects
+      summary: Add team member to project
+      operationId: addProjectMember
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddProjectMemberRequest'
+      responses:
+        '201':
+          description: Member added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectMember'
+
+  /projects/{projectId}/analytics:
+    get:
+      tags:
+        - Analytics
+      summary: Get project analytics and metrics
+      operationId: getProjectAnalytics
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y]
+            default: 30d
+      responses:
+        '200':
+          description: Project analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectAnalytics'
+
+  # Tasks - Core work items with rich relationships
+  /projects/{projectId}/tasks:
+    get:
+      tags:
+        - Tasks
+      summary: List project tasks with advanced filtering
+      operationId: getProjectTasks
+      security: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TaskStatus'
+        - name: assignee
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by assignee ID
+        - name: reporter
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by task creator
+        - name: priority
+          in: query
+          schema:
+            $ref: '#/components/schemas/TaskPriority'
+        - name: labels
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
+          description: Filter by labels (comma-separated)
+        - name: dueAfter
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter tasks due after this date
+        - name: dueBefore
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter tasks due before this date
+        - name: milestoneId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by milestone
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in task title and description
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        '200':
+          description: Tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTasks'
+
+    post:
+      tags:
+        - Tasks
+      summary: Create new task
+      operationId: createTask
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /tasks/{taskId}:
+    get:
+      tags:
+        - Tasks
+      summary: Get task details with comments and activity
+      operationId: getTaskById
+      security: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetails'
+
+    put:
+      tags:
+        - Tasks
+      summary: Update task
+      operationId: updateTask
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /tasks/{taskId}/assign:
+    put:
+      tags:
+        - Tasks
+      summary: Assign task to team member
+      operationId: assignTask
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assigneeId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: User ID to assign to, null to unassign
+              required:
+                - assigneeId
+      responses:
+        '200':
+          description: Task assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  # Comments - Threaded discussions and updates
+  /tasks/{taskId}/comments:
+    get:
+      tags:
+        - Comments
+      summary: Get task comments
+      operationId: getTaskComments
+      security: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Comments retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedComments'
+
+    post:
+      tags:
+        - Comments
+      summary: Add comment to task
+      operationId: addTaskComment
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        '201':
+          description: Comment added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+  /comments/{commentId}:
+    put:
+      tags:
+        - Comments
+      summary: Update comment
+      operationId: updateComment
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentRequest'
+      responses:
+        '200':
+          description: Comment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+    delete:
+      tags:
+        - Comments
+      summary: Delete comment
+      operationId: deleteComment
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Comment deleted successfully
+
+  # File attachments and documents
+  /tasks/{taskId}/files:
+    get:
+      tags:
+        - Files
+      summary: Get task file attachments
+      operationId: getTaskFiles
+      security: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Files retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+
+    post:
+      tags:
+        - Files
+      summary: Upload file attachment to task
+      operationId: uploadTaskFile
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File to upload
+                description:
+                  type: string
+                  description: Optional file description
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional file tags
+              required:
+                - file
+      responses:
+        '201':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+
+  /projects/{projectId}/files:
+    get:
+      tags:
+        - Files
+      summary: Get project documents and files
+      operationId: getProjectFiles
+      security: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [document, image, archive, other]
+          description: Filter by file type
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in file names and descriptions
+      responses:
+        '200':
+          description: Project files retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+
+  /files/{fileId}:
+    get:
+      tags:
+        - Files
+      summary: Get file details and metadata
+      operationId: getFileById
+      security: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: File details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDetails'
+
+    delete:
+      tags:
+        - Files
+      summary: Delete file
+      operationId: deleteFile
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: File deleted successfully
+
+  /files/{fileId}/download:
+    get:
+      tags:
+        - Files
+      summary: Download file
+      operationId: downloadFile
+      security: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: File download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  # Milestones - Timeline and progress tracking
+  /projects/{projectId}/milestones:
+    get:
+      tags:
+        - Milestones
+      summary: Get project milestones
+      operationId: getProjectMilestones
+      security: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/MilestoneStatus'
+      responses:
+        '200':
+          description: Milestones retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Milestone'
+
+    post:
+      tags:
+        - Milestones
+      summary: Create project milestone
+      operationId: createMilestone
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMilestoneRequest'
+      responses:
+        '201':
+          description: Milestone created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Milestone'
+
+  /milestones/{milestoneId}:
+    get:
+      tags:
+        - Milestones
+      summary: Get milestone with progress details
+      operationId: getMilestoneById
+      security: []
+      parameters:
+        - name: milestoneId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Milestone retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestoneDetails'
+
+  # Time tracking and productivity
+  /tasks/{taskId}/timelogs:
+    get:
+      tags:
+        - Time Tracking
+      summary: Get task time logs
+      operationId: getTaskTimelogs
+      security: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Time logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimeLog'
+
+    post:
+      tags:
+        - Time Tracking
+      summary: Log time on task
+      operationId: logTime
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTimeLogRequest'
+      responses:
+        '201':
+          description: Time logged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeLog'
+
+  # Teams and user management
+  /teams:
+    get:
+      tags:
+        - Teams
+      summary: List teams
+      operationId: getTeams
+      security: []
+      parameters:
+        - name: workspaceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by workspace
+      responses:
+        '200':
+          description: Teams retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+
+  /teams/{teamId}/members:
+    get:
+      tags:
+        - Teams
+      summary: Get team members
+      operationId: getTeamMembers
+      security: []
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Team members retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamMember'
+
+  # Dashboard and aggregated analytics
+  /dashboard/stats:
+    get:
+      tags:
+        - Dashboard
+      summary: Get dashboard statistics
+      operationId: getDashboardStats
+      parameters:
+        - name: workspaceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by workspace
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+            default: 30d
+      responses:
+        '200':
+          description: Dashboard statistics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  # Search across all entities
+  /search:
+    get:
+      tags:
+        - Search
+      summary: Full-text search across projects, tasks, and comments
+      operationId: search
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+          description: Search query
+        - name: type
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [projects, tasks, comments, files]
+            default: [projects, tasks, comments]
+          style: form
+          explode: false
+          description: Entity types to search
+        - name: workspaceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Limit search to workspace
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Limit search to project
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResults'
+
+  # Bulk operations for efficiency
+  /tasks/bulk-update:
+    patch:
+      tags:
+        - Tasks
+      summary: Bulk update tasks
+      operationId: bulkUpdateTasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkUpdateTasksRequest'
+      responses:
+        '200':
+          description: Tasks updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updatedCount:
+                    type: integer
+                  updatedTasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+
+  # Webhook endpoints for notifications
+  /webhooks/task-assigned:
+    post:
+      tags:
+        - Webhooks
+      summary: Task assignment webhook
+      description: Webhook endpoint for task assignment notifications
+      operationId: handleTaskAssignmentWebhook
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskAssignmentWebhook'
+      responses:
+        '200':
+          description: Webhook processed successfully
+
+  /webhooks/project-updated:
+    post:
+      tags:
+        - Webhooks
+      summary: Project update webhook
+      description: Webhook endpoint for project status and milestone updates
+      operationId: handleProjectUpdateWebhook
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdateWebhook'
+      responses:
+        '200':
+          description: Webhook processed successfully
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Base error schemas
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+      required:
+        - message
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+                  code:
+                    type: string
+      required:
+        - message
+        - details
+
+    # Pagination utilities
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+        totalItems:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+      required:
+        - page
+        - limit
+        - totalPages
+        - totalItems
+        - hasNext
+        - hasPrev
+
+    # Core domain entities
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+        role:
+          $ref: '#/components/schemas/UserRole'
+        isActive:
+          type: boolean
+        timezone:
+          type: string
+          example: "America/New_York"
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - name
+        - email
+        - role
+        - isActive
+        - createdAt
+        - updatedAt
+
+    UserRole:
+      type: string
+      enum: [admin, member, viewer]
+
+    # Workspaces - Top-level organization
+    Workspace:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        owner:
+          $ref: '#/components/schemas/User'
+        settings:
+          type: object
+          properties:
+            isPublic:
+              type: boolean
+            allowGuestAccess:
+              type: boolean
+        projectCount:
+          type: integer
+          readOnly: true
+        memberCount:
+          type: integer
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - name
+        - owner
+        - settings
+        - createdAt
+        - updatedAt
+
+    WorkspaceDetails:
+      allOf:
+        - $ref: '#/components/schemas/Workspace'
+        - type: object
+          properties:
+            recentProjects:
+              type: array
+              items:
+                $ref: '#/components/schemas/Project'
+              maxItems: 5
+              description: Recently updated projects
+            teamMembers:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+              maxItems: 10
+              description: Active team members
+
+    CreateWorkspaceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        settings:
+          type: object
+          properties:
+            isPublic:
+              type: boolean
+              default: false
+            allowGuestAccess:
+              type: boolean
+              default: false
+      required:
+        - name
+
+    # Projects - Main collaboration spaces
+    ProjectStatus:
+      type: string
+      enum: [planning, active, on_hold, completed, cancelled]
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        visibility:
+          type: string
+          enum: [private, public, team]
+        workspace:
+          $ref: '#/components/schemas/Workspace'
+        owner:
+          $ref: '#/components/schemas/User'
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        progress:
+          type: object
+          properties:
+            completedTasks:
+              type: integer
+            totalTasks:
+              type: integer
+            percentage:
+              type: number
+              format: decimal
+              minimum: 0
+              maximum: 100
+          readOnly: true
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - name
+        - status
+        - visibility
+        - workspace
+        - owner
+        - progress
+        - createdAt
+        - updatedAt
+
+    ProjectDetails:
+      allOf:
+        - $ref: '#/components/schemas/Project'
+        - type: object
+          properties:
+            members:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProjectMember'
+            recentTasks:
+              type: array
+              items:
+                $ref: '#/components/schemas/Task'
+              maxItems: 10
+              description: Recently updated tasks
+            milestones:
+              type: array
+              items:
+                $ref: '#/components/schemas/Milestone'
+            activity:
+              type: array
+              items:
+                $ref: '#/components/schemas/ActivityItem'
+              maxItems: 20
+              description: Recent project activity
+
+    ProjectMember:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        role:
+          type: string
+          enum: [owner, maintainer, contributor, viewer]
+        joinedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        permissions:
+          type: object
+          properties:
+            canCreateTasks:
+              type: boolean
+            canAssignTasks:
+              type: boolean
+            canDeleteTasks:
+              type: boolean
+            canManageMembers:
+              type: boolean
+          readOnly: true
+      required:
+        - user
+        - role
+        - joinedAt
+        - permissions
+
+    CreateProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+        workspaceId:
+          type: string
+          format: uuid
+        visibility:
+          type: string
+          enum: [private, public, team]
+          default: private
+        startDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+      required:
+        - name
+        - workspaceId
+
+    UpdateProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        visibility:
+          type: string
+          enum: [private, public, team]
+        startDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+
+    AddProjectMemberRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [maintainer, contributor, viewer]
+          default: contributor
+      required:
+        - userId
+
+    PaginatedProjects:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+        - data
+        - meta
+
+    # Tasks - Core work items with rich relationships
+    TaskStatus:
+      type: string
+      enum: [backlog, todo, in_progress, in_review, testing, done, cancelled]
+
+    TaskPriority:
+      type: string
+      enum: [critical, high, medium, low]
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        project:
+          $ref: '#/components/schemas/Project'
+        assignee:
+          $ref: '#/components/schemas/User'
+          nullable: true
+        reporter:
+          $ref: '#/components/schemas/User'
+        milestone:
+          $ref: '#/components/schemas/Milestone'
+          nullable: true
+        labels:
+          type: array
+          items:
+            type: string
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        estimatedHours:
+          type: number
+          format: decimal
+          minimum: 0
+          nullable: true
+        actualHours:
+          type: number
+          format: decimal
+          minimum: 0
+          readOnly: true
+        dependencies:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: IDs of tasks this task depends on
+        attachmentCount:
+          type: integer
+          readOnly: true
+        commentCount:
+          type: integer
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        completedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+        - id
+        - title
+        - status
+        - priority
+        - project
+        - reporter
+        - labels
+        - dependencies
+        - createdAt
+        - updatedAt
+
+    TaskDetails:
+      allOf:
+        - $ref: '#/components/schemas/Task'
+        - type: object
+          properties:
+            comments:
+              type: array
+              items:
+                $ref: '#/components/schemas/Comment'
+              maxItems: 20
+              description: Recent comments
+            attachments:
+              type: array
+              items:
+                $ref: '#/components/schemas/File'
+              maxItems: 10
+            timeLogs:
+              type: array
+              items:
+                $ref: '#/components/schemas/TimeLog'
+              maxItems: 10
+              description: Recent time entries
+            activity:
+              type: array
+              items:
+                $ref: '#/components/schemas/ActivityItem'
+              maxItems: 20
+              description: Task activity history
+
+    CreateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+          default: medium
+        assigneeId:
+          type: string
+          format: uuid
+          nullable: true
+        milestoneId:
+          type: string
+          format: uuid
+          nullable: true
+        labels:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+        dueDate:
+          type: string
+          format: date-time
+        estimatedHours:
+          type: number
+          format: decimal
+          minimum: 0
+        dependencies:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+        - title
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        assigneeId:
+          type: string
+          format: uuid
+          nullable: true
+        milestoneId:
+          type: string
+          format: uuid
+          nullable: true
+        labels:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        estimatedHours:
+          type: number
+          format: decimal
+          minimum: 0
+          nullable: true
+        dependencies:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    PaginatedTasks:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        filters:
+          type: object
+          properties:
+            activeFilters:
+              type: object
+              additionalProperties: true
+            availableFilters:
+              type: object
+              properties:
+                assignees:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/User'
+                labels:
+                  type: array
+                  items:
+                    type: string
+                milestones:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Milestone'
+      required:
+        - data
+        - meta
+
+    # Comments and collaboration
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        author:
+          $ref: '#/components/schemas/User'
+        taskId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent comment for threading
+        mentions:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+          description: Users mentioned in the comment
+        reactions:
+          type: array
+          items:
+            type: object
+            properties:
+              emoji:
+                type: string
+                example: "👍"
+              users:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        isEdited:
+          type: boolean
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - content
+        - author
+        - taskId
+        - mentions
+        - reactions
+        - isEdited
+        - createdAt
+        - updatedAt
+
+    CreateCommentRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 5000
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+        - content
+
+    UpdateCommentRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 5000
+      required:
+        - content
+
+    PaginatedComments:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+      required:
+        - data
+        - meta
+
+    # File attachments and documents
+    File:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        originalName:
+          type: string
+        mimeType:
+          type: string
+        size:
+          type: integer
+          description: File size in bytes
+        description:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        downloadUrl:
+          type: string
+          format: uri
+          readOnly: true
+        thumbnailUrl:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        uploader:
+          $ref: '#/components/schemas/User'
+        entityType:
+          type: string
+          enum: [task, project, comment]
+        entityId:
+          type: string
+          format: uuid
+        isPublic:
+          type: boolean
+        version:
+          type: integer
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - filename
+        - originalName
+        - mimeType
+        - size
+        - downloadUrl
+        - uploader
+        - entityType
+        - entityId
+        - isPublic
+        - version
+        - createdAt
+        - updatedAt
+
+    FileDetails:
+      allOf:
+        - $ref: '#/components/schemas/File'
+        - type: object
+          properties:
+            downloadCount:
+              type: integer
+              readOnly: true
+            lastDownloadedAt:
+              type: string
+              format: date-time
+              readOnly: true
+              nullable: true
+            versions:
+              type: array
+              items:
+                type: object
+                properties:
+                  version:
+                    type: integer
+                  filename:
+                    type: string
+                  size:
+                    type: integer
+                  uploadedAt:
+                    type: string
+                    format: date-time
+                  uploader:
+                    $ref: '#/components/schemas/User'
+              maxItems: 10
+              description: File version history
+
+    # Milestones and project timeline
+    MilestoneStatus:
+      type: string
+      enum: [planned, active, completed, cancelled]
+
+    Milestone:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/MilestoneStatus'
+        project:
+          $ref: '#/components/schemas/Project'
+        owner:
+          $ref: '#/components/schemas/User'
+          nullable: true
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        progress:
+          type: object
+          properties:
+            completedTasks:
+              type: integer
+            totalTasks:
+              type: integer
+            percentage:
+              type: number
+              format: decimal
+              minimum: 0
+              maximum: 100
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - title
+        - status
+        - project
+        - progress
+        - createdAt
+        - updatedAt
+
+    MilestoneDetails:
+      allOf:
+        - $ref: '#/components/schemas/Milestone'
+        - type: object
+          properties:
+            tasks:
+              type: array
+              items:
+                $ref: '#/components/schemas/Task'
+              description: Tasks associated with this milestone
+            timeline:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  completedTasks:
+                    type: integer
+                  totalTasks:
+                    type: integer
+              description: Daily progress tracking
+
+    CreateMilestoneRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        ownerId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+      required:
+        - title
+
+    # Time tracking and productivity metrics
+    TimeLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        task:
+          $ref: '#/components/schemas/Task'
+        user:
+          $ref: '#/components/schemas/User'
+        description:
+          type: string
+          nullable: true
+        hours:
+          type: number
+          format: decimal
+          minimum: 0
+        date:
+          type: string
+          format: date
+        startTime:
+          type: string
+          format: time
+          nullable: true
+        endTime:
+          type: string
+          format: time
+          nullable: true
+        isBillable:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - task
+        - user
+        - hours
+        - date
+        - isBillable
+        - createdAt
+        - updatedAt
+
+    CreateTimeLogRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 500
+        hours:
+          type: number
+          format: decimal
+          minimum: 0.1
+        date:
+          type: string
+          format: date
+        startTime:
+          type: string
+          format: time
+        endTime:
+          type: string
+          format: time
+        isBillable:
+          type: boolean
+          default: true
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+      required:
+        - hours
+        - date
+
+    # Teams and organization
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        workspace:
+          $ref: '#/components/schemas/Workspace'
+        leader:
+          $ref: '#/components/schemas/User'
+          nullable: true
+        memberCount:
+          type: integer
+          readOnly: true
+        projectCount:
+          type: integer
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - id
+        - name
+        - workspace
+        - memberCount
+        - projectCount
+        - createdAt
+        - updatedAt
+
+    TeamMember:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        team:
+          $ref: '#/components/schemas/Team'
+        role:
+          type: string
+          enum: [leader, member]
+        joinedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        productivity:
+          type: object
+          properties:
+            tasksCompleted:
+              type: integer
+            hoursLogged:
+              type: number
+              format: decimal
+            averageTaskTime:
+              type: number
+              format: decimal
+              description: Average hours per completed task
+          readOnly: true
+      required:
+        - user
+        - team
+        - role
+        - joinedAt
+        - productivity
+
+    # Analytics and dashboard data
+    ProjectAnalytics:
+      type: object
+      properties:
+        overview:
+          type: object
+          properties:
+            totalTasks:
+              type: integer
+            completedTasks:
+              type: integer
+            overdueTasks:
+              type: integer
+            hoursLogged:
+              type: number
+              format: decimal
+            teamMembers:
+              type: integer
+        tasksByStatus:
+          type: object
+          additionalProperties:
+            type: integer
+        tasksByPriority:
+          type: object
+          additionalProperties:
+            type: integer
+        productivity:
+          type: object
+          properties:
+            tasksCompletedThisWeek:
+              type: integer
+            averageCompletionTime:
+              type: number
+              format: decimal
+              description: Average days to complete a task
+            burndown:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  remainingTasks:
+                    type: integer
+                  completedTasks:
+                    type: integer
+        topContributors:
+          type: array
+          items:
+            type: object
+            properties:
+              user:
+                $ref: '#/components/schemas/User'
+              tasksCompleted:
+                type: integer
+              hoursLogged:
+                type: number
+                format: decimal
+          maxItems: 10
+      required:
+        - overview
+        - tasksByStatus
+        - tasksByPriority
+        - productivity
+        - topContributors
+
+    DashboardStats:
+      type: object
+      properties:
+        projects:
+          type: object
+          properties:
+            total:
+              type: integer
+            active:
+              type: integer
+            completed:
+              type: integer
+        tasks:
+          type: object
+          properties:
+            assignedToMe:
+              type: integer
+            dueThisWeek:
+              type: integer
+            overdue:
+              type: integer
+            completedThisWeek:
+              type: integer
+        activity:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityItem'
+          maxItems: 20
+          description: Recent activity across all projects
+        upcomingDeadlines:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [task, milestone, project]
+              id:
+                type: string
+                format: uuid
+              title:
+                type: string
+              dueDate:
+                type: string
+                format: date-time
+              project:
+                $ref: '#/components/schemas/Project'
+          maxItems: 10
+      required:
+        - projects
+        - tasks
+        - activity
+        - upcomingDeadlines
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [task_created, task_updated, task_completed, comment_added, file_uploaded, member_added, milestone_reached]
+        actor:
+          $ref: '#/components/schemas/User'
+        entity:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [task, project, comment, file, milestone]
+            id:
+              type: string
+              format: uuid
+            title:
+              type: string
+        project:
+          $ref: '#/components/schemas/Project'
+        description:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - actor
+        - entity
+        - project
+        - description
+        - timestamp
+
+    # Search functionality
+    SearchResults:
+      type: object
+      properties:
+        query:
+          type: string
+        totalResults:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [project, task, comment, file]
+              id:
+                type: string
+                format: uuid
+              title:
+                type: string
+              snippet:
+                type: string
+                description: Highlighted text snippet showing the match
+              project:
+                $ref: '#/components/schemas/Project'
+              relevanceScore:
+                type: number
+                format: decimal
+                minimum: 0
+                maximum: 1
+              url:
+                type: string
+                format: uri
+                description: Deep link to the entity
+        facets:
+          type: object
+          properties:
+            types:
+              type: object
+              additionalProperties:
+                type: integer
+            projects:
+              type: object
+              additionalProperties:
+                type: integer
+            users:
+              type: object
+              additionalProperties:
+                type: integer
+      required:
+        - query
+        - totalResults
+        - results
+
+    # Bulk operations
+    BulkUpdateTasksRequest:
+      type: object
+      properties:
+        taskIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          maxItems: 100
+        updates:
+          type: object
+          properties:
+            status:
+              $ref: '#/components/schemas/TaskStatus'
+            priority:
+              $ref: '#/components/schemas/TaskPriority'
+            assigneeId:
+              type: string
+              format: uuid
+              nullable: true
+            milestoneId:
+              type: string
+              format: uuid
+              nullable: true
+            labels:
+              type: array
+              items:
+                type: string
+            dueDate:
+              type: string
+              format: date-time
+              nullable: true
+      required:
+        - taskIds
+        - updates
+
+    # Webhook payloads
+    TaskAssignmentWebhook:
+      type: object
+      properties:
+        eventType:
+          type: string
+          enum: [task.assigned, task.unassigned]
+        task:
+          $ref: '#/components/schemas/Task'
+        assignee:
+          $ref: '#/components/schemas/User'
+          nullable: true
+        previousAssignee:
+          $ref: '#/components/schemas/User'
+          nullable: true
+        assignedBy:
+          $ref: '#/components/schemas/User'
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+      required:
+        - eventType
+        - task
+        - assignedBy
+        - timestamp
+
+    ProjectUpdateWebhook:
+      type: object
+      properties:
+        eventType:
+          type: string
+          enum: [project.created, project.updated, project.completed, milestone.reached]
+        project:
+          $ref: '#/components/schemas/Project'
+        changes:
+          type: object
+          additionalProperties: true
+          description: Changed fields and their new values
+        updatedBy:
+          $ref: '#/components/schemas/User'
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+      required:
+        - eventType
+        - project
+        - updatedBy
+        - timestamp
