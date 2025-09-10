@@ -57,7 +57,17 @@ async function mockCommand(options = {}) {
 
     // 4. Start mock server
     console.log('\n🚀 Starting mock server...');
-    const mockServer = new MockServer(parsedContract, scenario);
+    
+    // Extract mock server options from config
+    const mockServerOptions = {};
+    if (config.mock?.entityPatterns) {
+      mockServerOptions.entityPatterns = config.mock.entityPatterns;
+    }
+    if (config.mock?.domainMappings) {
+      mockServerOptions.domainMappings = config.mock.domainMappings;
+    }
+    
+    const mockServer = new MockServer(parsedContract, scenario, mockServerOptions);
 
     let serverUrl;
     try {

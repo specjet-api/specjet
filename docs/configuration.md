@@ -321,6 +321,26 @@ export default {
     errorRate: 0,            // Random error injection
     logging: true,           // Request logging
     
+    // Entity detection patterns (for contextual data generation)
+    entityPatterns: {
+      user: /^(user|author|customer|owner|creator)s?$/i,
+      category: /^categor(y|ies)$/i,
+      product: /^products?$/i,
+      review: /^reviews?$/i,
+      order: /^orders?$/i,
+      cart: /^carts?$/i
+    },
+    
+    // Domain mappings for entities
+    domainMappings: {
+      user: 'users',
+      category: 'commerce',
+      product: 'commerce', 
+      review: 'commerce',
+      order: 'commerce',
+      cart: 'commerce'
+    },
+    
     // Advanced options
     middleware: [],          // Custom Express middleware
     staticFiles: './public', // Serve static files
@@ -425,6 +445,100 @@ mock: {
   errorRate: 0,     // No errors (default)
   errorRate: 0.1,   // 10% of requests fail
   errorRate: 0.3    // 30% of requests fail
+}
+```
+
+#### `entityPatterns: object`
+Configure how property names are detected as specific entity types for contextual data generation:
+
+```javascript
+mock: {
+  entityPatterns: {
+    // Default patterns (can be overridden)
+    user: /^(user|author|customer|owner|creator)s?$/i,
+    category: /^categor(y|ies)$/i,
+    product: /^products?$/i,
+    review: /^reviews?$/i,
+    order: /^orders?$/i,
+    cart: /^carts?$/i,
+    
+    // Add custom entity patterns
+    organization: /^(org|organization|company)s?$/i,
+    project: /^projects?$/i,
+    task: /^(task|todo|item)s?$/i
+  }
+}
+```
+
+**How it works:**
+When generating mock data for nested objects, SpecJet analyzes property names using these regex patterns to determine what type of entity it's generating. This enables more realistic contextual data:
+
+```yaml
+# OpenAPI Schema
+Product:
+  type: object
+  properties:
+    name: { type: string }
+    category: 
+      $ref: '#/components/schemas/Category'  # Will generate category-specific data
+    author:
+      $ref: '#/components/schemas/User'      # Will generate user-specific data
+```
+
+```javascript
+// Generated mock data with entity detection
+{
+  "name": "Handcrafted Cotton Shirt",        // Product name (using faker.commerce.productName)
+  "category": {
+    "name": "Clothing & Fashion"             // Category name (using faker.commerce.department)
+  },
+  "author": {
+    "name": "John Doe"                       // User name (using faker.person.fullName)
+  }
+}
+```
+
+#### `domainMappings: object`
+Map entity types to domain contexts for enhanced data generation:
+
+```javascript
+mock: {
+  domainMappings: {
+    // Commerce domain entities
+    user: 'users',
+    category: 'commerce',
+    product: 'commerce',
+    review: 'commerce',
+    order: 'commerce',
+    cart: 'commerce',
+    
+    // Custom domain mappings
+    organization: 'business',
+    project: 'productivity',
+    task: 'productivity'
+  }
+}
+```
+
+**Domain-specific benefits:**
+- **Consistency**: Related entities use consistent data patterns
+- **Realism**: Data feels coherent across related objects
+- **Relationships**: Entities maintain logical relationships
+
+**Example with custom domains:**
+```javascript
+// Custom configuration for a project management API
+mock: {
+  entityPatterns: {
+    project: /^projects?$/i,
+    task: /^(task|todo)s?$/i,
+    assignee: /^(assignee|assigned_to)s?$/i
+  },
+  domainMappings: {
+    project: 'productivity',
+    task: 'productivity', 
+    assignee: 'users'
+  }
 }
 ```
 
@@ -661,6 +775,8 @@ interface SpecJetConfig {
     delay?: boolean | number | DelayOptions;
     errorRate?: number;
     logging?: boolean;
+    entityPatterns?: Record<string, RegExp>;
+    domainMappings?: Record<string, string>;
     middleware?: Function[];
     staticFiles?: string;
     scenarios?: Record<string, ScenarioOptions>;
@@ -704,7 +820,28 @@ export default {
       origin: ['http://localhost:3000'],
       credentials: true
     },
-    scenario: 'realistic'
+    scenario: 'realistic',
+    
+    // Custom entity detection for e-commerce app
+    entityPatterns: {
+      user: /^(user|customer|buyer|seller)s?$/i,
+      product: /^products?$/i,
+      category: /^categor(y|ies)$/i,
+      order: /^orders?$/i,
+      review: /^(review|rating)s?$/i,
+      cart: /^(cart|basket)s?$/i,
+      payment: /^(payment|transaction)s?$/i
+    },
+    
+    domainMappings: {
+      user: 'users',
+      product: 'commerce',
+      category: 'commerce',
+      order: 'commerce',
+      review: 'commerce',
+      cart: 'commerce',
+      payment: 'commerce'
+    }
   }
 };
 ```

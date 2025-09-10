@@ -3,13 +3,35 @@ import cors from 'cors';
 import { faker } from '@faker-js/faker';
 
 class MockServer {
-  constructor(contract, scenario = 'demo') {
+  constructor(contract, scenario = 'demo', options = {}) {
     this.app = express();
     this.contract = contract;
     this.scenario = scenario;
     
     // Store resolved schemas for $ref resolution
     this.schemas = contract.components?.schemas || {};
+    
+    // Configure entity detection patterns (can be overridden via options)
+    this.entityPatterns = {
+      user: /^(user|author|customer|owner|creator)s?$/i,
+      category: /^categor(y|ies)$/i,
+      product: /^products?$/i,
+      review: /^reviews?$/i,
+      order: /^orders?$/i,
+      cart: /^carts?$/i,
+      ...options.entityPatterns
+    };
+    
+    // Configure domain mappings (can be overridden via options)
+    this.domainMappings = {
+      user: 'users',
+      category: 'commerce',
+      product: 'commerce', 
+      review: 'commerce',
+      order: 'commerce',
+      cart: 'commerce',
+      ...options.domainMappings
+    };
     
     this.setupMiddleware();
     this.setupRoutes();
@@ -169,50 +191,18 @@ class MockServer {
       return { domain: 'generic', entity: 'item', tags: [], path: '', method: '' };
     }
     
-    const propLower = propName.toLowerCase();
-    
-    // Detect nested entity types based on property name
-    if (propLower === 'category' || propLower === 'categories') {
-      return {
-        ...parentContext,
-        entity: 'category',
-        domain: 'commerce'
-      };
+    // Check against configured entity patterns
+    for (const [entityType, pattern] of Object.entries(this.entityPatterns)) {
+      if (pattern.test(propName)) {
+        return {
+          ...parentContext,
+          entity: entityType,
+          domain: this.domainMappings[entityType] || 'generic'
+        };
+      }
     }
     
-    if (propLower === 'product' || propLower === 'products') {
-      return {
-        ...parentContext,
-        entity: 'product',
-        domain: 'commerce'
-      };
-    }
-    
-    if (propLower === 'user' || propLower === 'users' || propLower === 'author' || propLower === 'customer') {
-      return {
-        ...parentContext,
-        entity: 'user',
-        domain: 'users'
-      };
-    }
-    
-    if (propLower === 'review' || propLower === 'reviews') {
-      return {
-        ...parentContext,
-        entity: 'review',
-        domain: 'commerce'
-      };
-    }
-    
-    if (propLower === 'order' || propLower === 'orders') {
-      return {
-        ...parentContext,
-        entity: 'order',
-        domain: 'commerce'
-      };
-    }
-    
-    // For address, payment info, etc., keep parent context but could add specific handling
+    // For unmatched properties, keep parent context
     return parentContext;
   }
 
@@ -425,7 +415,7 @@ class MockServer {
     return this.generatePrimitiveValue(schema || { type: 'string' });
   }
   
-  generateDomainSpecificValue(propName, schema, context, scenario = 'demo') {
+  generateDomainSpecificValue(propName, schema, context, scenario) {
     const propLower = propName.toLowerCase();
     const { entity } = context;
     
@@ -433,15 +423,15 @@ class MockServer {
     if (propLower.includes('name') && !propLower.includes('firstname') && !propLower.includes('lastname')) {
       switch (entity) {
         case 'category':
-          return this.generateCategoryName(scenario);
+          return this.generateCategoryName();
         case 'product':
-          return this.generateProductName(scenario);
+          return this.generateProductName();
         case 'user':
           return faker.person.fullName();
         case 'review':
           return this.generateReviewTitle(scenario);
         default:
-          return scenario === 'demo' ? faker.lorem.words(2) : faker.lorem.sentence();
+          return faker.lorem.words(2);
       }
     }
     
@@ -451,7 +441,7 @@ class MockServer {
         case 'category':
           return this.generateCategoryDescription(scenario);
         case 'product':
-          return this.generateProductDescription(scenario);
+          return this.generateProductDescription();
         case 'user':
           return scenario === 'demo' ? faker.lorem.sentence() : faker.lorem.paragraphs();
         case 'review':
@@ -467,7 +457,7 @@ class MockServer {
         case 'review':
           return this.generateReviewTitle(scenario);
         case 'product':
-          return this.generateProductName(scenario);
+          return this.generateProductName();
         default:
           return faker.lorem.words(faker.number.int({ min: 3, max: 8 }));
       }
@@ -476,121 +466,36 @@ class MockServer {
     return null; // Let the generic handler take over
   }
   
-  generateCategoryName(scenario) {
-    const categories = [
-      'Electronics', 'Clothing & Apparel', 'Home & Garden', 'Sports & Outdoors', 
-      'Books & Media', 'Toys & Games', 'Health & Beauty', 'Automotive',
-      'Jewelry & Watches', 'Baby & Kids', 'Pet Supplies', 'Office Supplies',
-      'Musical Instruments', 'Arts & Crafts', 'Grocery & Food', 'Tools & Hardware'
-    ];
-    
-    const subcategories = {
-      'Electronics': ['Smartphones', 'Laptops', 'Headphones', 'Gaming', 'Smart Home'],
-      'Clothing & Apparel': ['Men\'s Fashion', 'Women\'s Fashion', 'Kids\' Clothing', 'Shoes', 'Accessories'],
-      'Home & Garden': ['Furniture', 'Kitchen & Dining', 'Bedding', 'Gardening', 'Home Decor'],
-      'Sports & Outdoors': ['Fitness Equipment', 'Team Sports', 'Outdoor Gear', 'Athletic Wear']
-    };
-    
-    if (scenario === 'demo') {
-      return categories[Math.floor(Math.random() * Math.min(categories.length, 8))];
-    }
-    
-    // For realistic scenario, sometimes return subcategories
-    if (Math.random() < 0.3) {
-      const parentCat = categories[Math.floor(Math.random() * categories.length)];
-      const subs = subcategories[parentCat];
-      if (subs) {
-        return subs[Math.floor(Math.random() * subs.length)];
-      }
-    }
-    
-    return categories[Math.floor(Math.random() * categories.length)];
+  generateCategoryName() {
+    return faker.commerce.department();
   }
   
   generateCategoryDescription(scenario) {
-    const descriptions = [
-      'Discover the latest and greatest in our curated collection.',
-      'Premium quality products for everyday needs.',
-      'Find everything you need in one convenient category.',
-      'Top-rated items with unbeatable prices.',
-      'Explore our extensive range of high-quality products.'
-    ];
-    
     if (scenario === 'demo') {
-      return descriptions[Math.floor(Math.random() * descriptions.length)];
+      return faker.lorem.sentence();
     }
-    
     return faker.lorem.paragraph();
   }
   
-  generateProductName(scenario) {
-    const productTypes = [
-      'iPhone 15 Pro', 'Samsung Galaxy S24', 'MacBook Air', 'Nike Air Max 270',
-      'Instant Pot Duo', 'Dyson V15 Cordless Vacuum', 'Sony WH-1000XM5 Headphones',
-      'Fitbit Charge 6', 'KitchenAid Stand Mixer', 'Patagonia Down Jacket',
-      'Levi\'s 501 Jeans', 'Kindle Paperwhite', 'AirPods Pro', 'Tesla Model 3 Accessories'
-    ];
-    
-    if (scenario === 'demo') {
-      return productTypes[Math.floor(Math.random() * Math.min(productTypes.length, 6))];
-    }
-    
-    // For realistic scenario, use faker with some real product names mixed in
-    return Math.random() < 0.4 
-      ? productTypes[Math.floor(Math.random() * productTypes.length)]
-      : faker.commerce.productName();
+  generateProductName() {
+    return faker.commerce.productName();
   }
   
-  generateProductDescription(scenario) {
-    if (scenario === 'demo') {
-      const descriptions = [
-        'High-quality product with excellent features.',
-        'Perfect for everyday use with premium materials.',
-        'Top-rated choice with outstanding performance.',
-        'Innovative design meets practical functionality.'
-      ];
-      return descriptions[Math.floor(Math.random() * descriptions.length)];
-    }
-    
+  generateProductDescription() {
     return faker.commerce.productDescription();
   }
   
   generateReviewTitle(scenario) {
-    const titles = [
-      'Great product, highly recommend!',
-      'Perfect for my needs',
-      'Excellent quality and value',
-      'Love this purchase!',
-      'Fantastic product',
-      'Good value for money',
-      'Amazing quality',
-      'Exceeded expectations',
-      'Would buy again',
-      'Outstanding performance'
-    ];
-    
     if (scenario === 'demo') {
-      return titles[Math.floor(Math.random() * titles.length)];
+      return faker.lorem.words(faker.number.int({ min: 3, max: 6 }));
     }
-    
-    // For non-demo scenarios, generate more varied titles
     return faker.lorem.words(faker.number.int({ min: 3, max: 8 }));
   }
   
   generateReviewComment(scenario) {
-    const comments = [
-      'This product exceeded my expectations. Great build quality and works perfectly.',
-      'Really happy with this purchase. Good value for the price.',
-      'Excellent product! Fast shipping and great customer service too.',
-      'Perfect for what I needed. Would definitely recommend to others.',
-      'High quality item that works exactly as described. Very satisfied.',
-      'Great purchase! The product is well-made and functions perfectly.'
-    ];
-    
     if (scenario === 'demo') {
-      return comments[Math.floor(Math.random() * comments.length)];
+      return faker.lorem.sentence();
     }
-    
     return faker.lorem.paragraphs(faker.number.int({ min: 1, max: 3 }));
   }
 

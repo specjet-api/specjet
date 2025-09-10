@@ -12,8 +12,28 @@ export default {
   mock: {
     port: 3001,
     cors: true,
-    scenario: 'realistic'
-  },
+    scenario: 'realistic',
+    
+  //   (Optional) Custom entity detection patterns
+  //   entityPatterns: {
+  //     user: /^(user|author|customer|owner|creator)s?$/i,
+  //     category: /^categor(y|ies)$/i,
+  //     product: /^products?$/i,
+  //     review: /^reviews?$/i,
+  //     order: /^orders?$/i,
+  //     cart: /^carts?$/i,
+  //   },
+    
+  //   (Optional) Custom domain mappings
+  //   domainMappings: {
+  //     user: 'users',
+  //     category: 'commerce',
+  //     product: 'commerce', 
+  //     review: 'commerce',
+  //     order: 'commerce',
+  //     cart: 'commerce',
+  //   }
+  // },
   
   // Docs server settings
   docs: {
@@ -26,10 +46,4 @@ export default {
     exportType: 'named',
     clientName: 'ApiClient'
   },
-  
-  // Future: Web platform integration (Phase 2)
-  // project: {
-  //   id: null,        // proj_abc123
-  //   syncUrl: null    // https://app.specjet.dev/api
-  // }
 };

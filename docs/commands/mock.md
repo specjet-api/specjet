@@ -401,6 +401,26 @@ export default {
     cors: true,              // Enable CORS by default
     scenario: 'realistic',   // Default scenario
     
+    // Entity detection for contextual data generation
+    entityPatterns: {
+      user: /^(user|author|customer|owner|creator)s?$/i,
+      category: /^categor(y|ies)$/i,
+      product: /^products?$/i,
+      review: /^reviews?$/i,
+      order: /^orders?$/i,
+      cart: /^carts?$/i
+    },
+    
+    // Domain mappings for entities
+    domainMappings: {
+      user: 'users',
+      category: 'commerce',
+      product: 'commerce', 
+      review: 'commerce',
+      order: 'commerce',
+      cart: 'commerce'
+    },
+    
     // Advanced options (future)
     delay: {                 // Simulate network latency
       min: 100,              // Minimum delay (ms)
@@ -417,6 +437,103 @@ export default {
     }
   }
 };
+```
+
+### Contextual Data Generation
+
+SpecJet automatically generates contextually appropriate mock data based on property names and OpenAPI schemas. This creates more realistic and useful test data.
+
+#### Default Entity Detection
+
+The mock server recognizes common entity patterns and generates appropriate data:
+
+```yaml
+# Your OpenAPI schema
+Product:
+  type: object
+  properties:
+    name: { type: string }
+    category:
+      $ref: '#/components/schemas/Category'
+    reviews:
+      type: array
+      items:
+        $ref: '#/components/schemas/Review'
+    author:
+      $ref: '#/components/schemas/User'
+```
+
+```javascript
+// Generated mock data with entity detection
+{
+  "name": "Handcrafted Cotton Shirt",     // Product name
+  "category": {
+    "name": "Clothing & Fashion"          // Category name  
+  },
+  "reviews": [
+    {
+      "title": "Great quality shirt",     // Review title
+      "comment": "Love the material",     // Review comment
+      "author": {
+        "name": "Sarah Johnson"           // User name
+      }
+    }
+  ],
+  "author": {
+    "name": "Jane Smith",                 // User name
+    "email": "jane@example.com"          // User email
+  }
+}
+```
+
+#### Custom Entity Patterns
+
+For specialized APIs, configure custom entity detection:
+
+```javascript
+// specjet.config.js for a project management API
+export default {
+  mock: {
+    entityPatterns: {
+      // Override defaults
+      user: /^(user|member|assignee|owner)s?$/i,
+      
+      // Add new entities
+      project: /^projects?$/i,
+      task: /^(task|todo|issue)s?$/i,
+      milestone: /^milestones?$/i,
+      workspace: /^(workspace|space)s?$/i
+    },
+    
+    domainMappings: {
+      user: 'users',
+      project: 'productivity',
+      task: 'productivity',
+      milestone: 'productivity', 
+      workspace: 'productivity'
+    }
+  }
+};
+```
+
+This generates appropriate data for project management contexts:
+
+```javascript
+// Generated data for project management API
+{
+  "name": "Website Redesign",
+  "tasks": [
+    {
+      "title": "Update homepage layout",
+      "assignee": {
+        "name": "Alex Rodriguez"
+      }
+    }
+  ],
+  "workspace": {
+    "name": "Design Team"
+  }
+}
 ```
 
 ## CORS Configuration
