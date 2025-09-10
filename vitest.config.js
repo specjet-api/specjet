@@ -24,9 +24,6 @@ export default defineConfig({
       ]
     },
     
-    // Setup files
-    setupFiles: ['./tests/setup.js'],
-    
     // Test timeout
     testTimeout: 30000,
     
