@@ -371,7 +371,7 @@ ${methods.join('\n\n')}
     // Generate parameters
     const pathParams = endpoint.parameters.filter(p => p.in === 'path');
     const queryParams = endpoint.parameters.filter(p => p.in === 'query');
-    // const headerParams = endpoint.parameters.filter(p => p.in === 'header'); // TODO: Support headers
+    const headerParams = endpoint.parameters.filter(p => p.in === 'header');
     
     // Build method signature parameters
     const methodParams = [];
@@ -401,6 +401,12 @@ ${methods.join('\n\n')}
       methodParams.push(`params?: ${queryParamType}`);
     }
     
+    // Add header parameters as optional object
+    if (headerParams.length > 0) {
+      const headerParamType = this.generateHeaderParamsType(headerParams, schemas);
+      methodParams.push(`headers?: ${headerParamType}`);
+    }
+    
     // Add options parameter
     methodParams.push('options?: RequestInit');
     
@@ -409,7 +415,7 @@ ${methods.join('\n\n')}
     
     // Generate method body
     const pathWithParams = this.generatePathWithParams(endpoint.path, pathParams);
-    const methodBody = this.generateMethodBody(endpoint, pathParams, queryParams, pathWithParams);
+    const methodBody = this.generateMethodBody(endpoint, pathParams, queryParams, headerParams, pathWithParams);
     
     const code = `  /**
    * ${endpoint.summary || `${endpoint.method} ${endpoint.path}`}
@@ -446,6 +452,16 @@ ${methodBody}
   
   generateQueryParamsType(queryParams, schemas) {
     const properties = queryParams.map(param => {
+      const paramType = this.mapOpenApiTypeToTypeScript(param.schema, schemas);
+      const optional = !param.required ? '?' : '';
+      return `${param.name}${optional}: ${paramType}`;
+    });
+    
+    return `{ ${properties.join('; ')} }`;
+  }
+  
+  generateHeaderParamsType(headerParams, schemas) {
+    const properties = headerParams.map(param => {
       const paramType = this.mapOpenApiTypeToTypeScript(param.schema, schemas);
       const optional = !param.required ? '?' : '';
       return `${param.name}${optional}: ${paramType}`;
@@ -491,7 +507,7 @@ ${methodBody}
     return pathWithParams;
   }
   
-  generateMethodBody(endpoint, _pathParams, queryParams, pathWithParams) {
+  generateMethodBody(endpoint, _pathParams, queryParams, headerParams, pathWithParams) {
     const lines = [];
     
     // Build path
@@ -515,6 +531,19 @@ ${methodBody}
     
     if (endpoint.requestBody) {
       requestOptions.push('body: JSON.stringify(data)');
+    }
+    
+    // Add headers
+    if (headerParams.length > 0) {
+      lines.push('    const requestHeaders: Record<string, string> = {};');
+      lines.push('    if (headers) {');
+      lines.push('      Object.entries(headers).forEach(([key, value]) => {');
+      lines.push('        if (value !== undefined) {');
+      lines.push('          requestHeaders[key] = String(value);');
+      lines.push('        }');
+      lines.push('      });');
+      lines.push('    }');
+      requestOptions.push('headers: requestHeaders');
     }
     
     if (requestOptions.length > 0) {
