@@ -1,0 +1,92 @@
+openapi: 3.0.0
+info:
+  title: "Broken Syntax Test API
+  version: 1.0.0
+  description: | 
+    OpenAPI spec with intentionally broken YAML syntax to test parser error handling.
+    This file contains multiple syntax errors:
+    - Missing closing quote on title above
+    - Improper indentation below
+    - Missing colons and brackets
+    - Invalid YAML structure
+
+paths:
+  /test:
+get:  # Wrong indentation - should be under /test
+      summary: Test endpoint
+      responses
+        200:  # Missing colon after responses
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data
+                    type: object  # Missing colon after data
+
+  /broken/{id:
+    get:  # Missing closing bracket in path parameter
+      summary: Broken path parameter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+
+  /invalid-quotes:
+    post:
+      summary: 'Mixing quote types"  # Mismatched quotes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestSchema'
+      responses:
+        '201':
+          description: Created
+
+components:
+  schemas:
+    TestSchema:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [active, inactive, pending]  # Missing quotes in enum
+        metadata:
+          type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+            tags:
+              type: array
+              items:
+                type: string
+      required: [id, name]  # Should be YAML array format
+
+    BrokenSchema
+      type: object  # Missing colon after schema name
+      properties:
+        value:
+          type: integer
+          minimum: 0
+          maximum: 100
+        description:
+          type: string
+          maxLength: 500

@@ -1,0 +1,115 @@
+openapi: 3.0.0
+info:
+  title: Circular References Test API
+  version: 1.0.0
+  description: OpenAPI spec with circular $ref dependencies to test parser error handling
+
+paths:
+  /users:
+    get:
+      summary: Get users
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /users/{id}:
+    get:
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+components:
+  schemas:
+    # Circular reference: User -> Organization -> User
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        organization:
+          $ref: '#/components/schemas/Organization'
+        manager:
+          $ref: '#/components/schemas/User'  # Self-reference
+      required:
+        - id
+        - name
+        - email
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        owner:
+          $ref: '#/components/schemas/User'  # Circular reference back to User
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'  # Another circular reference
+        parentOrg:
+          $ref: '#/components/schemas/Organization'  # Self-reference
+      required:
+        - id
+        - name
+        - owner
+
+    # Deep circular chain: A -> B -> C -> A
+    CircularA:
+      type: object
+      properties:
+        id:
+          type: string
+        refToB:
+          $ref: '#/components/schemas/CircularB'
+
+    CircularB:
+      type: object
+      properties:
+        id:
+          type: string
+        refToC:
+          $ref: '#/components/schemas/CircularC'
+
+    CircularC:
+      type: object
+      properties:
+        id:
+          type: string
+        refToA:
+          $ref: '#/components/schemas/CircularA'  # Completes the circle
+
+    # Invalid reference to non-existent schema
+    InvalidRef:
+      type: object
+      properties:
+        id:
+          type: string
+        badRef:
+          $ref: '#/components/schemas/NonExistentSchema'

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
+    "test:stress": "RUN_STRESS_TESTS=true vitest run tests/stress-test.skip.test.js",
     "lint": "eslint src/",
     "start": "node src/index.js",
     "audit": "npm audit --audit-level high",
