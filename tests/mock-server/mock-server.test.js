@@ -367,4 +367,385 @@ describe('MockServer', () => {
       expect(server.schemas.User.properties.id.type).toBe('number');
     });
   });
+
+  describe('Data Persistence and CRUD Operations', () => {
+    let crudServer;
+    
+    beforeEach(() => {
+      const crudContract = {
+        endpoints: [
+          {
+            method: 'GET',
+            path: '/users/{id}',
+            responses: {
+              '200': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'number' },
+                    name: { type: 'string' },
+                    email: { type: 'string' }
+                  }
+                }
+              }
+            }
+          },
+          {
+            method: 'POST',
+            path: '/users',
+            responses: {
+              '201': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'number' },
+                    name: { type: 'string' },
+                    email: { type: 'string' }
+                  }
+                }
+              }
+            }
+          },
+          {
+            method: 'DELETE',
+            path: '/users/{id}',
+            responses: {
+              '204': { description: 'No content' }
+            }
+          }
+        ],
+        components: { schemas: {} }
+      };
+      
+      crudServer = new MockServer(crudContract, 'demo');
+    });
+
+    test('should initialize with empty dataStore and deletedRecords', () => {
+      expect(crudServer.dataStore).toBeInstanceOf(Map);
+      expect(crudServer.deletedRecords).toBeInstanceOf(Map);
+      expect(crudServer.dataStore.size).toBe(0);
+      expect(crudServer.deletedRecords.size).toBe(0);
+    });
+
+    test('should extract entity type from endpoint path', () => {
+      const userEndpoint = { path: '/users/{id}' };
+      const productEndpoint = { path: '/products' };
+      const nestedEndpoint = { path: '/projects/{projectId}/tasks/{taskId}' };
+      
+      expect(crudServer.extractEntityType(userEndpoint)).toBe('user');
+      expect(crudServer.extractEntityType(productEndpoint)).toBe('product');
+      expect(crudServer.extractEntityType(nestedEndpoint)).toBe('project');
+    });
+
+    test('should store and retrieve records', () => {
+      const testRecord = { name: 'John Doe', email: 'john@example.com' };
+      
+      const stored = crudServer.storeRecord('user', testRecord);
+      expect(stored).toHaveProperty('id');
+      expect(stored.name).toBe('John Doe');
+      expect(stored.email).toBe('john@example.com');
+      
+      const retrieved = crudServer.getRecord('user', stored.id);
+      expect(retrieved).toEqual(stored);
+    });
+
+    test('should handle string and numeric IDs consistently', () => {
+      const testRecord = { id: 123, name: 'Test User' };
+      
+      crudServer.storeRecord('user', testRecord);
+      
+      // Should work with both string and numeric ID formats
+      expect(crudServer.getRecord('user', 123)).toBeTruthy();
+      expect(crudServer.getRecord('user', '123')).toBeTruthy();
+    });
+
+    test('should update existing records', () => {
+      const original = { id: 1, name: 'John', email: 'john@example.com' };
+      crudServer.storeRecord('user', original);
+      
+      const updates = { name: 'John Smith', isActive: true };
+      const updated = crudServer.updateRecord('user', 1, updates);
+      
+      expect(updated.id).toBe(1); // ID preserved
+      expect(updated.name).toBe('John Smith'); // Updated
+      expect(updated.email).toBe('john@example.com'); // Original preserved
+      expect(updated.isActive).toBe(true); // Added
+    });
+
+    test('should return null when updating non-existent record', () => {
+      const result = crudServer.updateRecord('user', 999, { name: 'Test' });
+      expect(result).toBeNull();
+    });
+
+    test('should get all records for an entity type', () => {
+      crudServer.storeRecord('user', { id: 1, name: 'User 1' });
+      crudServer.storeRecord('user', { id: 2, name: 'User 2' });
+      crudServer.storeRecord('product', { id: 1, name: 'Product 1' });
+      
+      const users = crudServer.getAllRecords('user');
+      expect(users).toHaveLength(2);
+      expect(users.find(u => u.id === 1).name).toBe('User 1');
+      expect(users.find(u => u.id === 2).name).toBe('User 2');
+      
+      const products = crudServer.getAllRecords('product');
+      expect(products).toHaveLength(1);
+      expect(products[0].name).toBe('Product 1');
+    });
+
+    test('should return empty array for non-existent entity type', () => {
+      const result = crudServer.getAllRecords('nonexistent');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('DELETE → GET 404 Tombstone Tracking', () => {
+    let crudServer;
+    
+    beforeEach(() => {
+      const crudContract = {
+        endpoints: [
+          {
+            method: 'GET',
+            path: '/users/{id}',
+            responses: {
+              '200': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'number' },
+                    name: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        components: { schemas: {} }
+      };
+      
+      crudServer = new MockServer(crudContract, 'demo');
+    });
+
+    test('should mark records as deleted when deleteRecord is called', () => {
+      // Store a record first
+      const record = { id: 1, name: 'Test User' };
+      crudServer.storeRecord('user', record);
+      
+      // Verify it exists
+      expect(crudServer.getRecord('user', 1)).toBeTruthy();
+      expect(crudServer.isRecordDeleted('user', 1)).toBe(false);
+      
+      // Delete it
+      const deleted = crudServer.deleteRecord('user', 1);
+      expect(deleted).toBe(true);
+      
+      // Verify it's marked as deleted
+      expect(crudServer.isRecordDeleted('user', 1)).toBe(true);
+      expect(crudServer.getRecord('user', 1)).toBeNull();
+    });
+
+    test('should handle deleting non-existent records', () => {
+      const deleted = crudServer.deleteRecord('user', 999);
+      expect(deleted).toBe(false);
+      expect(crudServer.isRecordDeleted('user', 999)).toBe(false);
+    });
+
+    test('should handle string and numeric IDs in tombstone tracking', () => {
+      const record = { id: 42, name: 'Test User' };
+      crudServer.storeRecord('user', record);
+      
+      // Delete using numeric ID
+      crudServer.deleteRecord('user', 42);
+      
+      // Should be marked as deleted for both formats
+      expect(crudServer.isRecordDeleted('user', 42)).toBe(true);
+      expect(crudServer.isRecordDeleted('user', '42')).toBe(true);
+    });
+
+    test('should track deletions separately by entity type', () => {
+      // Store records in different entities
+      crudServer.storeRecord('user', { id: 1, name: 'User 1' });
+      crudServer.storeRecord('product', { id: 1, name: 'Product 1' });
+      
+      // Delete user but not product
+      crudServer.deleteRecord('user', 1);
+      
+      expect(crudServer.isRecordDeleted('user', 1)).toBe(true);
+      expect(crudServer.isRecordDeleted('product', 1)).toBe(false);
+    });
+
+    test('should persist tombstone tracking across operations', () => {
+      // Store and delete a record
+      crudServer.storeRecord('user', { id: 1, name: 'Test User' });
+      crudServer.deleteRecord('user', 1);
+      
+      // Store another record with different ID
+      crudServer.storeRecord('user', { id: 2, name: 'Another User' });
+      
+      // Original should still be marked as deleted
+      expect(crudServer.isRecordDeleted('user', 1)).toBe(true);
+      expect(crudServer.isRecordDeleted('user', 2)).toBe(false);
+    });
+
+    test('markAsDeleted should handle both string and numeric IDs', () => {
+      crudServer.markAsDeleted('user', '123');
+      
+      expect(crudServer.isRecordDeleted('user', '123')).toBe(true);
+      expect(crudServer.isRecordDeleted('user', 123)).toBe(true);
+    });
+
+    test('markAsDeleted should handle non-numeric strings', () => {
+      crudServer.markAsDeleted('user', 'abc-123');
+      
+      expect(crudServer.isRecordDeleted('user', 'abc-123')).toBe(true);
+      expect(crudServer.isRecordDeleted('user', 'different-id')).toBe(false);
+    });
+
+    test('should handle edge cases in tombstone tracking', () => {
+      // Empty entity type
+      expect(crudServer.isRecordDeleted('', 1)).toBe(false);
+      
+      // Null/undefined IDs (should not crash)
+      expect(() => crudServer.isRecordDeleted('user', null)).not.toThrow();
+      expect(() => crudServer.isRecordDeleted('user', undefined)).not.toThrow();
+      
+      expect(crudServer.isRecordDeleted('user', null)).toBe(false);
+      expect(crudServer.isRecordDeleted('user', undefined)).toBe(false);
+    });
+  });
+
+  describe('ID Type Consistency', () => {
+    test('should respect schema type for ID fields', () => {
+      const integerIdContract = {
+        endpoints: [{
+          method: 'GET',
+          path: '/users',
+          responses: {
+            '200': {
+              schema: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'integer' },
+                    name: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        }],
+        components: { schemas: {} }
+      };
+      
+      const server = new MockServer(integerIdContract, 'demo');
+      const mockData = server.generateMockResponse(integerIdContract.endpoints[0]);
+      
+      expect(Array.isArray(mockData)).toBe(true);
+      if (mockData.length > 0) {
+        expect(typeof mockData[0].id).toBe('number');
+        expect(Number.isInteger(mockData[0].id)).toBe(true);
+      }
+    });
+
+    test('should generate integer IDs for realistic scenario when schema specifies integer', () => {
+      const integerIdContract = {
+        endpoints: [{
+          method: 'GET',
+          path: '/users',
+          responses: {
+            '200': {
+              schema: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'integer' },
+                    name: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        }],
+        components: { schemas: {} }
+      };
+      
+      const server = new MockServer(integerIdContract, 'realistic');
+      const mockData = server.generateMockResponse(integerIdContract.endpoints[0]);
+      
+      expect(Array.isArray(mockData)).toBe(true);
+      if (mockData.length > 0) {
+        // Should be integers, not UUID strings
+        expect(typeof mockData[0].id).toBe('number');
+        expect(Number.isInteger(mockData[0].id)).toBe(true);
+      }
+    });
+
+    test('should generate string IDs when schema specifies string type', () => {
+      const stringIdContract = {
+        endpoints: [{
+          method: 'GET',
+          path: '/items',
+          responses: {
+            '200': {
+              schema: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        }],
+        components: { schemas: {} }
+      };
+      
+      const server = new MockServer(stringIdContract, 'realistic');
+      const mockData = server.generateMockResponse(stringIdContract.endpoints[0]);
+      
+      expect(Array.isArray(mockData)).toBe(true);
+      if (mockData.length > 0) {
+        expect(typeof mockData[0].id).toBe('string');
+      }
+    });
+
+    test('should generate UUID strings when format is specified', () => {
+      const uuidIdContract = {
+        endpoints: [{
+          method: 'GET',
+          path: '/resources',
+          responses: {
+            '200': {
+              schema: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    name: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        }],
+        components: { schemas: {} }
+      };
+      
+      const server = new MockServer(uuidIdContract, 'realistic');
+      const mockData = server.generateMockResponse(uuidIdContract.endpoints[0]);
+      
+      expect(Array.isArray(mockData)).toBe(true);
+      if (mockData.length > 0) {
+        expect(typeof mockData[0].id).toBe('string');
+        // Basic UUID format check (36 chars with dashes)
+        expect(mockData[0].id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      }
+    });
+  });
 });

@@ -11,6 +11,13 @@ class MockServer {
     // Store resolved schemas for $ref resolution
     this.schemas = contract.components?.schemas || {};
     
+    // In-memory data store for persistent mock data
+    this.dataStore = new Map();
+    this.nextId = 1;
+    
+    // Track explicitly deleted records to return 404 instead of regenerating
+    this.deletedRecords = new Map();
+    
     // Configure entity detection patterns (can be overridden via options)
     this.entityPatterns = {
       user: /^(user|author|customer|owner|creator)s?$/i,
@@ -62,19 +69,119 @@ class MockServer {
           return this.generateErrorResponse(res, endpoint);
         }
         
-        // Validate request body for POST/PUT/PATCH requests
-        const validation = this.validateRequestBody(req, endpoint);
-        if (!validation.isValid) {
-          const errorResponse = this.generateValidationErrorResponse(validation.errors);
-          return res.status(400).json(errorResponse);
+        // Extract entity type for data persistence
+        const entityType = this.extractEntityType(endpoint);
+        
+        // Handle different HTTP methods with data persistence
+        const httpMethod = method.toUpperCase();
+        let mockData;
+        let statusCode;
+        
+        if (httpMethod === 'GET' && req.params.id) {
+          // GET by ID - check if explicitly deleted first
+          if (this.isRecordDeleted(entityType, req.params.id)) {
+            return res.status(404).json({
+              message: `${entityType} not found`,
+              code: 'not_found'
+            });
+          }
+          
+          // Return stored record or generate consistent one
+          const storedRecord = this.getRecord(entityType, req.params.id);
+          if (storedRecord) {
+            mockData = storedRecord;
+          } else {
+            // Generate consistent record with the requested ID
+            const params = this.extractRequestParams(req, endpoint);
+            mockData = this.generateMockResponse(endpoint, params);
+            // Store it for future requests
+            this.storeRecord(entityType, mockData);
+          }
+          statusCode = 200;
+          
+        } else if (httpMethod === 'GET') {
+          // GET all - return stored records or generate list
+          const allRecords = this.getAllRecords(entityType);
+          if (allRecords.length > 0) {
+            mockData = allRecords;
+          } else {
+            // Generate list and store each item
+            const params = this.extractRequestParams(req, endpoint);
+            mockData = this.generateMockResponse(endpoint, params);
+            if (Array.isArray(mockData)) {
+              mockData.forEach(item => this.storeRecord(entityType, item));
+            }
+          }
+          statusCode = 200;
+          
+        } else if (httpMethod === 'POST') {
+          // Validate request body first
+          const validation = this.validateRequestBody(req, endpoint);
+          if (!validation.isValid) {
+            const errorResponse = this.generateValidationErrorResponse(validation.errors);
+            return res.status(400).json(errorResponse);
+          }
+          
+          // POST - create new record with actual request data
+          const requestData = req.body;
+          const serverFields = {
+            id: this.nextId++,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          mockData = { ...requestData, ...serverFields };
+          this.storeRecord(entityType, mockData);
+          statusCode = 201;
+          
+        } else if (httpMethod === 'PUT' || httpMethod === 'PATCH') {
+          // Validate request body first
+          const validation = this.validateRequestBody(req, endpoint);
+          if (!validation.isValid) {
+            const errorResponse = this.generateValidationErrorResponse(validation.errors);
+            return res.status(400).json(errorResponse);
+          }
+          
+          // PUT/PATCH - update existing record
+          const id = req.params.id;
+          const updates = { ...req.body, updatedAt: new Date().toISOString() };
+          mockData = this.updateRecord(entityType, id, updates);
+          
+          if (!mockData) {
+            // Record doesn't exist, return 404
+            return res.status(404).json({
+              message: `${entityType} not found`,
+              code: 'not_found'
+            });
+          }
+          statusCode = 200;
+          
+        } else if (httpMethod === 'DELETE') {
+          // DELETE - remove record
+          const id = req.params.id;
+          const deleted = this.deleteRecord(entityType, id);
+          
+          if (!deleted) {
+            return res.status(404).json({
+              message: `${entityType} not found`,
+              code: 'not_found'
+            });
+          }
+          
+          return res.status(204).send(); // No content for successful delete
+          
+        } else {
+          // Fallback to original mock generation for other methods
+          const validation = this.validateRequestBody(req, endpoint);
+          if (!validation.isValid) {
+            const errorResponse = this.generateValidationErrorResponse(validation.errors);
+            return res.status(400).json(errorResponse);
+          }
+          
+          const params = this.extractRequestParams(req, endpoint);
+          mockData = this.generateMockResponse(endpoint, params);
+          statusCode = this.getSuccessStatusCode(endpoint);
         }
         
-        // Validate and extract parameters
-        const params = this.extractRequestParams(req, endpoint);
-        const mockData = this.generateMockResponse(endpoint, params);
-        
-        // Determine response status
-        const statusCode = this.getSuccessStatusCode(endpoint);
         res.status(statusCode).json(mockData);
       } catch (error) {
         res.status(500).json({ 
@@ -664,9 +771,19 @@ class MockServer {
       return faker.date.recent().toISOString().split('T')[0];
     }
     
-    // ID patterns
-    if (schema.format === 'uuid' || propName === 'id' || propLower.endsWith('id')) {
+    // ID patterns - respect schema type first, then apply naming heuristics
+    if (schema.format === 'uuid' || (propName === 'id' || propLower.endsWith('id')) && !schema.type) {
       return scenario === 'demo' ? faker.number.int({ min: 1, max: 100 }) : faker.string.uuid();
+    }
+    
+    // For explicitly typed ID fields, respect the schema type
+    if ((propName === 'id' || propLower.endsWith('id')) && schema.type) {
+      if (schema.type === 'integer' || schema.type === 'number') {
+        return scenario === 'demo' ? faker.number.int({ min: 1, max: 100 }) : faker.number.int({ min: 1, max: 100000 });
+      }
+      if (schema.type === 'string') {
+        return schema.format === 'uuid' ? faker.string.uuid() : faker.string.alphanumeric({ length: 8 });
+      }
     }
     
     // Name patterns
@@ -758,6 +875,108 @@ class MockServer {
       default:
         console.warn(`⚠️  Unknown primitive type: ${type}, defaulting to string`);
         return faker.lorem.words(2);
+    }
+  }
+  
+  // Data store helper methods for persistence
+  storeRecord(entityType, record) {
+    if (!this.dataStore.has(entityType)) {
+      this.dataStore.set(entityType, new Map());
+    }
+    
+    const entityStore = this.dataStore.get(entityType);
+    const id = record.id || this.nextId++;
+    const recordWithId = { ...record, id };
+    entityStore.set(id, recordWithId);
+    
+    return recordWithId;
+  }
+  
+  getRecord(entityType, id) {
+    const entityStore = this.dataStore.get(entityType);
+    if (!entityStore) return null;
+    return entityStore.get(parseInt(id)) || entityStore.get(id) || null;
+  }
+  
+  updateRecord(entityType, id, updates) {
+    const entityStore = this.dataStore.get(entityType);
+    if (!entityStore) return null;
+    
+    const existingRecord = entityStore.get(parseInt(id)) || entityStore.get(id);
+    if (!existingRecord) return null;
+    
+    const updatedRecord = { ...existingRecord, ...updates, id: existingRecord.id };
+    entityStore.set(existingRecord.id, updatedRecord);
+    
+    return updatedRecord;
+  }
+  
+  deleteRecord(entityType, id) {
+    const entityStore = this.dataStore.get(entityType);
+    if (!entityStore) return false;
+    
+    const key = entityStore.has(parseInt(id)) ? parseInt(id) : id;
+    const deleted = entityStore.delete(key);
+    
+    // If deletion was successful, mark as deleted for tombstone tracking
+    if (deleted) {
+      this.markAsDeleted(entityType, id);
+    }
+    
+    return deleted;
+  }
+  
+  getAllRecords(entityType) {
+    const entityStore = this.dataStore.get(entityType);
+    if (!entityStore) return [];
+    return Array.from(entityStore.values());
+  }
+  
+  extractEntityType(endpoint) {
+    // Extract entity type from endpoint path for dataStore management
+    const path = endpoint.path || endpoint.url || '';
+    
+    // Remove path parameters like {id}, {userId} etc
+    const cleanPath = path.replace(/\{[^}]+\}/g, '');
+    
+    // Split path into segments and get the base resource name
+    const segments = cleanPath.split('/').filter(segment => segment.length > 0);
+    
+    if (segments.length === 0) return 'item';
+    
+    // Take the first segment as the entity type (e.g., /users/123 -> users)
+    const baseEntity = segments[0];
+    
+    // Check against configured entity patterns
+    for (const [entityType, pattern] of Object.entries(this.entityPatterns)) {
+      if (pattern.test(baseEntity)) {
+        return entityType;
+      }
+    }
+    
+    // Return the base entity in singular form as fallback
+    return baseEntity.endsWith('s') ? baseEntity.slice(0, -1) : baseEntity;
+  }
+  
+  // Tombstone tracking methods for handling deleted records
+  isRecordDeleted(entityType, id) {
+    const deletedIds = this.deletedRecords.get(entityType);
+    if (!deletedIds) return false;
+    
+    // Check both string and numeric versions of the ID
+    return deletedIds.has(String(id)) || deletedIds.has(parseInt(id));
+  }
+  
+  markAsDeleted(entityType, id) {
+    if (!this.deletedRecords.has(entityType)) {
+      this.deletedRecords.set(entityType, new Set());
+    }
+    
+    const deletedIds = this.deletedRecords.get(entityType);
+    // Store both string and numeric versions for consistent lookups
+    deletedIds.add(String(id));
+    if (!isNaN(parseInt(id))) {
+      deletedIds.add(parseInt(id));
     }
   }
   
