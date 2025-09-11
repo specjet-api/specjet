@@ -2,6 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import { faker } from '@faker-js/faker';
 
+// Constants for better maintainability
+const DEFAULT_MAX_ITEMS = 1000;
+const MAX_ITEMS_VERY_COMPLEX_OBJECTS = 50;
+const MAX_ITEMS_MODERATELY_COMPLEX_OBJECTS = 100;
+const MAX_ITEMS_SIMPLE_OBJECTS = 200;
+
 class MockServer {
   constructor(contract, scenario = 'demo', options = {}) {
     this.app = express();
@@ -542,16 +548,16 @@ class MockServer {
     
     if (schema.type === 'array') {
       // Calculate appropriate memory limits based on item complexity
-      let maxItems = 1000; // Default limit
+      let maxItems = DEFAULT_MAX_ITEMS; // Default limit
       if (schema.items?.type === 'object' || schema.items?.properties) {
         // Complex objects get lower limits
         const propertyCount = Object.keys(schema.items?.properties || {}).length;
         if (propertyCount > 10) {
-          maxItems = 50; // Very complex objects
+          maxItems = MAX_ITEMS_VERY_COMPLEX_OBJECTS; // Very complex objects
         } else if (propertyCount > 5) {
-          maxItems = 100; // Moderately complex objects
+          maxItems = MAX_ITEMS_MODERATELY_COMPLEX_OBJECTS; // Moderately complex objects
         } else {
-          maxItems = 200; // Simple objects
+          maxItems = MAX_ITEMS_SIMPLE_OBJECTS; // Simple objects
         }
       }
       
@@ -603,7 +609,7 @@ class MockServer {
     return this.generatePrimitiveValue(schema, scenario);
   }
   
-  getItemCount(scenario, maxItems = 1000) {
+  getItemCount(scenario, maxItems = DEFAULT_MAX_ITEMS) {
     let count;
     switch (scenario) {
       case 'demo':
@@ -1003,6 +1009,15 @@ class MockServer {
     }
   }
   
+  /**
+   * Starts the mock server on specified port
+   * @param {number} port - Port number to start server on (default: 3001)
+   * @returns {Promise<string>} Server URL when successfully started
+   * @throws {Error} When server cannot start (e.g., port in use)
+   * @example
+   * const serverUrl = await mockServer.start(3001);
+   * console.log(`Server running at ${serverUrl}`);
+   */
   start(port = 3001) {
     return new Promise((resolve, reject) => {
       this.app.listen(port, (err) => {

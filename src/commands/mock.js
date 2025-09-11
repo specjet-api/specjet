@@ -3,6 +3,10 @@ import ContractParser from '../core/parser.js';
 import ConfigLoader from '../core/config.js';
 import { ErrorHandler, SpecJetError } from '../core/errors.js';
 
+// Constants for progress feedback
+const LARGE_SCHEMA_THRESHOLD = 50;
+const VERY_LARGE_SCHEMA_THRESHOLD = 100;
+
 async function mockCommand(options = {}) {
   return ErrorHandler.withErrorHandling(async () => {
     console.log('🎭 Starting mock server...\n');
@@ -26,8 +30,18 @@ async function mockCommand(options = {}) {
       throw SpecJetError.contractInvalid(contractPath, error);
     }
     
-    console.log(`   Found ${Object.keys(parsedContract.schemas).length} schemas`);
-    console.log(`   Found ${parsedContract.endpoints.length} endpoints`);
+    const schemaCount = Object.keys(parsedContract.schemas).length;
+    const endpointCount = parsedContract.endpoints.length;
+    
+    console.log(`   Found ${schemaCount} schemas`);
+    console.log(`   Found ${endpointCount} endpoints`);
+    
+    // Show progress indicators for large schemas
+    if (schemaCount >= VERY_LARGE_SCHEMA_THRESHOLD) {
+      console.log(`   ⚠️  Very large schema detected (${schemaCount} schemas), mock data generation may take longer...`);
+    } else if (schemaCount >= LARGE_SCHEMA_THRESHOLD) {
+      console.log(`   ⏳ Large schema detected (${schemaCount} schemas), preparing enhanced mock data...`);
+    }
 
     // 3. Setup mock server
     const port = ErrorHandler.validatePort(options.port || config.mock?.port || 3001);
@@ -55,8 +69,13 @@ async function mockCommand(options = {}) {
     console.log(`   Scenario: ${scenario}`);
     console.log(`   CORS: enabled (always)`);
 
-    // 4. Start mock server
-    console.log('\n🚀 Starting mock server...');
+    // 4. Start mock server  
+    const startTime = Date.now();
+    if (Object.keys(parsedContract.schemas).length >= LARGE_SCHEMA_THRESHOLD) {
+      console.log('\n🚀 Starting mock server (preparing enhanced mock data for large schema)...');
+    } else {
+      console.log('\n🚀 Starting mock server...');
+    }
     
     // Extract mock server options from config
     const mockServerOptions = {};
@@ -88,8 +107,12 @@ async function mockCommand(options = {}) {
       );
     }
 
+    const setupTime = Date.now() - startTime;
     console.log(`\n✅ Mock server running successfully!`);
     console.log(`   🌐 Server: ${serverUrl}`);
+    if (setupTime > 1000) {
+      console.log(`   ⏱️  Setup completed in ${(setupTime / 1000).toFixed(1)}s`);
+    }
     console.log(`\n💡 Tips:`);
     console.log(`   • Try different scenarios: --scenario realistic|large|errors`);
     console.log(`   • For API documentation, run: specjet docs --port 3002`);

@@ -1,6 +1,9 @@
+// Constants for better maintainability
+const _DEFAULT_TIMEOUT_MS = 5000; // Used in template generation
+
 class DocumentationGenerator {
   static generateUsageExamples(contractInfo, config) {
-    const _clientName = config.clientName || 'ApiClient';
+    const clientName = config.clientName || 'ApiClient';
     const typesPath = config.output?.types || './src/types';
     const clientPath = config.output?.client || './src/api';
 
@@ -32,14 +35,14 @@ import { ApiClient } from '${clientPath}/client.js';
 
 \`\`\`typescript
 // Basic initialization (defaults to http://localhost:3001)
-const api = new ApiClient();
+const api = new ${clientName}();
 
 // Or with custom base URL
-const api = new ApiClient('https://api.yourapp.com');
+const api = new ${clientName}('https://api.yourapp.com');
 
 // With custom fetch options
 const api = new ApiClient('https://api.yourapp.com', {
-  timeout: 5000,
+  timeout: _DEFAULT_TIMEOUT_MS,
   // other RequestInit options
 });
 \`\`\`

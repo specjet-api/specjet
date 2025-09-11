@@ -1,3 +1,6 @@
+// Constants for better maintainability
+const _COPY_BUTTON_RESET_MS = 2000; // Used in HTML template generation
+
 class HtmlDocumentationGenerator {
   constructor(contract, mockServer = null) {
     this.contract = contract;
@@ -895,7 +898,7 @@ const api = new ApiClient('http://localhost:3001');
                     button.textContent = 'Copied!';
                     setTimeout(() => {
                         button.textContent = 'Copy';
-                    }, 2000);
+                    }, _COPY_BUTTON_RESET_MS);
                 });
             } else {
                 // Fallback for older browsers
@@ -909,7 +912,7 @@ const api = new ApiClient('http://localhost:3001');
                 button.textContent = 'Copied!';
                 setTimeout(() => {
                     button.textContent = 'Copy';
-                }, 2000);
+                }, COPY_BUTTON_RESET_MS);
             }
         }
 
@@ -1065,7 +1068,6 @@ const api = new ApiClient('http://localhost:3001');
     if (schema.type === 'object' || schema.properties) {
       const obj = {};
       const properties = schema.properties || {};
-      const _required = schema.required || [];
       
       Object.entries(properties).forEach(([propName, propSchema]) => {
         obj[propName] = this.generateExampleValue(propName, propSchema);

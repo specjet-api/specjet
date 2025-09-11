@@ -1,5 +1,10 @@
 import SwaggerParser from '@apidevtools/swagger-parser';
 
+// Constants for large schema optimization
+const LARGE_SCHEMA_THRESHOLD = 100;
+const VERY_LARGE_SCHEMA_THRESHOLD = 250;
+const MAX_ENDPOINT_COUNT = 500;
+
 class ContractParser {
   async parseContract(filePath) {
     try {
@@ -18,6 +23,7 @@ class ContractParser {
       };
 
       this.validateParsedContract(parsed);
+      this.checkSchemaSize(parsed);
       return parsed;
     } catch (error) {
       this.handleParsingError(error, filePath);
@@ -33,6 +39,26 @@ class ContractParser {
       throw new Error(`❌ Contract validation failed in ${filePath}:\n   ${error.message}`);
     } else {
       throw new Error(`❌ Contract processing failed: ${error.message}`);
+    }
+  }
+
+  checkSchemaSize(parsed) {
+    const schemaCount = Object.keys(parsed.schemas).length;
+    const endpointCount = parsed.endpoints.length;
+    
+    if (schemaCount >= VERY_LARGE_SCHEMA_THRESHOLD) {
+      console.log(`\n⚠️  Very large OpenAPI schema detected:`);
+      console.log(`   📊 ${schemaCount} schemas (${endpointCount} endpoints)`);
+      console.log(`   🚀 Consider splitting large schemas for better performance`);
+      console.log(`   💡 Large schemas may take longer to process and generate`);
+    } else if (schemaCount >= LARGE_SCHEMA_THRESHOLD) {
+      console.log(`\n⚡ Large OpenAPI schema detected (${schemaCount} schemas)`);
+      console.log(`   🎯 Processing optimizations enabled for better performance`);
+    }
+    
+    if (endpointCount >= MAX_ENDPOINT_COUNT) {
+      console.log(`\n⚠️  Very large API detected with ${endpointCount} endpoints`);
+      console.log(`   💡 Consider API versioning or splitting for maintainability`);
     }
   }
 

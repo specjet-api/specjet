@@ -5,6 +5,10 @@ import FileGenerator from '../codegen/files.js';
 import { ErrorHandler, SpecJetError } from '../core/errors.js';
 import FileWatcher from '../core/watcher.js';
 
+// Constants for progress feedback
+const LARGE_SCHEMA_THRESHOLD = 50;
+const VERY_LARGE_SCHEMA_THRESHOLD = 100;
+
 // Extract the generation logic into a separate function for reuse in watch mode
 async function performGeneration(config, options) {
   const contractPath = ConfigLoader.resolveContractPath(config);
@@ -29,24 +33,57 @@ async function performGeneration(config, options) {
     throw SpecJetError.contractInvalid(contractPath, error);
   }
   
+  const schemaCount = Object.keys(parsedContract.schemas).length;
+  const endpointCount = parsedContract.endpoints.length;
+  
   if (!options.watch) {
-    console.log(`   Found ${Object.keys(parsedContract.schemas).length} schemas`);
-    console.log(`   Found ${parsedContract.endpoints.length} endpoints`);
+    console.log(`   Found ${schemaCount} schemas`);
+    console.log(`   Found ${endpointCount} endpoints`);
+    
+    // Show progress indicators for large schemas
+    if (schemaCount >= VERY_LARGE_SCHEMA_THRESHOLD) {
+      console.log(`   ⚠️  Very large schema detected (${schemaCount} schemas), this may take longer...`);
+    } else if (schemaCount >= LARGE_SCHEMA_THRESHOLD) {
+      console.log(`   ⏳ Large schema detected (${schemaCount} schemas), processing...`);
+    }
   }
 
   // Generate TypeScript interfaces
-  if (!options.watch) console.log('\n🔧 Generating TypeScript interfaces...');
+  if (!options.watch) {
+    if (schemaCount >= LARGE_SCHEMA_THRESHOLD) {
+      console.log(`\n🔧 Generating ${schemaCount} TypeScript interfaces (this may take a moment)...`);
+    } else {
+      console.log('\n🔧 Generating TypeScript interfaces...');
+    }
+  }
+  
   const generator = new TypeScriptGenerator();
   let interfacesContent;
+  const startTime = Date.now();
+  
   try {
     interfacesContent = generator.generateInterfaces(parsedContract.schemas, config.typescript);
   } catch (error) {
     throw SpecJetError.generationError('TypeScript interface generation', error);
   }
+  
+  const generationTime = Date.now() - startTime;
+  if (!options.watch && schemaCount >= LARGE_SCHEMA_THRESHOLD && generationTime > 1000) {
+    console.log(`   ✨ Generated ${schemaCount} interfaces in ${(generationTime / 1000).toFixed(1)}s`);
+  }
 
   // Generate API client
-  if (!options.watch) console.log('🔧 Generating API client...');
+  if (!options.watch) {
+    if (endpointCount >= LARGE_SCHEMA_THRESHOLD) {
+      console.log(`🔧 Generating API client for ${endpointCount} endpoints...`);
+    } else {
+      console.log('🔧 Generating API client...');
+    }
+  }
+  
   let clientContent;
+  const clientStartTime = Date.now();
+  
   try {
     clientContent = generator.generateApiClient(
       parsedContract.endpoints, 
@@ -55,6 +92,11 @@ async function performGeneration(config, options) {
     );
   } catch (error) {
     throw SpecJetError.generationError('API client generation', error);
+  }
+  
+  const clientGenerationTime = Date.now() - clientStartTime;
+  if (!options.watch && endpointCount >= LARGE_SCHEMA_THRESHOLD && clientGenerationTime > 1000) {
+    console.log(`   ✨ Generated client with ${endpointCount} endpoints in ${(clientGenerationTime / 1000).toFixed(1)}s`);
   }
 
   // Write files
