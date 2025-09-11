@@ -28,14 +28,14 @@ program
   .option('--config <path>', 'Path to configuration file (default: ./specjet.config.js)')
   .addHelpText('after', `
 Examples:
-  $ specjet init my-api              Initialize a new project
-  $ specjet generate                 Generate TypeScript types from contract
+  $ specjet init my-api             Initialize a new project
+  $ specjet generate                Generate TypeScript types from contract
   $ specjet generate --watch        Generate and watch for changes
   $ specjet mock                    Start mock server on port 3001
+  $ specjet mock --port 8080        Start mock server on custom port
   $ specjet mock --scenario large   Start mock server with large dataset  
   $ specjet docs                    Start documentation server on port 3002
-  $ specjet docs --port 3003        Start docs server on custom port
-  $ specjet validate http://api.com Validate real API against contract
+  $ specjet docs --port 8081        Start documentation server on custom port
 
 Documentation:
   https://docs.specjet.dev
@@ -54,8 +54,8 @@ program
   .option('--force', 'Overwrite existing files')
   .addHelpText('after', `
 Examples:
-  $ specjet init                    Initialize in current directory
-  $ specjet init my-awesome-api     Create new project in ./my-awesome-api/
+  $ specjet init                   Initialize in current directory
+  $ specjet init my-api            Initialize a new project
   $ specjet init --template basic  Use the basic template (default)
 
 What this creates:
@@ -75,7 +75,7 @@ program
   .option('-c, --config <path>', 'Path to configuration file')
   .addHelpText('after', `
 Examples:
-  $ specjet generate                Generate once and exit
+  $ specjet generate               Generate TypeScript types from contract
   $ specjet generate --watch       Generate and watch for changes
   $ specjet generate --output dist Custom output directory
 Generated files:
@@ -97,8 +97,8 @@ program
   .option('-c, --config <path>', 'Path to configuration file')
   .addHelpText('after', `
 Examples:
-  $ specjet mock                        Start on port 3001 with demo data
-  $ specjet mock --port 8080           Start on custom port
+  $ specjet mock                       Start mock server on port 3001
+  $ specjet mock --port 8080           Start mock server on custom port
   $ specjet mock --scenario realistic  Use varied, realistic data
   $ specjet mock --scenario large      Use large datasets for performance testing
   $ specjet mock --scenario errors     Include error responses for testing
@@ -129,8 +129,8 @@ program
   .option('-c, --config <path>', 'Path to configuration file')
   .addHelpText('after', `
 Examples:
-  $ specjet docs                        Start documentation server on port 3002
-  $ specjet docs --port 8080           Start on custom port  
+  $ specjet docs                       Start documentation server on port 3002
+  $ specjet docs --port 8080           Start documentation server on custom port
   $ specjet docs --open                Start server and open in browser
   $ specjet docs --output docs.html    Generate static HTML file
   $ specjet docs --output ./dist/api-docs.html  Generate to custom path
