@@ -732,7 +732,7 @@ security:
 
 ## License
 
-AGPL-3.0 - see [LICENSE](LICENSE) file for details.
+MIT - see [LICENSE](LICENSE) file for details.
 
 ---
 
