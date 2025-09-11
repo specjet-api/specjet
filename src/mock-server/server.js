@@ -92,8 +92,8 @@ class MockServer {
             mockData = storedRecord;
           } else {
             // Generate consistent record with the requested ID
-            const params = this.extractRequestParams(req, endpoint);
-            mockData = this.generateMockResponse(endpoint, params);
+            const { params, context } = this.extractRequestParams(req, endpoint);
+            mockData = this.generateMockResponse(endpoint, params, context);
             // Store it for future requests
             this.storeRecord(entityType, mockData);
           }
@@ -106,8 +106,8 @@ class MockServer {
             mockData = allRecords;
           } else {
             // Generate list and store each item
-            const params = this.extractRequestParams(req, endpoint);
-            mockData = this.generateMockResponse(endpoint, params);
+            const { params, context } = this.extractRequestParams(req, endpoint);
+            mockData = this.generateMockResponse(endpoint, params, context);
             if (Array.isArray(mockData)) {
               mockData.forEach(item => this.storeRecord(entityType, item));
             }
@@ -177,8 +177,8 @@ class MockServer {
             return res.status(400).json(errorResponse);
           }
           
-          const params = this.extractRequestParams(req, endpoint);
-          mockData = this.generateMockResponse(endpoint, params);
+          const { params, context } = this.extractRequestParams(req, endpoint);
+          mockData = this.generateMockResponse(endpoint, params, context);
           statusCode = this.getSuccessStatusCode(endpoint);
         }
         
@@ -197,7 +197,7 @@ class MockServer {
     return openApiPath.replace(/{([^}]+)}/g, ':$1');
   }
   
-  generateMockResponse(endpoint, params = {}) {
+  generateMockResponse(endpoint, params = {}, requestContext = {}) {
     const responses = endpoint.responses || endpoint.spec?.responses || {};
     const successResponse = responses['200'] || responses['201'] || responses['202'] || Object.values(responses)[0];
     
@@ -209,9 +209,12 @@ class MockServer {
     const schema = successResponse.schema || successResponse.content?.['application/json']?.schema;
     
     // Extract endpoint context for smarter data generation
-    const context = this.extractEndpointContext(endpoint);
+    const endpointContext = this.extractEndpointContext(endpoint);
     
-    return this.generateMockData(schema, this.scenario, { ...params, _context: context });
+    // Combine endpoint context with request context
+    const combinedContext = { ...endpointContext, ...requestContext };
+    
+    return this.generateMockData(schema, this.scenario, params, combinedContext);
   }
   
   extractEndpointContext(endpoint) {
@@ -354,19 +357,29 @@ class MockServer {
     return parseInt(statusCodes[0] || '200');
   }
 
-  extractRequestParams(req, _endpoint) {
+  extractRequestParams(req, endpoint) {
     const params = {
       path: req.params || {},
       query: req.query || {},
       body: req.body || {}
     };
     
+    const context = {};
+    
     // Add correlation between path params and generated IDs
     if (params.path.id) {
-      params._correlationId = params.path.id;
+      context.correlationId = params.path.id;
+      
+      // Try to determine the expected type from the endpoint schema
+      if (endpoint?.spec?.parameters) {
+        const idParam = endpoint.spec.parameters.find(p => p.name === 'id' && p.in === 'path');
+        if (idParam?.schema?.type) {
+          context.correlationIdType = idParam.schema.type;
+        }
+      }
     }
     
-    return params;
+    return { params, context };
   }
   
   resolveSchemaRef(ref) {
@@ -494,7 +507,7 @@ class MockServer {
     };
   }
 
-  generateMockData(schema, scenario, params = {}) {
+  generateMockData(schema, scenario, params = {}, context = {}) {
     // Null safety: never return null/undefined from this method
     if (!schema) {
       console.warn('⚠️  generateMockData called with null/undefined schema');
@@ -504,19 +517,19 @@ class MockServer {
     // Handle $ref resolution
     if (schema.$ref) {
       const resolvedSchema = this.resolveSchemaRef(schema.$ref);
-      return this.generateMockData(resolvedSchema, scenario, params);
+      return this.generateMockData(resolvedSchema, scenario, params, context);
     }
     
     // Handle oneOf - pick first option
     if (schema.oneOf) {
-      return this.generateMockData(schema.oneOf[0], scenario, params);
+      return this.generateMockData(schema.oneOf[0], scenario, params, context);
     }
     
     // Handle allOf - merge all schemas (simplified)
     if (schema.allOf) {
       const merged = {};
       for (const subSchema of schema.allOf) {
-        const subData = this.generateMockData(subSchema, scenario, params);
+        const subData = this.generateMockData(subSchema, scenario, params, context);
         Object.assign(merged, subData);
       }
       return merged;
@@ -545,7 +558,7 @@ class MockServer {
       const itemCount = this.getItemCount(scenario, maxItems);
       const items = [];
       for (let i = 0; i < itemCount; i++) {
-        const item = this.generateMockData(schema.items, scenario, params);
+        const item = this.generateMockData(schema.items, scenario, params, context);
         // Never push null/undefined items - use fallback instead
         if (item === null || item === undefined) {
           // Generate a fallback item based on the schema type
@@ -565,17 +578,22 @@ class MockServer {
       
       for (const [propName, propSchema] of Object.entries(properties)) {
         // Use correlation ID for id fields if available
-        if (propName === 'id' && params._correlationId) {
-          obj[propName] = params._correlationId;
+        if (propName === 'id' && context.correlationId) {
+          // Convert correlation ID to the correct type if type info is available
+          if (context.correlationIdType === 'integer' || context.correlationIdType === 'number') {
+            obj[propName] = parseInt(context.correlationId);
+          } else {
+            obj[propName] = context.correlationId;
+          }
         } else {
-          obj[propName] = this.generatePropertyValue(propName, propSchema, scenario, params._context);
+          obj[propName] = this.generatePropertyValue(propName, propSchema, scenario, context);
         }
       }
       
       // Add required properties that might be missing
       for (const reqProp of required) {
         if (!Object.prototype.hasOwnProperty.call(obj, reqProp)) {
-          obj[reqProp] = this.generatePropertyValue(reqProp, { type: 'string' }, scenario, params._context);
+          obj[reqProp] = this.generatePropertyValue(reqProp, { type: 'string' }, scenario, context);
         }
       }
       
@@ -719,18 +737,18 @@ class MockServer {
     // Handle schema references in properties
     if (schema.$ref) {
       const resolvedSchema = this.resolveSchemaRef(schema.$ref);
-      return this.generateMockData(resolvedSchema, scenario, { _context: context });
+      return this.generateMockData(resolvedSchema, scenario, {}, context);
     }
     
     // Handle arrays - must use generateMockData to handle array type properly
     if (schema.type === 'array') {
-      return this.generateMockData(schema, scenario, { _context: context });
+      return this.generateMockData(schema, scenario, {}, context);
     }
     
     // Handle nested object relationships
     if (schema.type === 'object' || schema.properties) {
       const nestedContext = this.inferNestedContext(propName, context);
-      return this.generateMockData(schema, scenario, { _context: nestedContext });
+      return this.generateMockData(schema, scenario, {}, nestedContext);
     }
     
     // Try domain-specific generation first if context is available
@@ -771,19 +789,24 @@ class MockServer {
       return faker.date.recent().toISOString().split('T')[0];
     }
     
-    // ID patterns - respect schema type first, then apply naming heuristics
-    if (schema.format === 'uuid' || (propName === 'id' || propLower.endsWith('id')) && !schema.type) {
-      return scenario === 'demo' ? faker.number.int({ min: 1, max: 100 }) : faker.string.uuid();
-    }
-    
-    // For explicitly typed ID fields, respect the schema type
-    if ((propName === 'id' || propLower.endsWith('id')) && schema.type) {
+    // ID patterns - always respect schema type first
+    if (propName === 'id' || propLower.endsWith('id')) {
+      // If schema has explicit type, always use it
       if (schema.type === 'integer' || schema.type === 'number') {
         return scenario === 'demo' ? faker.number.int({ min: 1, max: 100 }) : faker.number.int({ min: 1, max: 100000 });
       }
       if (schema.type === 'string') {
         return schema.format === 'uuid' ? faker.string.uuid() : faker.string.alphanumeric({ length: 8 });
       }
+      
+      // Only if no schema type is provided, use format or fallback logic
+      if (schema.format === 'uuid') {
+        return faker.string.uuid();
+      }
+      
+      // Final fallback for ID fields without explicit type - warn and use integer for demo
+      console.warn(`⚠️  ID field '${propName}' has no explicit type in schema, defaulting to integer for scenario '${scenario}'`);
+      return scenario === 'demo' ? faker.number.int({ min: 1, max: 100 }) : faker.string.uuid();
     }
     
     // Name patterns
