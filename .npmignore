@@ -3,6 +3,7 @@ tests/
 docs/
 examples/
 .github/
+website/
 
 # Configuration files
 .gitignore

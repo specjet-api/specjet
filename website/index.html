@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpecJet - API contract collaboration tool</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            padding-top: 80px;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><path d="M0,500 Q250,300 500,500 T1000,500 L1000,1000 L0,1000 Z" fill="rgba(59,130,246,0.1)"/></svg>') no-repeat center;
+            background-size: cover;
+        }
+
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 16px 0;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo svg {
+            height: 32px;
+            width: auto;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #3b82f6;
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .hero-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: center;
+        }
+
+        .hero-content h1 {
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 24px;
+            line-height: 1.1;
+        }
+
+        .hero-content .highlight {
+            color: #3b82f6;
+        }
+
+        .hero-content p {
+            font-size: 20px;
+            margin-bottom: 32px;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+
+        .cta-secondary {
+            background: transparent;
+            color: white;
+            padding: 12px 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #3b82f6;
+        }
+
+        .install-command {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .copy-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .hero-visual {
+            position: relative;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .code-window {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .code-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .code-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ef4444; }
+        .dot-yellow { background: #f59e0b; }
+        .dot-green { background: #10b981; }
+
+        .code-line {
+            color: #e2e8f0;
+            margin: 0 0;
+        }
+
+        .code-comment { color: #64748b; }
+        .code-keyword { color: #3b82f6; }
+        .code-string { color: #10b981; }
+        .code-function { color: #f59e0b; }
+
+        .features {
+            padding: 96px 0;
+            background: #f8fafc;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .section-header h2 {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1e293b;
+        }
+
+        .workflow .section-header h2 {
+            color: #ffffff;
+        }
+
+        .section-header p {
+            font-size: 20px;
+            color: #64748b;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 16px;
+            display: block;
+            color: #3b82f6;
+        }
+
+        .feature-card h3 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1e293b;
+        }
+
+        .feature-card p {
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        .workflow {
+            padding: 96px 0;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+        }
+
+        .workflow-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 48px;
+            margin-top: 48px;
+        }
+
+        .workflow-step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 50%;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 24px;
+        }
+
+        .workflow-step h3 {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .workflow-step p {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .workflow-code {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            margin-top: 12px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .footer {
+            background: #0f172a;
+            color: white;
+            padding: 48px 0;
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        .footer-section h4 {
+            margin-bottom: 16px;
+            color: #3b82f6;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: #3b82f6;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 32px;
+            text-align: center;
+        }
+
+        .footer-bottom p {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .hero-features {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            opacity: 0.8;
+            flex-wrap: wrap;
+        }
+
+        .feature-icon-inline {
+            vertical-align: middle;
+            margin-right: 4px;
+            font-size: 20px;
+        }
+
+        .footer-logo-center {
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .footer-logo-center svg {
+            height: 24px;
+            width: auto;
+        }
+
+        @media (max-width: 768px) {
+            .hero-container {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 32px;
+            }
+
+            .hero-content h1 {
+                font-size: 40px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero-ctas {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .install-command {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <div class="logo">
+                <svg viewBox="0 0 1053 183" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(194.936997, 0.240000)">
+                        <path d="M856.903003,117.24 C851.303003,117.24 846.503003,117.32 844.263003,117.32 C837.703003,117.32 834.183003,115.64 832.423003,111.96 C830.903003,109.16 830.663003,107.48 830.663003,95.32 L830.663003,63 L856.823003,63 L856.823003,33.24 L830.663003,33.24 L830.663003,7.72 L796.343003,7.72 L796.343003,33.24 L778.263003,33.24 L778.263003,63 L796.343003,63 L796.343003,95.24 C796.343003,104.36 796.343003,110.04 796.503003,111.88 C796.903003,124.52 798.823003,130.6 803.703003,136.52 C810.503003,144.52 819.383003,146.84 841.303003,146.84 C842.823003,146.84 849.303003,146.68 856.823003,146.52 L856.823003,117.24 L856.903003,117.24 Z" fill="#3b82f6"/>
+                        <path d="M769.463003,108.6 C767.143003,139.32 755.463003,146.76 710.103003,146.76 C685.543003,146.76 673.863003,143.96 666.183003,136.44 C657.943003,128.2 655.383003,117.24 655.383003,88.84 C655.383003,59.08 657.863003,48.04 666.903003,39.88 C675.143003,32.36 685.703003,30.04 713.383003,30.04 C742.103003,30.04 752.103003,32.36 759.863003,40.6 C767.383003,48.84 770.263003,61.24 770.263003,86.28 C770.263003,87.72 770.263003,92.84 770.103003,97.56 L687.223003,97.56 C687.223003,108.84 688.103003,112.52 691.143003,115.64 C694.583003,118.92 701.223003,120.36 712.663003,120.36 C732.903003,120.36 736.743003,118.52 737.943003,108.68 L769.463003,108.68 L769.463003,108.6 Z M738.263003,74.84 C738.103003,66.2 737.703003,64.04 735.783003,61.48 C732.903003,57.48 726.423003,55.88 713.863003,55.88 C692.503003,55.88 687.463003,59.4 687.143003,74.84 L738.263003,74.84 Z" fill="#3b82f6"/>
+                        <path d="M602.423003,0.12 L602.423003,101.96 C602.423003,110.12 595.783003,116.84 587.543003,116.84 L534.663003,116.84 L534.663003,146.84 L600.103003,146.84 C621.463003,146.84 638.743003,129.56 638.743003,108.2 L638.743003,0.2 L602.423003,0.2 L602.423003,0.12 Z" fill="#3b82f6"/>
+                        <path d="M487.943003,105.04 C485.223003,113.6 478.743003,118.56 463.623003,118.56 C455.223003,118.56 448.503003,119.2 444.103003,115.04 C439.383003,110.56 438.743003,102 438.743003,87.44 C438.743003,64.24 441.383003,60.72 463.463003,60.24 C480.983003,59.84 486.743003,63.12 488.743003,71.84 L521.623003,71.84 C520.823003,54.72 518.343003,46.96 512.103003,40.56 C504.023003,31.92 491.623003,29.04 463.463003,29.04 C434.743003,29.04 423.623003,31.6 415.543003,40.32 C408.023003,48.32 405.463003,60 405.463003,86.72 C405.463003,116 408.183003,127.92 416.423003,135.44 C424.823003,143.44 435.783003,145.76 461.783003,145.76 C495.143003,145.76 505.543003,142.96 513.623003,132.16 C518.503003,125.84 520.423003,118.96 521.223003,105.04 L487.943003,105.04 Z" fill="#FFFFFF"/>
+                        <path d="M390.263003,107.6 C387.943003,138.32 376.263003,145.76 330.903003,145.76 C306.343003,145.76 294.663003,142.96 286.983003,135.44 C278.743003,127.2 276.183003,116.24 276.183003,87.84 C276.183003,58.08 278.663003,47.04 287.703003,38.88 C295.943003,31.36 306.503003,29.04 334.183003,29.04 C362.903003,29.04 372.903003,31.36 380.663003,39.6 C388.183003,47.84 391.063003,60.24 391.063003,85.28 C391.063003,86.72 391.063003,91.84 390.903003,96.56 L308.023003,96.56 C308.023003,107.84 308.903003,111.52 311.943003,114.64 C315.383003,117.92 322.023003,119.36 333.463003,119.36 C353.703003,119.36 357.543003,117.52 358.743003,107.68 L390.263003,107.68 L390.263003,107.6 Z M359.063003,73.84 C358.903003,65.2 358.503003,63.04 356.583003,60.48 C353.703003,56.48 347.223003,54.88 334.663003,54.88 C313.303003,54.88 308.263003,58.4 307.943003,73.84 L359.063003,73.84 Z" fill="#FFFFFF"/>
+                        <path d="M252.983003,40.72 C246.023003,31.84 235.143003,28.64 214.023003,28.64 C190.503003,28.64 181.863003,32.8 176.423003,46.32 L174.903003,46.32 L174.903003,31.44 L146.023003,31.44 L142.823003,31.44 L142.823003,182 L176.663003,182 L176.663003,127.36 L178.023003,127.36 C184.103003,140.4 191.863003,144.32 212.663003,144.32 C253.543003,144.32 261.463003,135.04 261.463003,87.04 C261.463003,59.12 259.543003,48.64 252.983003,40.72 Z M223.543003,108.48 C220.423003,111.76 213.543003,113.36 202.343003,113.36 C180.823003,113.36 176.583003,109.2 176.583003,87.76 C176.583003,63.04 180.023003,59.6 203.303003,59.6 C223.943003,59.6 227.943003,63.52 227.943003,84.72 C227.943003,99.2 226.983003,105.04 223.543003,108.48 Z" fill="#FFFFFF"/>
+                        <path d="M115.703003,68.4 C107.543003,61.76 97.3830034,59.44 70.8230034,58.24 C44.2630034,57.04 38.4230034,58.24 37.3030034,44.16 C36.1030034,30.08 49.9430034,30.4 49.9430034,30.4 L119.543003,30.4 L119.543003,0 L43.4630034,0 C23.0630034,0 5.06300338,14.08 1.14300338,34.08 C0.583003379,36.72 0.263003379,39.6 0.103003379,42.64 C-1.09699662,69.92 8.26300338,78.88 24.2630034,84.4 C40.2630034,89.84 60.5030034,89.12 70.6630034,89.12 C80.8230034,89.12 92.1030034,90.32 92.1030034,103.2 C92.1030034,116.08 77.7030034,116.08 77.7030034,116.08 L3.22300338,116.08 L3.22300338,144.16 L90.5830034,144.16 C112.023003,144.16 126.823003,125.84 127.623003,105.44 C128.583003,84.88 123.943003,75.04 115.703003,68.4 Z" fill="#FFFFFF"/>
+                    </g>
+                    <g transform="translate(71.200000, 0.000000)" fill="#3b82f6">
+                        <polygon points="39.04 0 0 0 53.68 71.92 0 143.12 37.92 143.12 93.84 71.6"/>
+                    </g>
+                    <g fill="#FFFFFF">
+                        <polygon points="93.52 79.28 48.08 79.28 28.4 105.44 72.72 105.44"/>
+                        <polygon points="28.56 38.32 47.6 63.84 93.6 63.84 73.68 38.32"/>
+                        <polygon points="61.68 22.88 43.76 0 0 0 17.04 22.88"/>
+                        <polygon points="16.72 120.88 0 143.12 42.72 143.12 60.4 120.88"/>
+                    </g>
+                </svg>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#workflow">How it Works</a></li>
+                <li><a href="https://github.com/specjet-api/specjet/blob/main/README.md">Docs</a></li>
+                <li><a href="https://github.com/specjet-api/specjet">GitHub</a></li>
+            </ul>
+            <a href="https://github.com/specjet-api/specjet/blob/main/README.md" class="cta-button">Get Started</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1>Design APIs together, <span class="highlight">build separately</span></h1>
+                <p>Stop waiting for backend APIs. Generate TypeScript types and realistic mock servers from OpenAPI contracts. Integrate seamlessly when ready.</p>
+                
+                <div class="install-command">
+                    <span>npm install -g specjet</span>
+                    <button class="copy-btn" onclick="copyToClipboard('npm install -g specjet')">Copy</button>
+                </div>
+
+                <div class="hero-ctas">
+                    <a href="https://github.com/specjet-api/specjet/blob/main/README.md" class="cta-button">Quick Start Guide</a>
+                    <a href="https://github.com/specjet-api/specjet" class="cta-secondary">View on GitHub</a>
+                </div>
+
+                <div class="hero-features">
+                    <span><i class="material-icons feature-icon-inline">rocket_launch</i>Mock server in seconds</span>
+                    <span><i class="material-icons feature-icon-inline">bolt</i>Full TypeScript types</span>
+                    <span><i class="material-icons feature-icon-inline">gps_fixed</i>Perfect integration</span>
+                </div>
+            </div>
+
+            <div class="hero-visual">
+                <div class="code-window">
+                    <div class="code-header">
+                        <div class="code-dot dot-red"></div>
+                        <div class="code-dot dot-yellow"></div>
+                        <div class="code-dot dot-green"></div>
+                    </div>
+                    <div class="code-line"><span class="code-comment">// Perfect TypeScript types generated</span></div>
+                    <div class="code-line"><span class="code-keyword">import</span> { <span class="code-function">User</span>, <span class="code-function">CreateUserRequest</span> } <span class="code-keyword">from</span> <span class="code-string">'./types/api'</span></div>
+                    <div class="code-line"><span class="code-keyword">import</span> { <span class="code-function">ApiClient</span> } <span class="code-keyword">from</span> <span class="code-string">'./api/client'</span></div>
+                    <div class="code-line"></div>
+                    <div class="code-line"><span class="code-comment">// Switch from mock to production</span></div>
+                    <div class="code-line"><span class="code-keyword">const</span> <span class="code-function">api</span> = <span class="code-keyword">new</span> <span class="code-function">ApiClient</span>(</div>
+                    <div class="code-line">  <span class="code-string">'http://localhost:3001'</span> <span class="code-comment">// Mock</span></div>
+                    <div class="code-line">  <span class="code-comment">// 'https://api.prod.com' // Production</span></div>
+                    <div class="code-line">)</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Everything you need for smooth API development</h2>
+                <p>From OpenAPI contracts to production-ready code in minutes, not days</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">bolt</i>
+                    <h3>Instant TypeScript Generation</h3>
+                    <p>Generate perfect TypeScript types and API clients from OpenAPI contracts. Fully typed, IDE-friendly code that feels hand-written.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">dns</i>
+                    <h3>Realistic Mock Server</h3>
+                    <p>Intelligent mock server with realistic data scenarios. Demo data, large datasets, error conditions - test every path.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">sync</i>
+                    <h3>Seamless Integration</h3>
+                    <p>Switch from mock to production with a single line change. Perfect contract compliance guarantees smooth integration.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">visibility</i>
+                    <h3>Watch Mode</h3>
+                    <p>Automatically regenerate types when contracts change. Keep your frontend code in sync with API updates in real-time.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">terminal</i>
+                    <h3>Developer-First CLI</h3>
+                    <p>Simple commands for every workflow. Initialize, generate, mock, and validate with intuitive CLI tools that just work.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">description</i>
+                    <h3>OpenAPI Standard</h3>
+                    <p>Built on the industry-standard OpenAPI specification. Use existing contracts or create new ones with any OpenAPI-compatible tool.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="workflow" id="workflow">
+        <div class="container">
+            <div class="section-header">
+                <h2>From Contract to Code in Minutes</h2>
+                <p>Simple workflow that eliminates API development bottlenecks</p>
+            </div>
+
+            <div class="workflow-steps">
+                <div class="workflow-step">
+                    <div class="step-number">1</div>
+                    <h3>Initialize Project</h3>
+                    <p>Create a new project with example OpenAPI contract</p>
+                    <div class="workflow-code">specjet init my-api</div>
+                </div>
+
+                <div class="workflow-step">
+                    <div class="step-number">2</div>
+                    <h3>Design Contract</h3>
+                    <p>Edit your OpenAPI contract to define endpoints and data models</p>
+                    <div class="workflow-code">edit api-contract.yaml</div>
+                </div>
+
+                <div class="workflow-step">
+                    <div class="step-number">3</div>
+                    <h3>Generate Types</h3>
+                    <p>Create TypeScript types and API client from your contract</p>
+                    <div class="workflow-code">specjet generate</div>
+                </div>
+
+                <div class="workflow-step">
+                    <div class="step-number">4</div>
+                    <h3>Start Mock Server</h3>
+                    <p>Launch realistic mock server with test data scenarios</p>
+                    <div class="workflow-code">specjet mock</div>
+                </div>
+
+                <div class="workflow-step">
+                    <div class="step-number">5</div>
+                    <h3>Build Features</h3>
+                    <p>Develop with full type safety and realistic mock data</p>
+                    <div class="workflow-code">const users = await api.getUsers()</div>
+                </div>
+
+                <div class="workflow-step">
+                    <div class="step-number">6</div>
+                    <h3>Switch to Production</h3>
+                    <p>When backend is ready, change the API URL seamlessly</p>
+                    <div class="workflow-code">// Just change the base URL</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="https://github.com/specjet-api/specjet/blob/main/README.md">Quick Start</a></li>
+                    <li><a href="https://github.com/specjet-api/specjet/blob/main/README.md#cli-commands">CLI Reference</a></li>
+                    <li><a href="https://github.com/specjet-api/specjet/tree/main/examples">Examples</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Community</h4>
+                <ul>
+                    <li><a href="https://github.com/specjet-api/specjet">GitHub</a></li>
+                    <li><a href="https://github.com/specjet-api/specjet/issues">Issues</a></li>
+                    <li><a href="https://github.com/specjet-api/specjet/discussions">Discussions</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="https://github.com/specjet/specjet-cli/blob/main/README.md#adding-specjet-to-existing-projects">Integration Guide</a></li>
+                    <li><a href="https://github.com/specjet/specjet-cli/blob/main/README.md#troubleshooting">Troubleshooting</a></li>
+                    <li><a href="https://spec.openapis.org/oas/v3.0.0">OpenAPI Spec</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="logo footer-logo-center">
+                <svg viewBox="0 0 1053 183" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(194.936997, 0.240000)">
+                        <path d="M856.903003,117.24 C851.303003,117.24 846.503003,117.32 844.263003,117.32 C837.703003,117.32 834.183003,115.64 832.423003,111.96 C830.903003,109.16 830.663003,107.48 830.663003,95.32 L830.663003,63 L856.823003,63 L856.823003,33.24 L830.663003,33.24 L830.663003,7.72 L796.343003,7.72 L796.343003,33.24 L778.263003,33.24 L778.263003,63 L796.343003,63 L796.343003,95.24 C796.343003,104.36 796.343003,110.04 796.503003,111.88 C796.903003,124.52 798.823003,130.6 803.703003,136.52 C810.503003,144.52 819.383003,146.84 841.303003,146.84 C842.823003,146.84 849.303003,146.68 856.823003,146.52 L856.823003,117.24 L856.903003,117.24 Z" fill="#3b82f6"/>
+                        <path d="M769.463003,108.6 C767.143003,139.32 755.463003,146.76 710.103003,146.76 C685.543003,146.76 673.863003,143.96 666.183003,136.44 C657.943003,128.2 655.383003,117.24 655.383003,88.84 C655.383003,59.08 657.863003,48.04 666.903003,39.88 C675.143003,32.36 685.703003,30.04 713.383003,30.04 C742.103003,30.04 752.103003,32.36 759.863003,40.6 C767.383003,48.84 770.263003,61.24 770.263003,86.28 C770.263003,87.72 770.263003,92.84 770.103003,97.56 L687.223003,97.56 C687.223003,108.84 688.103003,112.52 691.143003,115.64 C694.583003,118.92 701.223003,120.36 712.663003,120.36 C732.903003,120.36 736.743003,118.52 737.943003,108.68 L769.463003,108.68 L769.463003,108.6 Z M738.263003,74.84 C738.103003,66.2 737.703003,64.04 735.783003,61.48 C732.903003,57.48 726.423003,55.88 713.863003,55.88 C692.503003,55.88 687.463003,59.4 687.143003,74.84 L738.263003,74.84 Z" fill="#3b82f6"/>
+                        <path d="M602.423003,0.12 L602.423003,101.96 C602.423003,110.12 595.783003,116.84 587.543003,116.84 L534.663003,116.84 L534.663003,146.84 L600.103003,146.84 C621.463003,146.84 638.743003,129.56 638.743003,108.2 L638.743003,0.2 L602.423003,0.2 L602.423003,0.12 Z" fill="#3b82f6"/>
+                        <path d="M487.943003,105.04 C485.223003,113.6 478.743003,118.56 463.623003,118.56 C455.223003,118.56 448.503003,119.2 444.103003,115.04 C439.383003,110.56 438.743003,102 438.743003,87.44 C438.743003,64.24 441.383003,60.72 463.463003,60.24 C480.983003,59.84 486.743003,63.12 488.743003,71.84 L521.623003,71.84 C520.823003,54.72 518.343003,46.96 512.103003,40.56 C504.023003,31.92 491.623003,29.04 463.463003,29.04 C434.743003,29.04 423.623003,31.6 415.543003,40.32 C408.023003,48.32 405.463003,60 405.463003,86.72 C405.463003,116 408.183003,127.92 416.423003,135.44 C424.823003,143.44 435.783003,145.76 461.783003,145.76 C495.143003,145.76 505.543003,142.96 513.623003,132.16 C518.503003,125.84 520.423003,118.96 521.223003,105.04 L487.943003,105.04 Z" fill="#FFFFFF"/>
+                        <path d="M390.263003,107.6 C387.943003,138.32 376.263003,145.76 330.903003,145.76 C306.343003,145.76 294.663003,142.96 286.983003,135.44 C278.743003,127.2 276.183003,116.24 276.183003,87.84 C276.183003,58.08 278.663003,47.04 287.703003,38.88 C295.943003,31.36 306.503003,29.04 334.183003,29.04 C362.903003,29.04 372.903003,31.36 380.663003,39.6 C388.183003,47.84 391.063003,60.24 391.063003,85.28 C391.063003,86.72 391.063003,91.84 390.903003,96.56 L308.023003,96.56 C308.023003,107.84 308.903003,111.52 311.943003,114.64 C315.383003,117.92 322.023003,119.36 333.463003,119.36 C353.703003,119.36 357.543003,117.52 358.743003,107.68 L390.263003,107.68 L390.263003,107.6 Z M359.063003,73.84 C358.903003,65.2 358.503003,63.04 356.583003,60.48 C353.703003,56.48 347.223003,54.88 334.663003,54.88 C313.303003,54.88 308.263003,58.4 307.943003,73.84 L359.063003,73.84 Z" fill="#FFFFFF"/>
+                        <path d="M252.983003,40.72 C246.023003,31.84 235.143003,28.64 214.023003,28.64 C190.503003,28.64 181.863003,32.8 176.423003,46.32 L174.903003,46.32 L174.903003,31.44 L146.023003,31.44 L142.823003,31.44 L142.823003,182 L176.663003,182 L176.663003,127.36 L178.023003,127.36 C184.103003,140.4 191.863003,144.32 212.663003,144.32 C253.543003,144.32 261.463003,135.04 261.463003,87.04 C261.463003,59.12 259.543003,48.64 252.983003,40.72 Z M223.543003,108.48 C220.423003,111.76 213.543003,113.36 202.343003,113.36 C180.823003,113.36 176.583003,109.2 176.583003,87.76 C176.583003,63.04 180.023003,59.6 203.303003,59.6 C223.943003,59.6 227.943003,63.52 227.943003,84.72 C227.943003,99.2 226.983003,105.04 223.543003,108.48 Z" fill="#FFFFFF"/>
+                        <path d="M115.703003,68.4 C107.543003,61.76 97.3830034,59.44 70.8230034,58.24 C44.2630034,57.04 38.4230034,58.24 37.3030034,44.16 C36.1030034,30.08 49.9430034,30.4 49.9430034,30.4 L119.543003,30.4 L119.543003,0 L43.4630034,0 C23.0630034,0 5.06300338,14.08 1.14300338,34.08 C0.583003379,36.72 0.263003379,39.6 0.103003379,42.64 C-1.09699662,69.92 8.26300338,78.88 24.2630034,84.4 C40.2630034,89.84 60.5030034,89.12 70.6630034,89.12 C80.8230034,89.12 92.1030034,90.32 92.1030034,103.2 C92.1030034,116.08 77.7030034,116.08 77.7030034,116.08 L3.22300338,116.08 L3.22300338,144.16 L90.5830034,144.16 C112.023003,144.16 126.823003,125.84 127.623003,105.44 C128.583003,84.88 123.943003,75.04 115.703003,68.4 Z" fill="#FFFFFF"/>
+                    </g>
+                    <g transform="translate(71.200000, 0.000000)" fill="#3b82f6">
+                        <polygon points="39.04 0 0 0 53.68 71.92 0 143.12 37.92 143.12 93.84 71.6"/>
+                    </g>
+                    <g fill="#FFFFFF">
+                        <polygon points="93.52 79.28 48.08 79.28 28.4 105.44 72.72 105.44"/>
+                        <polygon points="28.56 38.32 47.6 63.84 93.6 63.84 73.68 38.32"/>
+                        <polygon points="61.68 22.88 43.76 0 0 0 17.04 22.88"/>
+                        <polygon points="16.72 120.88 0 143.12 42.72 143.12 60.4 120.88"/>
+                    </g>
+                </svg>
+            </div>
+            <p>&copy; <span id="current-year"></span> SpecJet. Open source CLI for API contract development.</p>
+        </div>
+    </footer>
+
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                console.log('Command copied');
+            });
+        }
+
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>
