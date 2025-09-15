@@ -5,6 +5,7 @@ node_modules/
 *.log
 
 # Test coverage
+tests/temp/
 coverage/
 
 # Environment variables
@@ -14,7 +15,6 @@ coverage/
 # IDE files
 .vscode/
 .idea/
-.claude/
 
 # OS generated files
 .DS_Store

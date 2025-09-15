@@ -1,0 +1,1064 @@
+{
+  "info": {
+    "name": "Advanced Project Management API",
+    "description": "Comprehensive project management API demonstrating advanced SpecJet patterns including complex nested resources, advanced filtering, file uploads, and webhooks",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "advanced-project-management-collection",
+    "version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0
+    }
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001",
+      "description": "Advanced API mock server URL"
+    },
+    {
+      "key": "auth_token",
+      "value": "your-auth-token-here",
+      "description": "Bearer token for authenticated requests"
+    },
+    {
+      "key": "workspace_id",
+      "value": "550e8400-e29b-41d4-a716-446655440000",
+      "description": "Sample workspace ID"
+    },
+    {
+      "key": "project_id",
+      "value": "550e8400-e29b-41d4-a716-446655440001",
+      "description": "Sample project ID"
+    },
+    {
+      "key": "task_id",
+      "value": "550e8400-e29b-41d4-a716-446655440002",
+      "description": "Sample task ID"
+    },
+    {
+      "key": "user_id",
+      "value": "550e8400-e29b-41d4-a716-446655440003",
+      "description": "Sample user ID"
+    },
+    {
+      "key": "team_id",
+      "value": "550e8400-e29b-41d4-a716-446655440004",
+      "description": "Sample team ID"
+    },
+    {
+      "key": "milestone_id",
+      "value": "550e8400-e29b-41d4-a716-446655440005",
+      "description": "Sample milestone ID"
+    },
+    {
+      "key": "comment_id",
+      "value": "550e8400-e29b-41d4-a716-446655440006",
+      "description": "Sample comment ID"
+    },
+    {
+      "key": "file_id",
+      "value": "550e8400-e29b-41d4-a716-446655440007",
+      "description": "Sample file ID"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Workspaces",
+      "description": "Top-level organization management - workspaces contain projects and teams",
+      "item": [
+        {
+          "name": "List Workspaces",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces?includeProjects=true",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces"],
+              "query": [
+                {
+                  "key": "includeProjects",
+                  "value": "true",
+                  "description": "Include project count for each workspace"
+                }
+              ]
+            },
+            "description": "Get all workspaces the user has access to with optional project counts"
+          }
+        },
+        {
+          "name": "Create Workspace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Development Team\",\n  \"description\": \"Main development workspace for product engineering\",\n  \"settings\": {\n    \"isPublic\": false,\n    \"allowGuestAccess\": false\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces"]
+            },
+            "description": "Create a new workspace with privacy settings"
+          }
+        },
+        {
+          "name": "Get Workspace Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}"]
+            },
+            "description": "Get detailed workspace information including recent projects and team members"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "description": "Main collaboration spaces with advanced filtering and team management",
+      "item": [
+        {
+          "name": "List Projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects?status=active&page=1&limit=20&sortBy=updatedAt&sortOrder=desc",
+              "host": ["{{base_url}}"],
+              "path": ["projects"],
+              "query": [
+                {
+                  "key": "workspaceId",
+                  "value": "{{workspace_id}}",
+                  "description": "Filter by workspace",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "description": "Filter by project status (planning, active, on_hold, completed, cancelled)"
+                },
+                {
+                  "key": "owner",
+                  "value": "{{user_id}}",
+                  "description": "Filter by project owner",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search in project name and description",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "updatedAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "List projects with comprehensive filtering and sorting options"
+          }
+        },
+        {
+          "name": "Create Project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mobile App Development\",\n  \"description\": \"Development of the new cross-platform mobile application with React Native\",\n  \"workspaceId\": \"{{workspace_id}}\",\n  \"visibility\": \"team\",\n  \"startDate\": \"2024-01-01\",\n  \"dueDate\": \"2024-06-30\",\n  \"tags\": [\"mobile\", \"react-native\", \"ios\", \"android\", \"frontend\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects",
+              "host": ["{{base_url}}"],
+              "path": ["projects"]
+            },
+            "description": "Create a new project with timeline and tags"
+          }
+        },
+        {
+          "name": "Get Project Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}"]
+            },
+            "description": "Get comprehensive project details including members, recent tasks, milestones, and activity"
+          }
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mobile App Development - Phase 1\",\n  \"status\": \"active\",\n  \"dueDate\": \"2024-09-30\",\n  \"tags\": [\"mobile\", \"react-native\", \"ios\", \"android\", \"frontend\", \"mvp\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}"]
+            },
+            "description": "Update project details including status and timeline"
+          }
+        },
+        {
+          "name": "Get Project Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/members",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "members"]
+            },
+            "description": "Get all team members with their roles and permissions"
+          }
+        },
+        {
+          "name": "Add Project Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{user_id}}\",\n  \"role\": \"contributor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/members",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "members"]
+            },
+            "description": "Add a team member to the project with specified role"
+          }
+        },
+        {
+          "name": "Get Project Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/analytics?period=30d",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "analytics"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30d",
+                  "description": "Analytics period (7d, 30d, 90d, 1y)"
+                }
+              ]
+            },
+            "description": "Get comprehensive project analytics including task distribution, productivity metrics, and burndown charts"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "description": "Core work items with rich relationships and advanced filtering",
+      "item": [
+        {
+          "name": "List Project Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/tasks?status=todo&priority=high&page=1&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "tasks"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "todo",
+                  "description": "Filter by task status (backlog, todo, in_progress, in_review, testing, done, cancelled)"
+                },
+                {
+                  "key": "assignee",
+                  "value": "{{user_id}}",
+                  "description": "Filter by assignee ID",
+                  "disabled": true
+                },
+                {
+                  "key": "reporter",
+                  "value": "{{user_id}}",
+                  "description": "Filter by task creator",
+                  "disabled": true
+                },
+                {
+                  "key": "priority",
+                  "value": "high",
+                  "description": "Filter by priority (critical, high, medium, low)"
+                },
+                {
+                  "key": "labels",
+                  "value": "frontend,ui",
+                  "description": "Filter by labels (comma-separated)",
+                  "disabled": true
+                },
+                {
+                  "key": "dueAfter",
+                  "value": "2024-01-01",
+                  "description": "Filter tasks due after this date",
+                  "disabled": true
+                },
+                {
+                  "key": "dueBefore",
+                  "value": "2024-12-31",
+                  "description": "Filter tasks due before this date",
+                  "disabled": true
+                },
+                {
+                  "key": "milestoneId",
+                  "value": "{{milestone_id}}",
+                  "description": "Filter by milestone",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search in task title and description",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "List project tasks with comprehensive filtering options"
+          }
+        },
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Implement user authentication system\",\n  \"description\": \"Add comprehensive login and registration functionality with JWT tokens, password reset, and email verification\",\n  \"priority\": \"high\",\n  \"assigneeId\": \"{{user_id}}\",\n  \"milestoneId\": \"{{milestone_id}}\",\n  \"labels\": [\"backend\", \"authentication\", \"security\", \"jwt\"],\n  \"dueDate\": \"2024-02-15T17:00:00Z\",\n  \"estimatedHours\": 16,\n  \"dependencies\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/tasks",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "tasks"]
+            },
+            "description": "Create a comprehensive task with all metadata"
+          }
+        },
+        {
+          "name": "Get Task Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}"]
+            },
+            "description": "Get detailed task information including comments, attachments, time logs, and activity history"
+          }
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"priority\": \"medium\",\n  \"estimatedHours\": 20,\n  \"labels\": [\"backend\", \"authentication\", \"security\", \"jwt\", \"oauth\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}"]
+            },
+            "description": "Update task status, priority, and other metadata"
+          }
+        },
+        {
+          "name": "Assign Task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assigneeId\": \"{{user_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/assign",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "assign"]
+            },
+            "description": "Assign task to a team member (use null to unassign)"
+          }
+        },
+        {
+          "name": "Bulk Update Tasks",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"taskIds\": [\"{{task_id}}\", \"550e8400-e29b-41d4-a716-446655440008\"],\n  \"updates\": {\n    \"status\": \"in_review\",\n    \"priority\": \"medium\",\n    \"labels\": [\"ready-for-review\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/bulk-update",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "bulk-update"]
+            },
+            "description": "Update multiple tasks simultaneously for batch operations"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "description": "Task discussion and collaboration with threading support",
+      "item": [
+        {
+          "name": "Get Task Comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/comments?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "comments"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get paginated comments for a task including reactions and mentions"
+          }
+        },
+        {
+          "name": "Add Task Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"I've started working on this task. The authentication flow looks more complex than initially estimated. @john.doe might want to review the OAuth integration approach.\",\n  \"parentId\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/comments",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "comments"]
+            },
+            "description": "Add a comment to a task with optional mentions and threading"
+          }
+        },
+        {
+          "name": "Reply to Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Thanks for the update! I agree the OAuth integration needs careful consideration. Let's schedule a quick review session tomorrow.\",\n  \"parentId\": \"{{comment_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/comments",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "comments"]
+            },
+            "description": "Reply to an existing comment (threaded discussion)"
+          }
+        },
+        {
+          "name": "Update Comment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Updated: I've completed the basic authentication flow and OAuth integration. Ready for review and testing.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/comments/{{comment_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["comments", "{{comment_id}}"]
+            },
+            "description": "Update an existing comment"
+          }
+        },
+        {
+          "name": "Delete Comment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/comments/{{comment_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["comments", "{{comment_id}}"]
+            },
+            "description": "Delete a comment (returns 204 No Content)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Files",
+      "description": "File attachments and document management with upload support",
+      "item": [
+        {
+          "name": "Get Task Files",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "files"]
+            },
+            "description": "Get all file attachments for a task"
+          }
+        },
+        {
+          "name": "Upload Task File",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "File to upload"
+                },
+                {
+                  "key": "description",
+                  "value": "Authentication flow diagram and API specifications",
+                  "type": "text",
+                  "description": "Optional file description"
+                },
+                {
+                  "key": "tags",
+                  "value": "design,specification,auth",
+                  "type": "text",
+                  "description": "Optional file tags (comma-separated)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "files"]
+            },
+            "description": "Upload a file attachment to a task with metadata"
+          }
+        },
+        {
+          "name": "Get Project Files",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/files?type=document&search=design",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "files"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "document",
+                  "description": "Filter by file type (document, image, archive, other)"
+                },
+                {
+                  "key": "search",
+                  "value": "design",
+                  "description": "Search in file names and descriptions"
+                }
+              ]
+            },
+            "description": "Get project-level documents and files with filtering"
+          }
+        },
+        {
+          "name": "Get File Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["files", "{{file_id}}"]
+            },
+            "description": "Get detailed file metadata including version history and download stats"
+          }
+        },
+        {
+          "name": "Download File",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/files/{{file_id}}/download",
+              "host": ["{{base_url}}"],
+              "path": ["files", "{{file_id}}", "download"]
+            },
+            "description": "Download a file (returns binary content)"
+          }
+        },
+        {
+          "name": "Delete File",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["files", "{{file_id}}"]
+            },
+            "description": "Delete a file permanently"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Milestones",
+      "description": "Timeline and progress tracking for project phases",
+      "item": [
+        {
+          "name": "Get Project Milestones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/milestones?status=active",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "milestones"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active",
+                  "description": "Filter by milestone status (planned, active, completed, cancelled)"
+                }
+              ]
+            },
+            "description": "Get project milestones with progress tracking"
+          }
+        },
+        {
+          "name": "Create Milestone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"MVP Release\",\n  \"description\": \"First functional version of the mobile app with core features: authentication, user profile, and basic navigation\",\n  \"ownerId\": \"{{user_id}}\",\n  \"startDate\": \"2024-01-01\",\n  \"dueDate\": \"2024-03-31\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/milestones",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "milestones"]
+            },
+            "description": "Create a project milestone with timeline and ownership"
+          }
+        },
+        {
+          "name": "Get Milestone Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/milestones/{{milestone_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["milestones", "{{milestone_id}}"]
+            },
+            "description": "Get milestone details with associated tasks and progress timeline"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Time Tracking",
+      "description": "Time logging and productivity metrics for tasks",
+      "item": [
+        {
+          "name": "Get Task Time Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/timelogs",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "timelogs"]
+            },
+            "description": "Get all time logs for a specific task"
+          }
+        },
+        {
+          "name": "Log Time on Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Implemented JWT token validation middleware and user session management\",\n  \"hours\": 3.5,\n  \"date\": \"2024-01-15\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"12:30\",\n  \"isBillable\": true,\n  \"tags\": [\"development\", \"backend\", \"authentication\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/timelogs",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "timelogs"]
+            },
+            "description": "Log time spent on a task with detailed breakdown"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Teams",
+      "description": "Team and user management with productivity tracking",
+      "item": [
+        {
+          "name": "List Teams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams?workspaceId={{workspace_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["teams"],
+              "query": [
+                {
+                  "key": "workspaceId",
+                  "value": "{{workspace_id}}",
+                  "description": "Filter by workspace"
+                }
+              ]
+            },
+            "description": "List all teams in a workspace"
+          }
+        },
+        {
+          "name": "Get Team Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams/{{team_id}}/members",
+              "host": ["{{base_url}}"],
+              "path": ["teams", "{{team_id}}", "members"]
+            },
+            "description": "Get team members with productivity statistics and roles"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics & Dashboard",
+      "description": "Comprehensive analytics and dashboard data",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/stats?workspaceId={{workspace_id}}&period=30d",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "stats"],
+              "query": [
+                {
+                  "key": "workspaceId",
+                  "value": "{{workspace_id}}",
+                  "description": "Filter by workspace"
+                },
+                {
+                  "key": "period",
+                  "value": "30d",
+                  "description": "Stats period (7d, 30d, 90d)"
+                }
+              ]
+            },
+            "description": "Get comprehensive dashboard statistics including project summaries, task counts, activity feed, and upcoming deadlines"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "description": "Full-text search across all entities with faceted results",
+      "item": [
+        {
+          "name": "Search All Entities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/search?q=authentication&type=projects,tasks,comments&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "authentication",
+                  "description": "Search query (minimum 2 characters)"
+                },
+                {
+                  "key": "type",
+                  "value": "projects,tasks,comments",
+                  "description": "Entity types to search (projects, tasks, comments, files)"
+                },
+                {
+                  "key": "workspaceId",
+                  "value": "{{workspace_id}}",
+                  "description": "Limit search to workspace",
+                  "disabled": true
+                },
+                {
+                  "key": "projectId",
+                  "value": "{{project_id}}",
+                  "description": "Limit search to project",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Maximum results to return (max 100)"
+                }
+              ]
+            },
+            "description": "Perform full-text search across projects, tasks, comments, and files with relevance scoring and faceted results"
+          }
+        },
+        {
+          "name": "Search Projects Only",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/search?q=mobile app&type=projects&workspaceId={{workspace_id}}&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "mobile app"
+                },
+                {
+                  "key": "type",
+                  "value": "projects"
+                },
+                {
+                  "key": "workspaceId",
+                  "value": "{{workspace_id}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Search only in projects within a specific workspace"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "description": "Webhook endpoints for real-time notifications and integrations",
+      "item": [
+        {
+          "name": "Task Assignment Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"task.assigned\",\n  \"task\": {\n    \"id\": \"{{task_id}}\",\n    \"title\": \"Implement user authentication system\",\n    \"priority\": \"high\",\n    \"status\": \"todo\"\n  },\n  \"assignee\": {\n    \"id\": \"{{user_id}}\",\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@company.com\"\n  },\n  \"previousAssignee\": null,\n  \"assignedBy\": {\n    \"id\": \"550e8400-e29b-41d4-a716-446655440010\",\n    \"name\": \"Project Manager\",\n    \"email\": \"pm@company.com\"\n  },\n  \"timestamp\": \"2024-01-15T14:30:00Z\",\n  \"metadata\": {\n    \"projectId\": \"{{project_id}}\",\n    \"workspaceId\": \"{{workspace_id}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/webhooks/task-assigned",
+              "host": ["{{base_url}}"],
+              "path": ["webhooks", "task-assigned"]
+            },
+            "description": "Webhook endpoint for task assignment notifications with comprehensive event data"
+          }
+        },
+        {
+          "name": "Task Unassignment Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"task.unassigned\",\n  \"task\": {\n    \"id\": \"{{task_id}}\",\n    \"title\": \"Implement user authentication system\",\n    \"priority\": \"high\",\n    \"status\": \"todo\"\n  },\n  \"assignee\": null,\n  \"previousAssignee\": {\n    \"id\": \"{{user_id}}\",\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@company.com\"\n  },\n  \"assignedBy\": {\n    \"id\": \"550e8400-e29b-41d4-a716-446655440010\",\n    \"name\": \"Project Manager\",\n    \"email\": \"pm@company.com\"\n  },\n  \"timestamp\": \"2024-01-15T16:45:00Z\",\n  \"metadata\": {\n    \"reason\": \"Resource reallocation\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/webhooks/task-assigned",
+              "host": ["{{base_url}}"],
+              "path": ["webhooks", "task-assigned"]
+            },
+            "description": "Webhook for task unassignment events"
+          }
+        },
+        {
+          "name": "Project Update Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"project.updated\",\n  \"project\": {\n    \"id\": \"{{project_id}}\",\n    \"name\": \"Mobile App Development\",\n    \"status\": \"active\",\n    \"visibility\": \"team\"\n  },\n  \"changes\": {\n    \"status\": {\n      \"from\": \"planning\",\n      \"to\": \"active\"\n    },\n    \"dueDate\": {\n      \"from\": \"2024-06-30\",\n      \"to\": \"2024-09-30\"\n    }\n  },\n  \"updatedBy\": {\n    \"id\": \"{{user_id}}\",\n    \"name\": \"Project Manager\",\n    \"email\": \"pm@company.com\"\n  },\n  \"timestamp\": \"2024-01-15T16:45:00Z\",\n  \"metadata\": {\n    \"workspaceId\": \"{{workspace_id}}\",\n    \"reason\": \"Timeline adjustment based on resource availability\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/webhooks/project-updated",
+              "host": ["{{base_url}}"],
+              "path": ["webhooks", "project-updated"]
+            },
+            "description": "Webhook for project status changes, timeline updates, and milestone achievements"
+          }
+        },
+        {
+          "name": "Milestone Reached Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"milestone.reached\",\n  \"project\": {\n    \"id\": \"{{project_id}}\",\n    \"name\": \"Mobile App Development\"\n  },\n  \"changes\": {\n    \"milestone\": {\n      \"id\": \"{{milestone_id}}\",\n      \"title\": \"MVP Release\",\n      \"status\": \"completed\",\n      \"completedAt\": \"2024-03-31T18:00:00Z\"\n    }\n  },\n  \"updatedBy\": {\n    \"id\": \"{{user_id}}\",\n    \"name\": \"Development Lead\",\n    \"email\": \"dev.lead@company.com\"\n  },\n  \"timestamp\": \"2024-03-31T18:00:00Z\",\n  \"metadata\": {\n    \"tasksCompleted\": 45,\n    \"totalTasks\": 45,\n    \"completionRate\": 100\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/webhooks/project-updated",
+              "host": ["{{base_url}}"],
+              "path": ["webhooks", "project-updated"]
+            },
+            "description": "Webhook for milestone completion events"
+          }
+        }
+      ]
+    }
+  ]
+}

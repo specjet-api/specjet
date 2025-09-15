@@ -1,0 +1,185 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement for SpecJet CLI
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature! Please provide as much detail as possible to help us understand your request.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: A brief, clear description of the feature you'd like to see.
+      placeholder: Describe the feature in 1-2 sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: What problem does this feature solve? What's your use case?
+      placeholder: |
+        Describe the problem you're trying to solve or the workflow you're trying to improve.
+        Example: "As a frontend developer, I need to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you envision this feature working.
+      placeholder: |
+        How should this feature work? What should the user experience be?
+        If this involves CLI commands, provide examples of how they would work.
+    validations:
+      required: true
+
+  - type: textarea
+    id: cli-commands
+    attributes:
+      label: Proposed CLI Commands (if applicable)
+      description: If this feature involves new CLI commands or options, describe them.
+      placeholder: |
+        ```bash
+        # Example of new commands or options
+        specjet new-command --option value
+        specjet existing-command --new-option
+        ```
+      render: bash
+
+  - type: textarea
+    id: config-changes
+    attributes:
+      label: Configuration Changes (if applicable)
+      description: Would this feature require changes to specjet.config.js?
+      placeholder: |
+        ```javascript
+        // Example configuration additions
+        export default {
+          newFeature: {
+            enabled: true,
+            option: 'value'
+          }
+        };
+        ```
+      render: javascript
+
+  - type: textarea
+    id: contract-changes
+    attributes:
+      label: OpenAPI Contract Impact (if applicable)
+      description: Would this feature affect how OpenAPI contracts are processed or written?
+      placeholder: |
+        Describe any impact on OpenAPI contract structure or processing.
+        Include examples if relevant.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What category does this feature fall into?
+      options:
+        - CLI Command Enhancement
+        - TypeScript Generation
+        - Mock Server
+        - Documentation Generation
+        - Contract Validation
+        - Configuration
+        - Developer Experience
+        - Performance
+        - Integration
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to your workflow?
+      options:
+        - Critical (blocking current work)
+        - High (significantly improves workflow)
+        - Medium (nice to have improvement)
+        - Low (minor convenience)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative approaches or workarounds?
+      placeholder: |
+        Describe any alternative solutions you've considered or current workarounds you're using.
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Real-world Examples
+      description: Provide concrete examples of how this feature would be used.
+      placeholder: |
+        Walk through a specific scenario where this feature would be helpful.
+        Include example contracts, commands, or workflows.
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Implementation Complexity (your estimate)
+      description: Based on your understanding, how complex do you think this feature would be?
+      options:
+        - Simple (small change to existing functionality)
+        - Moderate (new functionality, limited scope)
+        - Complex (significant new functionality)
+        - Major (architectural changes required)
+        - I'm not sure
+
+  - type: textarea
+    id: breaking-changes
+    attributes:
+      label: Breaking Changes Considerations
+      description: Could this feature potentially introduce breaking changes?
+      placeholder: |
+        Consider if this feature might affect existing users' workflows or configurations.
+
+  - type: checkboxes
+    id: related-tools
+    attributes:
+      label: Related to Other Tools
+      description: Is this feature inspired by or related to other tools?
+      options:
+        - label: OpenAPI Generator
+        - label: Swagger Codegen
+        - label: Postman
+        - label: Insomnia
+        - label: VS Code extensions
+        - label: Other CLI tools
+        - label: Web frameworks
+        - label: Testing tools
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information that would help us understand this feature request.
+      placeholder: |
+        Links to relevant documentation, similar features in other tools, 
+        mockups, or any other helpful context.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify you've completed these steps before submitting.
+      options:
+        - label: I have searched existing issues for similar feature requests
+          required: true
+        - label: I have provided a clear use case and problem description
+          required: true
+        - label: I have considered how this fits with SpecJet's core mission
+          required: true

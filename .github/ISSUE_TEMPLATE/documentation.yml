@@ -1,0 +1,186 @@
+name: 📚 Documentation
+description: Report missing, unclear, or incorrect documentation
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve SpecJet's documentation! Clear docs are essential for a great developer experience.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation needs improvement?
+      options:
+        - README.md
+        - CLI Help Text (--help output)
+        - Examples in README
+        - Generated Usage Documentation
+        - Error Messages
+        - Configuration Documentation
+        - OpenAPI Contract Examples
+        - API Reference
+        - Troubleshooting Guide
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Documentation Issue
+      description: What's wrong with the current documentation?
+      placeholder: |
+        Choose one or more:
+        - Missing documentation for a feature
+        - Existing documentation is unclear or confusing
+        - Documentation is outdated or incorrect
+        - Examples don't work or are incomplete
+        - Error messages are unhelpful
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: Current Documentation (if applicable)
+      description: If improving existing content, paste the current version here.
+      placeholder: |
+        ```
+        Paste the current documentation that needs improvement
+        ```
+
+  - type: textarea
+    id: suggested-improvement
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+      placeholder: |
+        Provide specific suggestions for improvement, such as:
+        - Additional examples that should be included
+        - Clearer explanations needed
+        - Missing sections to add
+        - Better error message text
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case or Context
+      description: What were you trying to accomplish when you noticed this documentation issue?
+      placeholder: |
+        Describe what you were doing when you encountered this documentation problem.
+        This helps us understand the user journey and improve the right areas.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: user-level
+    attributes:
+      label: Target Audience
+      description: Who would benefit most from this documentation improvement?
+      options:
+        - New users getting started
+        - Experienced users learning advanced features
+        - Developers integrating SpecJet
+        - Team leads setting up workflows
+        - All users
+    validations:
+      required: true
+
+  - type: textarea
+    id: cli-commands
+    attributes:
+      label: Related CLI Commands (if applicable)
+      description: Which CLI commands or features need better documentation?
+      placeholder: |
+        ```bash
+        # List relevant commands
+        specjet init
+        specjet generate --watch
+        specjet mock --scenario realistic
+        ```
+      render: bash
+
+  - type: textarea
+    id: config-examples
+    attributes:
+      label: Configuration Examples Needed (if applicable)
+      description: Are there specific configuration scenarios that need better examples?
+      placeholder: |
+        ```javascript
+        // Example configurations that should be documented
+        export default {
+          // Specific use case that needs documentation
+        };
+        ```
+      render: javascript
+
+  - type: textarea
+    id: error-examples
+    attributes:
+      label: Error Messages (if applicable)
+      description: If this is about improving error messages, provide examples.
+      placeholder: |
+        Current error message:
+        ```
+        Paste current error message here
+        ```
+        
+        Suggested improvement:
+        ```
+        Suggest better error message here
+        ```
+
+  - type: dropdown
+    id: location
+    attributes:
+      label: Where Should This Be Documented?
+      description: Where would be the best place for this documentation?
+      options:
+        - README.md main sections
+        - CLI --help output
+        - Example projects
+        - Configuration reference
+        - Troubleshooting section
+        - New dedicated guide
+        - Multiple locations
+        - I'm not sure
+
+  - type: textarea
+    id: examples-needed
+    attributes:
+      label: Examples Needed
+      description: What specific examples would make this documentation more helpful?
+      placeholder: |
+        Describe concrete examples that would help users understand:
+        - Real-world scenarios
+        - Common use cases
+        - Step-by-step walkthroughs
+        - Code snippets
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information that would help improve the documentation.
+      placeholder: |
+        - Links to relevant discussions or issues
+        - Similar documentation from other tools that works well
+        - Screenshots or mockups if applicable
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify you've completed these steps before submitting.
+      options:
+        - label: I have searched existing issues for similar documentation requests
+          required: true
+        - label: I have checked the current documentation to confirm the issue exists
+          required: true
+        - label: I have provided specific, actionable suggestions for improvement
+          required: true

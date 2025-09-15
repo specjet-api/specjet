@@ -1,0 +1,22 @@
+# Development and testing files
+tests/
+docs/
+examples/
+.github/
+
+# Configuration files
+.gitignore
+*.config.js
+*.config.json
+
+# Logs and temporary files
+*.log
+coverage/
+.nyc_output/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Development dependencies and scripts
+*.test.*

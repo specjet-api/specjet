@@ -1,0 +1,120 @@
+name: ❓ Question
+description: Ask a general question about SpecJet CLI
+title: "[Question]: "
+labels: ["question", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about SpecJet? We're here to help! Please provide details so we can give you the best answer.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know about SpecJet?
+      placeholder: Ask your question here. Be as specific as possible.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Question Category
+      description: What area is your question about?
+      options:
+        - Getting Started
+        - CLI Commands Usage
+        - OpenAPI Contract Writing
+        - TypeScript Generation
+        - Mock Server
+        - Configuration
+        - Integration with Other Tools
+        - Best Practices
+        - Troubleshooting
+        - Team Workflows
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What are you trying to accomplish? What's your use case?
+      placeholder: |
+        Describe what you're working on and what you're trying to achieve.
+        This helps us provide more relevant and helpful answers.
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What Have You Tried?
+      description: What have you already attempted or researched?
+      placeholder: |
+        Let us know what you've already tried, including:
+        - Commands you've run
+        - Documentation you've read
+        - Configurations you've tested
+        - Error messages you've encountered
+
+  - type: input
+    id: specjet-version
+    attributes:
+      label: SpecJet Version (if relevant)
+      description: What version of SpecJet are you using?
+      placeholder: "0.1.0 (run: specjet --version)"
+
+  - type: textarea
+    id: current-setup
+    attributes:
+      label: Current Setup (if relevant)
+      description: Describe your current project setup if it's relevant to your question.
+      placeholder: |
+        For example:
+        - Project type (React, Vue, Node.js, etc.)
+        - Package manager (npm, yarn, pnpm)
+        - Installation method (global vs local)
+        - Relevant configuration
+
+  - type: textarea
+    id: example-contract
+    attributes:
+      label: Example Contract (if relevant)
+      description: If your question involves a specific OpenAPI contract, share relevant parts.
+      placeholder: |
+        ```yaml
+        # Paste relevant parts of your api-contract.yaml here
+        ```
+      render: yaml
+
+  - type: textarea
+    id: expected-outcome
+    attributes:
+      label: Expected Outcome
+      description: What result or behavior are you hoping to achieve?
+      placeholder: Describe what success looks like for your use case.
+
+  - type: checkboxes
+    id: research-done
+    attributes:
+      label: Research Checklist
+      description: Please confirm you've done the following before asking.
+      options:
+        - label: I have read the README.md documentation
+          required: true
+        - label: I have searched existing issues and discussions
+          required: true
+        - label: I have tried the relevant CLI --help commands
+          required: true
+
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: Additional Information
+      description: Any other details that might be helpful?
+      placeholder: |
+        Include any other context, links, examples, or information that might help us understand your question better.
