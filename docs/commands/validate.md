@@ -1,3 +1,11 @@
+---
+layout: default
+title: validate
+parent: Commands
+nav_order: 5
+description: "Validate API implementation against your OpenAPI contract"
+---
+
 # `specjet validate` Command Reference
 
 The `validate` command validates a real API against your OpenAPI contract to ensure compliance and catch discrepancies.

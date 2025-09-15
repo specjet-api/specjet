@@ -1,3 +1,11 @@
+---
+layout: default
+title: Vue.js
+parent: Integrations
+nav_order: 3
+description: "Integration with Vue 3 Composition API and Nuxt best practices"
+---
+
 # Vue.js & Nuxt Integration Guide
 
 This guide covers integrating SpecJet with Vue.js and Nuxt applications, including setup, configuration, and composable patterns.

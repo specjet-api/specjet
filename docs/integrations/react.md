@@ -1,3 +1,11 @@
+---
+layout: default
+title: React
+parent: Integrations
+nav_order: 2
+description: "Complete guide for React and Next.js applications with hooks and patterns"
+---
+
 # React & Next.js Integration Guide
 
 This guide covers integrating SpecJet with React and Next.js applications, including setup, configuration, and usage patterns.

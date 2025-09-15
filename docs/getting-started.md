@@ -1,3 +1,11 @@
+---
+layout: default
+title: Getting Started
+nav_order: 1
+description: "Step-by-step guide to get up and running with SpecJet CLI for API contract development"
+permalink: /
+---
+
 # Getting Started with SpecJet CLI
 
 This guide provides step-by-step instructions for getting up and running with SpecJet CLI. For a quick overview, see the [main README](../README.md).

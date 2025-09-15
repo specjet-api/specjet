@@ -1,3 +1,11 @@
+---
+layout: default
+title: mock
+parent: Commands
+nav_order: 3
+description: "Start a mock server with realistic data matching your OpenAPI contract"
+---
+
 # `specjet mock` Command Reference
 
 The `mock` command starts a local mock server that provides realistic data matching your OpenAPI contract.

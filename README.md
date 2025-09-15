@@ -727,8 +727,8 @@ security:
 ## Support
 
 - 📖 [Documentation](https://specjet.dev)
-- 🐛 [Report Issues](https://github.com/specjet/specjet-cli/issues)
-- 💬 [Discussions](https://github.com/specjet/specjet-cli/discussions)
+- 🐛 [Report Issues](https://github.com/specjet-api/specjet/issues)
+- 💬 [Discussions](https://github.com/specjet-api/specjet/discussions)
 
 ## License
 

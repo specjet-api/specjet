@@ -1,3 +1,11 @@
+---
+layout: default
+title: docs
+parent: Commands
+nav_order: 4
+description: "Generate beautiful static documentation for your OpenAPI contract"
+---
+
 # `specjet docs` Command Reference
 
 The `docs` command generates beautiful, static documentation for your OpenAPI contract in a single HTML file.

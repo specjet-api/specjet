@@ -1,3 +1,10 @@
+---
+layout: default
+title: Troubleshooting
+nav_order: 4
+description: "Common issues and solutions for SpecJet CLI"
+---
+
 # SpecJet Troubleshooting Guide
 
 This guide covers common issues you might encounter when using SpecJet CLI and how to resolve them.
@@ -809,7 +816,7 @@ specjet validate http://localhost:3001  # Against mock server first
 ### Where to Get Help
 
 1. **Documentation**: Check [docs](https://specjet.dev/docs)
-2. **GitHub Issues**: Search existing issues at https://github.com/specjet/specjet-cli/issues
+2. **GitHub Issues**: Search existing issues at https://github.com/specjet-api/specjet/issues
 3. **Examples**: Look at working examples in the repository
 
 ### Creating Bug Reports

@@ -1,3 +1,10 @@
+---
+layout: default
+title: Configuration
+nav_order: 2
+description: "Configure SpecJet CLI for your project needs with advanced options and settings"
+---
+
 # SpecJet Configuration Reference
 
 SpecJet can be configured using a `specjet.config.js` file in your project root. This file allows you to customize paths, generation options, mock server settings, and more.

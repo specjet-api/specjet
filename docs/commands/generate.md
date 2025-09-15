@@ -1,3 +1,11 @@
+---
+layout: default
+title: generate
+parent: Commands
+nav_order: 2
+description: "Generate TypeScript types and API client from OpenAPI contract"
+---
+
 # `specjet generate` Command Reference
 
 The `generate` command creates TypeScript types and API client code from your OpenAPI contract.

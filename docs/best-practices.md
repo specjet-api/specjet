@@ -1,3 +1,10 @@
+---
+layout: default
+title: Best Practices
+nav_order: 3
+description: "Best practices for designing OpenAPI contracts with SpecJet CLI"
+---
+
 # OpenAPI Best Practices for SpecJet
 
 This guide covers best practices for designing OpenAPI contracts that work seamlessly with SpecJet's TypeScript generation and mock server features.

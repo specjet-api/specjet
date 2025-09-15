@@ -1,3 +1,11 @@
+---
+layout: default
+title: Node.js
+parent: Integrations
+nav_order: 1
+description: "Integrate SpecJet with Node.js backend applications and Express servers"
+---
+
 # Node.js & Express Integration Guide
 
 This guide covers integrating SpecJet with Node.js backend applications, including Express servers, API validation, and contract-first development.

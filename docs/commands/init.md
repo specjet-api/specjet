@@ -1,3 +1,11 @@
+---
+layout: default
+title: init
+parent: Commands
+nav_order: 1
+description: "Initialize a new SpecJet project or add SpecJet to existing project"
+---
+
 # `specjet init` Command Reference
 
 The `init` command initializes a new SpecJet project or adds SpecJet to an existing project.
