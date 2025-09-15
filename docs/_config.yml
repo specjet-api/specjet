@@ -6,7 +6,7 @@ url: "https://docs.specjet.dev"
 
 # Theme configuration
 remote_theme: just-the-docs/just-the-docs
-color_scheme: light
+color_scheme: dark
 
 # Just the Docs theme configuration
 heading_anchors: true
