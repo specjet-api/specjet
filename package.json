@@ -29,6 +29,12 @@
   ],
   "author": "Kyle Logue",
   "license": "MIT",
+  "files": [
+    "src/",
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",
     "@faker-js/faker": "^9.2.0",
