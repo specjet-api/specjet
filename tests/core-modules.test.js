@@ -188,6 +188,293 @@ export default {
 
       expect(() => ConfigLoader.validateConfig(invalidConfig)).toThrow();
     });
+
+    test('should load config with environments section', async () => {
+      const configPath = join(tempDir, 'specjet.config.js');
+      writeFileSync(configPath, `
+export default {
+  contract: './api-contract.yaml',
+  output: {
+    types: './src/types',
+    client: './src/api'
+  },
+  environments: {
+    staging: {
+      url: 'https://api-staging.example.com',
+      headers: {
+        'Authorization': 'Bearer staging-token',
+        'X-API-Version': '1.0'
+      }
+    },
+    dev: {
+      url: 'https://api-dev.example.com',
+      headers: {
+        'Authorization': 'Bearer dev-token'
+      }
+    },
+    local: {
+      url: 'http://localhost:8000'
+    }
+  }
+};
+      `.trim());
+
+      const config = await ConfigLoader.loadConfig(configPath);
+
+      expect(config).toHaveProperty('environments');
+      expect(config.environments).toHaveProperty('staging');
+      expect(config.environments).toHaveProperty('dev');
+      expect(config.environments).toHaveProperty('local');
+
+      expect(config.environments.staging.url).toBe('https://api-staging.example.com');
+      expect(config.environments.staging.headers['Authorization']).toBe('Bearer staging-token');
+      expect(config.environments.local.url).toBe('http://localhost:8000');
+    });
+
+    test('should apply environment variable substitution', async () => {
+      // Set environment variables for testing
+      process.env.TEST_API_TOKEN = 'test-token-123';
+      process.env.TEST_ENV = 'staging';
+
+      const configPath = join(tempDir, 'specjet.config.js');
+      writeFileSync(configPath, `
+export default {
+  contract: './api-contract.yaml',
+  output: {
+    types: './src/types',
+    client: './src/api'
+  },
+  environments: {
+    staging: {
+      url: 'https://api-\${TEST_ENV}.example.com',
+      headers: {
+        'Authorization': 'Bearer \${TEST_API_TOKEN}'
+      }
+    }
+  }
+};
+      `.trim());
+
+      const config = await ConfigLoader.loadConfig(configPath);
+
+      expect(config.environments.staging.url).toBe('https://api-staging.example.com');
+      expect(config.environments.staging.headers['Authorization']).toBe('Bearer test-token-123');
+
+      // Clean up
+      delete process.env.TEST_API_TOKEN;
+      delete process.env.TEST_ENV;
+    });
+
+    test('should handle missing environment variables gracefully', async () => {
+      const configPath = join(tempDir, 'specjet.config.js');
+      writeFileSync(configPath, `
+export default {
+  contract: './api-contract.yaml',
+  output: {
+    types: './src/types',
+    client: './src/api'
+  },
+  environments: {
+    staging: {
+      url: 'https://api-\${UNDEFINED_VAR}.example.com',
+      headers: {
+        'Authorization': 'Bearer \${ANOTHER_UNDEFINED_VAR}'
+      }
+    }
+  }
+};
+      `.trim());
+
+      const config = await ConfigLoader.loadConfig(configPath);
+
+      expect(config.environments.staging.url).toBe('https://api-.example.com');
+      expect(config.environments.staging.headers['Authorization']).toBe('Bearer ');
+    });
+
+    test('should get available environments', async () => {
+      const config = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: {
+          staging: { url: 'https://staging.example.com' },
+          dev: { url: 'https://dev.example.com' },
+          local: { url: 'http://localhost:8000' }
+        }
+      };
+
+      const environments = ConfigLoader.getAvailableEnvironments(config);
+
+      expect(environments).toEqual(['staging', 'dev', 'local']);
+    });
+
+    test('should return empty array when no environments configured', () => {
+      const config = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' }
+      };
+
+      const environments = ConfigLoader.getAvailableEnvironments(config);
+
+      expect(environments).toEqual([]);
+    });
+
+    test('should get environment configuration', () => {
+      const config = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: {
+          staging: {
+            url: 'https://staging.example.com',
+            headers: { 'Authorization': 'Bearer token' }
+          }
+        }
+      };
+
+      const envConfig = ConfigLoader.getEnvironmentConfig(config, 'staging');
+
+      expect(envConfig.url).toBe('https://staging.example.com');
+      expect(envConfig.headers['Authorization']).toBe('Bearer token');
+    });
+
+    test('should throw error for non-existent environment', () => {
+      const config = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: {
+          staging: { url: 'https://staging.example.com' }
+        }
+      };
+
+      expect(() => {
+        ConfigLoader.getEnvironmentConfig(config, 'production');
+      }).toThrow('Environment \'production\' not found');
+    });
+
+    test('should throw error when no environments section exists', () => {
+      const config = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' }
+      };
+
+      expect(() => {
+        ConfigLoader.getEnvironmentConfig(config, 'staging');
+      }).toThrow('No environments section found');
+    });
+
+    test('should validate environment exists', () => {
+      const config = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: {
+          staging: { url: 'https://staging.example.com' },
+          dev: { url: 'https://dev.example.com' }
+        }
+      };
+
+      expect(ConfigLoader.validateEnvironmentExists(config, 'staging')).toBe(true);
+      expect(ConfigLoader.validateEnvironmentExists(config, 'dev')).toBe(true);
+      expect(ConfigLoader.validateEnvironmentExists(config, 'production')).toBe(false);
+    });
+
+    test('should list environments nicely', () => {
+      const config = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: {
+          staging: { url: 'https://staging.example.com' },
+          dev: { url: 'https://dev.example.com' },
+          local: { url: 'http://localhost:8000' }
+        }
+      };
+
+      const listing = ConfigLoader.listEnvironments(config);
+
+      expect(listing).toContain('Available environments:');
+      expect(listing).toContain('staging');
+      expect(listing).toContain('https://staging.example.com');
+      expect(listing).toContain('dev');
+      expect(listing).toContain('local');
+    });
+
+    test('should show helpful message when no environments configured', () => {
+      const config = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' }
+      };
+
+      const listing = ConfigLoader.listEnvironments(config);
+
+      expect(listing).toContain('No environments configured');
+      expect(listing).toContain('Add an environments section');
+    });
+
+    test('should validate environment configuration structure', () => {
+      const validConfig = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: {
+          staging: {
+            url: 'https://staging.example.com',
+            headers: { 'Authorization': 'Bearer token' }
+          }
+        }
+      };
+
+      expect(() => ConfigLoader.validateEnvironmentConfigs(validConfig)).not.toThrow();
+    });
+
+    test('should reject invalid environment configuration', () => {
+      const invalidConfig = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: {
+          staging: {
+            url: 123, // Should be string
+            headers: 'invalid' // Should be object
+          }
+        }
+      };
+
+      expect(() => ConfigLoader.validateEnvironmentConfigs(invalidConfig)).toThrow();
+    });
+
+    test('should reject non-object environments section', () => {
+      const invalidConfig = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: 'invalid' // Should be object
+      };
+
+      expect(() => ConfigLoader.validateEnvironmentConfigs(invalidConfig)).toThrow('Environments configuration must be an object');
+    });
+
+    test('should validate URL formats in environments', () => {
+      const invalidConfig = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: {
+          staging: {
+            url: 'not-a-valid-url'
+          }
+        }
+      };
+
+      expect(() => ConfigLoader.validateEnvironmentConfigs(invalidConfig)).toThrow();
+    });
+
+    test('should allow environment variables in URLs during validation', () => {
+      const configWithEnvVars = {
+        contract: './api-contract.yaml',
+        output: { types: './src/types', client: './src/api' },
+        environments: {
+          staging: {
+            url: 'https://api-${ENV}.example.com'
+          }
+        }
+      };
+
+      expect(() => ConfigLoader.validateEnvironmentConfigs(configWithEnvVars)).not.toThrow();
+    });
   });
 
   describe('TypeScriptGenerator', () => {

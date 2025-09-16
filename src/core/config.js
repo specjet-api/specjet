@@ -1,6 +1,6 @@
 import { existsSync } from 'fs';
 import { resolve } from 'path';
-import { pathToFileURL } from 'url';
+import { pathToFileURL, URL } from 'url';
 import { SpecJetError } from './errors.js';
 
 /**
@@ -37,7 +37,8 @@ class ConfigLoader {
       },
       docs: {
         port: 3002
-      }
+      },
+      environments: {}
     };
 
     // If no config path specified, try to find specjet.config.js
@@ -69,7 +70,10 @@ class ConfigLoader {
       const userConfig = configModule.default || configModule;
 
       // Merge user config with defaults
-      return this.mergeConfigs(defaultConfig, userConfig);
+      const mergedConfig = this.mergeConfigs(defaultConfig, userConfig);
+
+      // Apply environment variable substitution
+      return this.applyEnvironmentVariables(mergedConfig);
     } catch (error) {
       throw new SpecJetError(
         `Failed to load configuration from ${configPath}`,
@@ -248,6 +252,21 @@ class ConfigLoader {
       });
     }
 
+    // Validate environments configuration
+    try {
+      this.validateEnvironmentConfigs(config);
+    } catch (error) {
+      if (error.code === 'CONFIG_ENVIRONMENT_INVALID') {
+        errors.push({
+          field: 'environments',
+          message: error.message,
+          suggestion: error.suggestions ? error.suggestions.join(' ') : 'Fix environment configuration'
+        });
+      } else {
+        throw error; // Re-throw if it's a different type of error
+      }
+    }
+
     // Display warnings if any
     if (warnings.length > 0) {
       console.log('\n⚠️  Configuration warnings:');
@@ -290,6 +309,237 @@ class ConfigLoader {
       types: resolve(config.output.types),
       client: resolve(config.output.client)
     };
+  }
+
+  /**
+   * Applies environment variable substitution to configuration values
+   * Supports ${VARIABLE_NAME} syntax in string values
+   * @param {Object} config - Configuration object
+   * @returns {Object} Configuration with environment variables substituted
+   * @example
+   * // Config: { url: 'https://api.${ENV}.example.com' }
+   * // ENV=staging -> { url: 'https://api.staging.example.com' }
+   */
+  static applyEnvironmentVariables(config) {
+    return this.substituteVariables(config);
+  }
+
+  /**
+   * Recursively substitutes environment variables in configuration values
+   * @param {any} value - Value to process (string, object, array, etc.)
+   * @returns {any} Value with substituted environment variables
+   */
+  static substituteVariables(value) {
+    if (typeof value === 'string') {
+      return value.replace(/\$\{([^}]+)\}/g, (match, varName) => {
+        const envValue = process.env[varName];
+        if (envValue === undefined) {
+          console.warn(`⚠️  Environment variable ${varName} is not defined, using empty string`);
+          return '';
+        }
+        return envValue;
+      });
+    } else if (Array.isArray(value)) {
+      return value.map(item => this.substituteVariables(item));
+    } else if (value && typeof value === 'object') {
+      const result = {};
+      for (const [key, val] of Object.entries(value)) {
+        result[key] = this.substituteVariables(val);
+      }
+      return result;
+    }
+    return value;
+  }
+
+  /**
+   * Gets list of available environment names from configuration
+   * @param {Object} config - Configuration object
+   * @returns {string[]} Array of environment names
+   * @example
+   * const envs = ConfigLoader.getAvailableEnvironments(config);
+   * console.log(envs); // ['staging', 'dev', 'local']
+   */
+  static getAvailableEnvironments(config) {
+    if (!config.environments || typeof config.environments !== 'object') {
+      return [];
+    }
+    return Object.keys(config.environments);
+  }
+
+  /**
+   * Gets configuration for a specific environment
+   * @param {Object} config - Configuration object
+   * @param {string} environmentName - Name of the environment
+   * @returns {Object|null} Environment configuration or null if not found
+   * @throws {SpecJetError} When environment is not found
+   * @example
+   * const stagingConfig = ConfigLoader.getEnvironmentConfig(config, 'staging');
+   * console.log(stagingConfig.url); // 'https://api-staging.company.com'
+   */
+  static getEnvironmentConfig(config, environmentName) {
+    if (!config.environments || typeof config.environments !== 'object') {
+      throw new SpecJetError(
+        'No environments section found in configuration',
+        'CONFIG_ENVIRONMENT_ERROR',
+        null,
+        [
+          'Add an "environments" section to your specjet.config.js',
+          'Example: environments: { staging: { url: "https://api-staging.example.com" } }'
+        ]
+      );
+    }
+
+    const envConfig = config.environments[environmentName];
+    if (!envConfig) {
+      const available = this.getAvailableEnvironments(config);
+      throw new SpecJetError(
+        `Environment '${environmentName}' not found in specjet.config.js`,
+        'CONFIG_ENVIRONMENT_NOT_FOUND',
+        null,
+        [
+          available.length > 0
+            ? `Available environments: ${available.join(', ')}`
+            : 'No environments configured in specjet.config.js',
+          'Add the environment to your config or check for typos'
+        ]
+      );
+    }
+
+    return envConfig;
+  }
+
+  /**
+   * Validates that an environment exists in the configuration
+   * @param {Object} config - Configuration object
+   * @param {string} environmentName - Name of the environment to validate
+   * @returns {boolean} True if environment exists, false otherwise
+   * @example
+   * if (ConfigLoader.validateEnvironmentExists(config, 'staging')) {
+   *   console.log('Staging environment is configured');
+   * }
+   */
+  static validateEnvironmentExists(config, environmentName) {
+    const available = this.getAvailableEnvironments(config);
+    return available.includes(environmentName);
+  }
+
+  /**
+   * Pretty-prints available environments for CLI help
+   * @param {Object} config - Configuration object
+   * @returns {string} Formatted string of available environments
+   * @example
+   * console.log(ConfigLoader.listEnvironments(config));
+   * // Available environments:
+   * //   staging - https://api-staging.company.com
+   * //   dev     - https://api-dev.company.com
+   * //   local   - http://localhost:8000
+   */
+  static listEnvironments(config) {
+    const environments = this.getAvailableEnvironments(config);
+
+    if (environments.length === 0) {
+      return 'No environments configured in specjet.config.js\n\nAdd an environments section to your config:\nenvironments: {\n  staging: {\n    url: "https://api-staging.example.com",\n    headers: { "Authorization": "Bearer ${STAGING_TOKEN}" }\n  }\n}';
+    }
+
+    let output = 'Available environments:\n';
+
+    for (const envName of environments) {
+      try {
+        const envConfig = config.environments[envName];
+        const url = envConfig.url || 'No URL configured';
+        const padding = ' '.repeat(Math.max(2, 10 - envName.length));
+        output += `  ${envName}${padding}- ${url}\n`;
+      } catch {
+        output += `  ${envName} - Configuration error\n`;
+      }
+    }
+
+    return output.trim();
+  }
+
+  /**
+   * Validates environment configuration structure
+   * @param {Object} config - Configuration object
+   * @throws {SpecJetError} When environment configuration is invalid
+   */
+  static validateEnvironmentConfigs(config) {
+    if (!config.environments) {
+      return; // Environments are optional
+    }
+
+    if (typeof config.environments !== 'object' || Array.isArray(config.environments)) {
+      throw new SpecJetError(
+        'Environments configuration must be an object',
+        'CONFIG_ENVIRONMENT_INVALID',
+        null,
+        [
+          'Use an object with environment names as keys',
+          'Example: environments: { staging: { url: "..." }, dev: { url: "..." } }'
+        ]
+      );
+    }
+
+    const errors = [];
+
+    for (const [envName, envConfig] of Object.entries(config.environments)) {
+      if (!envConfig || typeof envConfig !== 'object') {
+        errors.push({
+          field: `environments.${envName}`,
+          message: 'Environment configuration must be an object',
+          suggestion: `Set environments.${envName} to an object with url and headers`
+        });
+        continue;
+      }
+
+      // Validate URL if present
+      if (envConfig.url) {
+        if (typeof envConfig.url !== 'string') {
+          errors.push({
+            field: `environments.${envName}.url`,
+            message: `URL must be a string, got ${typeof envConfig.url}`,
+            suggestion: 'Use a string URL like "https://api.example.com"'
+          });
+        } else {
+          try {
+            new URL(envConfig.url.includes('${') ? 'https://example.com' : envConfig.url);
+          } catch {
+            errors.push({
+              field: `environments.${envName}.url`,
+              message: 'URL format is invalid',
+              suggestion: 'Use a valid URL format like "https://api.example.com"'
+            });
+          }
+        }
+      }
+
+      // Validate headers if present
+      if (envConfig.headers) {
+        if (typeof envConfig.headers !== 'object' || Array.isArray(envConfig.headers)) {
+          errors.push({
+            field: `environments.${envName}.headers`,
+            message: 'Headers must be an object',
+            suggestion: 'Use an object like { "Authorization": "Bearer token" }'
+          });
+        } else {
+          for (const [headerName, headerValue] of Object.entries(envConfig.headers)) {
+            if (typeof headerValue !== 'string') {
+              errors.push({
+                field: `environments.${envName}.headers.${headerName}`,
+                message: `Header value must be a string, got ${typeof headerValue}`,
+                suggestion: 'Use a string value for the header'
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      const errorMessages = errors.map(error => {
+        return `${error.field}: ${error.message}\n   💡 ${error.suggestion}`;
+      });
+      throw SpecJetError.configInvalid('specjet.config.js (environments)', errorMessages);
+    }
   }
 }
 
