@@ -2,6 +2,7 @@ import ConfigLoader from '../core/config.js';
 import ContractFinder from '../core/contract-finder.js';
 import APIValidator from '../core/validator.js';
 import ValidationResults from '../core/validation-results.js';
+import EnvValidator from '../core/env-validator.js';
 import { SpecJetError, ErrorHandler } from '../core/errors.js';
 
 /**
@@ -67,7 +68,10 @@ async function validateCommand(environmentName, options = {}) {
 
     console.log(`✅ Environment config: ${environmentName} (${envConfig.url})`);
 
-    // Step 4: Find and validate contract file
+    // Step 4: Validate environment configuration and connectivity
+    await EnvValidator.validateEnvironment(envConfig, environmentName);
+
+    // Step 5: Find and validate contract file
     console.log('📄 Finding OpenAPI contract...');
     const contractPath = await ContractFinder.findContract(config, contractOverride);
     await ContractFinder.validateContractFile(contractPath);
@@ -75,7 +79,7 @@ async function validateCommand(environmentName, options = {}) {
     const relativePath = ContractFinder.getRelativePath(contractPath);
     console.log(`✅ Found contract: ${relativePath}`);
 
-    // Step 5: Initialize validator
+    // Step 6: Initialize validator
     console.log('🔍 Initializing validator...');
     const validator = new APIValidator(
       contractPath,
@@ -85,11 +89,11 @@ async function validateCommand(environmentName, options = {}) {
 
     await validator.initialize();
 
-    // Step 6: Detect CI/CD environment for output formatting
+    // Step 7: Detect CI/CD environment for output formatting
     const isCI = process.env.CI || !process.stdin.isTTY;
     const showProgress = !isCI && output === 'console';
 
-    // Step 7: Run validation
+    // Step 8: Run validation
     if (showProgress) {
       console.log('🚀 Starting validation...\n');
     }
@@ -106,7 +110,7 @@ async function validateCommand(environmentName, options = {}) {
       showProgress
     );
 
-    // Step 8: Format and display results
+    // Step 9: Format and display results
     const stats = APIValidator.getValidationStats(results);
 
     if (output === 'json') {
@@ -123,7 +127,7 @@ async function validateCommand(environmentName, options = {}) {
       console.log(consoleOutput);
     }
 
-    // Step 9: Generate summary for CI
+    // Step 10: Generate summary for CI
     if (isCI) {
       console.log(`\n📊 Validation Summary: ${stats.passed}/${stats.total} passed (${stats.successRate}%)`);
       if (stats.failed > 0) {
@@ -135,12 +139,26 @@ async function validateCommand(environmentName, options = {}) {
       }
     }
 
-    // Step 10: Exit with appropriate code
+    // Step 11: Exit with appropriate code
     process.exit(stats.failed > 0 ? 1 : 0);
 
   } catch (error) {
     ErrorHandler.handle(error, { verbose });
-    process.exit(error.code === 'CONFIG_ENVIRONMENT_NOT_FOUND' ? 2 : 1);
+
+    // Exit code 2 for configuration or setup errors
+    const setupErrorCodes = [
+      'CONFIG_ENVIRONMENT_NOT_FOUND',
+      'CONFIG_LOAD_ERROR',
+      'CONFIG_ENVIRONMENT_INVALID',
+      'CONFIG_ENVIRONMENT_ERROR',
+      'ENV_VAR_MISSING',
+      'DNS_LOOKUP_FAILED',
+      'CONNECTION_REFUSED',
+      'MISSING_BASE_URL',
+      'REQUEST_TIMEOUT'
+    ];
+
+    process.exit(setupErrorCodes.includes(error.code) ? 2 : 1);
   }
 }
 

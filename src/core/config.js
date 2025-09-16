@@ -334,6 +334,19 @@ class ConfigLoader {
       return value.replace(/\$\{([^}]+)\}/g, (match, varName) => {
         const envValue = process.env[varName];
         if (envValue === undefined) {
+          // For CI/CD environments, we want to fail fast
+          if (process.env.CI || !process.stdin.isTTY) {
+            throw new SpecJetError(
+              `Environment variable ${varName} is not set`,
+              'ENV_VAR_MISSING',
+              null,
+              [
+                `Set your environment variable: export ${varName}=your_value_here`,
+                'Or add it to your CI/CD secrets configuration',
+                'Check your environment configuration for typos'
+              ]
+            );
+          }
           console.warn(`⚠️  Environment variable ${varName} is not defined, using empty string`);
           return '';
         }

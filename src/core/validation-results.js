@@ -130,17 +130,26 @@ class ValidationResults {
    * @param {Object} options - Formatting options
    * @returns {string} JSON string
    */
-  static formatJsonOutput(results, options = {}) {
-    const { includeStats = true } = options;
+  static formatJsonOutput(results, _options = {}) {
+    const stats = this.getResultsStats(results);
+    const failed = results.filter(r => !r.success);
 
     const output = {
-      results,
-      timestamp: new Date().toISOString()
+      success: stats.failed === 0,
+      summary: {
+        total: stats.total,
+        passed: stats.passed,
+        failed: stats.failed,
+        duration: this.formatDuration(stats.avgResponseTime * stats.total)
+      },
+      failures: failed.map(result => ({
+        endpoint: result.endpoint,
+        method: result.method,
+        issues: result.issues.map(issue =>
+          issue.field ? `${issue.field}: ${issue.message}` : issue.message
+        )
+      }))
     };
-
-    if (includeStats) {
-      output.stats = this.getResultsStats(results);
-    }
 
     return JSON.stringify(output, null, 2);
   }
@@ -431,6 +440,17 @@ class ValidationResults {
       schema_violation: '📜'
     };
     return emojis[type] || '⚠️';
+  }
+
+  /**
+   * Format duration in milliseconds to human readable format
+   * @private
+   */
+  static formatDuration(ms) {
+    if (!ms || ms < 1000) {
+      return `${Math.round(ms || 0)}ms`;
+    }
+    return `${(ms / 1000).toFixed(1)}s`;
   }
 
   /**
