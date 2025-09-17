@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import AuthGenerator from '../../src/codegen/auth-generator.js';
+import AuthGenerator from '#src/codegen/auth-generator.js';
 
 describe('AuthGenerator', () => {
   let authGenerator;

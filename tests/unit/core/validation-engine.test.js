@@ -2,10 +2,10 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { writeFileSync, existsSync, mkdirSync, rmSync } from 'fs';
-import APIValidator from '../../../src/core/validator.js';
-import SchemaValidator from '../../../src/core/schema-validator.js';
-import HttpClient from '../../../src/core/http-client.js';
-import ValidationResults from '../../../src/core/validation-results.js';
+import APIValidator from '#src/core/validator.js';
+import SchemaValidator from '#src/core/schema-validator.js';
+import HttpClient from '#src/core/http-client.js';
+import ValidationResults from '#src/core/validation-results.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

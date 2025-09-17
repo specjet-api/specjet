@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import TypeScriptGenerator from '../../src/codegen/typescript.js';
+import TypeScriptGenerator from '#src/codegen/typescript.js';
 
 describe('TypeScriptGenerator', () => {
   test('should generate TypeScript interfaces from schemas', () => {

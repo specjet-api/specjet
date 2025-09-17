@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { SpecJetError, ErrorHandler } from '../../../src/core/errors.js';
+import { SpecJetError, ErrorHandler } from '#src/core/errors.js';
 
 describe('Error Handling', () => {
   test('should create SpecJetError with suggestions', () => {

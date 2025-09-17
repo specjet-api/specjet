@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import ErrorGenerator from '../../src/codegen/error-generator.js';
+import ErrorGenerator from '#src/codegen/error-generator.js';
 
 describe('ErrorGenerator', () => {
   let errorGenerator;
@@ -196,7 +196,7 @@ describe('ErrorGenerator', () => {
       
       methodLines.forEach(line => {
         if (line.trim() && !line.startsWith('  private') && !line.startsWith('//')) {
-          expect(line.match(/^  /)).toBeTruthy(); // Should start with at least 2 spaces
+          expect(line.match(/^ {2}/)).toBeTruthy(); // Should start with at least 2 spaces
         }
       });
     });

@@ -1,9 +1,9 @@
-import ConfigLoader from '../core/config.js';
-import ContractFinder from '../core/contract-finder.js';
-import APIValidator from '../core/validator.js';
-import ValidationResults from '../core/validation-results.js';
-import EnvValidator from '../core/env-validator.js';
-import { SpecJetError, ErrorHandler } from '../core/errors.js';
+import ConfigLoader from '#src/core/config.js';
+import ContractFinder from '#src/core/contract-finder.js';
+import APIValidator from '#src/core/validator.js';
+import ValidationResults from '#src/core/validation-results.js';
+import EnvValidator from '#src/core/env-validator.js';
+import { SpecJetError, ErrorHandler } from '#src/core/errors.js';
 
 /**
  * Core validation logic without process.exit calls

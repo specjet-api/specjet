@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { writeFileSync, existsSync, mkdirSync, rmSync } from 'fs';
-import ContractParser from '../../../src/core/parser.js';
+import ContractParser from '#src/core/parser.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

@@ -1,17 +1,17 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { validateCore } from '../../../src/commands/validate.js';
-import { SpecJetError } from '../../../src/core/errors.js';
+import { validateCore } from '#src/commands/validate.js';
+import { SpecJetError } from '#src/core/errors.js';
 
 // Mock the dependencies
-vi.mock('../../../src/core/config.js');
-vi.mock('../../../src/core/contract-finder.js');
-vi.mock('../../../src/core/validator.js');
-vi.mock('../../../src/core/env-validator.js');
+vi.mock('#src/core/config.js');
+vi.mock('#src/core/contract-finder.js');
+vi.mock('#src/core/validator.js');
+vi.mock('#src/core/env-validator.js');
 
-const mockConfigLoader = await import('../../../src/core/config.js');
-const mockContractFinder = await import('../../../src/core/contract-finder.js');
-const mockAPIValidator = await import('../../../src/core/validator.js');
-const mockEnvValidator = await import('../../../src/core/env-validator.js');
+const mockConfigLoader = await import('#src/core/config.js');
+const mockContractFinder = await import('#src/core/contract-finder.js');
+const mockAPIValidator = await import('#src/core/validator.js');
+const mockEnvValidator = await import('#src/core/env-validator.js');
 
 describe('Command Exit Code Handling Tests', () => {
   let mockValidator;

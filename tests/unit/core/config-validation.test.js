@@ -2,8 +2,8 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import ConfigLoader from '../../../src/core/config.js';
-import EnvValidator from '../../../src/core/env-validator.js';
+import ConfigLoader from '#src/core/config.js';
+import EnvValidator from '#src/core/env-validator.js';
 
 describe('Configuration Loading and Validation Tests', () => {
   let tempDir;

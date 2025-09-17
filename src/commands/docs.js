@@ -2,11 +2,11 @@ import express from 'express';
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { exec } from 'child_process';
-import ContractParser from '../core/parser.js';
-import ConfigLoader from '../core/config.js';
-import HtmlDocumentationGenerator from '../codegen/html-docs.js';
-import MockServer from '../mock-server/server.js';
-import { ErrorHandler, SpecJetError } from '../core/errors.js';
+import ContractParser from '#src/core/parser.js';
+import ConfigLoader from '#src/core/config.js';
+import HtmlDocumentationGenerator from '#src/codegen/html-docs.js';
+import MockServer from '#src/mock-server/server.js';
+import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
 
 /**
  * Generate and serve interactive API documentation
