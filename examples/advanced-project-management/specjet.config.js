@@ -79,15 +79,6 @@ export default {
   // Used by `specjet validate <environment>` command to test API endpoints
   // against real or staging environments
   environments: {
-    // Production environment configuration
-    production: {
-      url: 'https://api.projectmanager.com',
-      headers: {
-        'Authorization': 'Bearer ${PROD_API_TOKEN}',
-        'X-API-Version': '2.0',
-        'X-Client-ID': '${CLIENT_ID}'
-      }
-    },
 
     // Staging environment for pre-production testing
     staging: {
@@ -116,15 +107,5 @@ export default {
       }
       // No authentication required for local development
     },
-
-    // Integration testing environment
-    integration: {
-      url: 'https://api-integration.projectmanager.com',
-      headers: {
-        'Authorization': 'Bearer ${INTEGRATION_API_TOKEN}',
-        'X-API-Version': '2.0',
-        'X-Test-Mode': 'true'
-      }
-    }
   }
 };
