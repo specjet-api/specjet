@@ -6,9 +6,10 @@ import EnvValidator from '../core/env-validator.js';
 import { SpecJetError, ErrorHandler } from '../core/errors.js';
 
 /**
- * Validate API implementation against OpenAPI contract
+ * Core validation logic without process.exit calls
+ * Returns result object for programmatic use
  */
-async function validateCommand(environmentName, options = {}) {
+async function validateCore(environmentName, options = {}) {
   const { verbose = false, timeout = 30000, output = 'console', contract: contractOverride } = options;
 
   try {
@@ -35,7 +36,7 @@ async function validateCommand(environmentName, options = {}) {
 
       console.log('❌ Environment required. Available environments:');
       console.log(ConfigLoader.listEnvironments(config));
-      process.exit(1);
+      return { exitCode: 1, success: false, error: 'Environment required' };
     }
 
     // Step 3: Get environment configuration
@@ -47,7 +48,7 @@ async function validateCommand(environmentName, options = {}) {
       if (error.code === 'CONFIG_ENVIRONMENT_NOT_FOUND') {
         console.log(`❌ Environment '${environmentName}' not found. Available environments:`);
         console.log(ConfigLoader.listEnvironments(config));
-        process.exit(1);
+        return { exitCode: 1, success: false, error: `Environment '${environmentName}' not found` };
       }
       throw error;
     }
@@ -137,8 +138,13 @@ async function validateCommand(environmentName, options = {}) {
       }
     }
 
-    // Step 11: Exit with appropriate code
-    process.exit(stats.failed > 0 ? 1 : 0);
+    // Step 11: Return result with appropriate exit code
+    return {
+      exitCode: stats.failed > 0 ? 1 : 0,
+      success: stats.failed === 0,
+      results: results,
+      stats: stats
+    };
 
   } catch (error) {
     ErrorHandler.handle(error, { verbose });
@@ -156,7 +162,104 @@ async function validateCommand(environmentName, options = {}) {
       'REQUEST_TIMEOUT'
     ];
 
-    process.exit(setupErrorCodes.includes(error.code) ? 2 : 1);
+    return {
+      exitCode: setupErrorCodes.includes(error.code) ? 2 : 1,
+      success: false,
+      error: error.message,
+      errorCode: error.code
+    };
+  }
+}
+
+/**
+ * Progress tracking decorator for validator
+ * Separates progress display logic from validation logic without mutation
+ */
+class ProgressTrackingValidator {
+  constructor(validator, progressCallback) {
+    this.validator = validator;
+    this.progressCallback = progressCallback;
+  }
+
+  async validateEndpoint(path, method, opts) {
+    const result = await this.validator.validateEndpoint(path, method, opts);
+    this.progressCallback?.(result);
+    return result;
+  }
+
+  async validateAllEndpoints(options = {}) {
+    // Replicate the batch processing logic from the original validator
+    // without mutating the original instance
+    if (!this.validator.contract) {
+      throw new SpecJetError(
+        'Validator not initialized. Call initialize() first.',
+        'VALIDATOR_NOT_INITIALIZED'
+      );
+    }
+
+    const {
+      concurrency = 3,
+      delay = 100,
+      ...validateOptions
+    } = options;
+
+    const results = [];
+    const endpoints = this.validator.endpoints;
+
+    // Create batches (simplified version of validator's createBatches)
+    const batches = [];
+    for (let i = 0; i < endpoints.length; i += concurrency) {
+      batches.push(endpoints.slice(i, i + concurrency));
+    }
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+
+      // Process endpoints in this batch using our wrapped validateEndpoint
+      const batchPromises = batch.map(endpoint =>
+        this.validateEndpoint(endpoint.path, endpoint.method, validateOptions)
+      );
+
+      const batchResults = await Promise.allSettled(batchPromises);
+
+      // Handle results same way as original
+      for (const promiseResult of batchResults) {
+        if (promiseResult.status === 'fulfilled') {
+          results.push(promiseResult.value);
+        } else {
+          // Create error result for rejected promises
+          results.push({
+            endpoint: 'unknown',
+            method: 'unknown',
+            success: false,
+            statusCode: null,
+            issues: [{
+              type: 'validation_error',
+              field: null,
+              message: `Validation failed: ${promiseResult.reason?.message || 'Unknown error'}`,
+              metadata: { originalError: promiseResult.reason }
+            }],
+            metadata: {}
+          });
+        }
+      }
+
+      // Add delay between batches (except for the last one)
+      if (i < batches.length - 1 && delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    return results;
+  }
+
+  // Delegate other properties and methods
+  get endpoints() {
+    return this.validator.endpoints;
+  }
+
+  get contract() {
+    return this.validator.contract;
   }
 }
 
@@ -168,17 +271,12 @@ async function runValidationWithProgress(validator, options, showProgress) {
   // Progress tracking for interactive mode
   const endpoints = validator.endpoints;
   let completed = 0;
-
-  // Create progress display
   const startTime = Date.now();
 
   console.log(`🔍 Validating ${endpoints.length} endpoints...\n`);
 
-  // Override validator to show individual progress
-  const originalValidateEndpoint = validator.validateEndpoint.bind(validator);
-  validator.validateEndpoint = async (path, method, opts) => {
-    const result = await originalValidateEndpoint(path, method, opts);
-
+  // Create progress callback function
+  const progressCallback = (result) => {
     completed++;
     const percentage = Math.round((completed / endpoints.length) * 100);
     const statusIcon = result.success ? '✅' : '❌';
@@ -200,16 +298,22 @@ async function runValidationWithProgress(validator, options, showProgress) {
       const elapsed = Math.round((Date.now() - startTime) / 1000);
       console.log(`\n   📊 Progress: ${completed}/${endpoints.length} (${percentage}%) - ${elapsed}s elapsed\n`);
     }
-
-    return result;
   };
 
-  try {
-    return await validator.validateAllEndpoints(options);
-  } finally {
-    // Restore original method
-    validator.validateEndpoint = originalValidateEndpoint;
-  }
+  // Create decorator without mutating original validator
+  const progressValidator = new ProgressTrackingValidator(validator, progressCallback);
+
+  return await progressValidator.validateAllEndpoints(options);
+}
+
+/**
+ * CLI wrapper for validate command
+ * Maintains backward compatibility by calling process.exit()
+ */
+async function validateCommand(environmentName, options = {}) {
+  const result = await validateCore(environmentName, options);
+  process.exit(result.exitCode);
 }
 
 export default validateCommand;
+export { validateCore };

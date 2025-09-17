@@ -266,8 +266,17 @@ export default {
     });
 
     test('should handle missing environment variables gracefully', async () => {
-      const configPath = join(tempDir, 'specjet.config.js');
-      writeFileSync(configPath, `
+      // Mock CI environment to ensure graceful handling in tests
+      const originalCI = process.env.CI;
+      const originalIsTTY = process.stdin.isTTY;
+
+      // Force non-CI behavior for this test
+      delete process.env.CI;
+      Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true });
+
+      try {
+        const configPath = join(tempDir, 'specjet.config.js');
+        writeFileSync(configPath, `
 export default {
   contract: './api-contract.yaml',
   output: {
@@ -283,12 +292,19 @@ export default {
     }
   }
 };
-      `.trim());
+        `.trim());
 
-      const config = await ConfigLoader.loadConfig(configPath);
+        const config = await ConfigLoader.loadConfig(configPath);
 
-      expect(config.environments.staging.url).toBe('https://api-.example.com');
-      expect(config.environments.staging.headers['Authorization']).toBe('Bearer ');
+        expect(config.environments.staging.url).toBe('https://api-.example.com');
+        expect(config.environments.staging.headers['Authorization']).toBe('Bearer ');
+      } finally {
+        // Restore original environment
+        if (originalCI !== undefined) {
+          process.env.CI = originalCI;
+        }
+        Object.defineProperty(process.stdin, 'isTTY', { value: originalIsTTY, configurable: true });
+      }
     });
 
     test('should get available environments', async () => {

@@ -79,6 +79,36 @@ class EnvValidator {
     console.log(`✅ Environment validation completed for ${environmentName}`);
   }
 
+  static validateEnvVarName(varName) {
+    // Only allow alphanumeric + underscore, must start with letter or underscore
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(varName)) {
+      throw new Error(`Invalid environment variable name: ${varName}`);
+    }
+    return true;
+  }
+
+  static substituteEnvVars(value) {
+    if (typeof value !== 'string') return value;
+
+    return value.replace(/\$\{([^}]+)\}/g, (match, varName) => {
+      // Validate the variable name first
+      try {
+        this.validateEnvVarName(varName);
+      } catch (error) {
+        console.warn(`⚠️  ${error.message}`);
+        return match; // Keep original if invalid
+      }
+
+      const envValue = process.env[varName];
+      if (envValue === undefined) {
+        console.warn(`⚠️  Environment variable ${varName} is not set`);
+        return match;
+      }
+
+      return envValue;
+    });
+  }
+
   static findMissingEnvVars(obj) {
     const missingVars = [];
 
@@ -88,6 +118,15 @@ class EnvValidator {
         if (matches) {
           for (const match of matches) {
             const varName = match.slice(2, -1); // Remove ${ and }
+
+            // Validate the variable name first
+            try {
+              this.validateEnvVarName(varName);
+            } catch (error) {
+              console.warn(`⚠️  ${error.message}`);
+              continue; // Skip invalid variable names
+            }
+
             if (!process.env[varName]) {
               missingVars.push(varName);
             }

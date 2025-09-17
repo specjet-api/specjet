@@ -658,11 +658,12 @@ components:
       const output = ValidationResults.formatJsonOutput(results);
       const parsed = JSON.parse(output);
 
-      expect(parsed.results).toHaveLength(1);
-      expect(parsed.results[0].endpoint).toBe('/users');
-      expect(parsed.stats).toBeDefined();
-      expect(parsed.stats.total).toBe(1);
-      expect(parsed.timestamp).toBeDefined();
+      expect(parsed.success).toBe(true);
+      expect(parsed.summary).toBeDefined();
+      expect(parsed.summary.total).toBe(1);
+      expect(parsed.summary.passed).toBe(1);
+      expect(parsed.summary.failed).toBe(0);
+      expect(parsed.failures).toHaveLength(0);
     });
 
     test('should generate markdown report', () => {
