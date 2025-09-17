@@ -1,4 +1,4 @@
-import { existsSync } from 'fs';
+import fs from 'fs-extra';
 import { resolve } from 'path';
 import { pathToFileURL, URL } from 'url';
 import { SpecJetError } from './errors.js';
@@ -42,7 +42,7 @@ class ConfigLoader {
       ];
 
       for (const path of possiblePaths) {
-        if (existsSync(path)) {
+        if (fs.existsSync(path)) {
           configPath = path;
           break;
         }
@@ -50,7 +50,7 @@ class ConfigLoader {
     }
 
     // If still no config found, return defaults
-    if (!configPath || !existsSync(configPath)) {
+    if (!configPath || !fs.existsSync(configPath)) {
       return defaultConfig;
     }
 

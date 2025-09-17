@@ -1,4 +1,4 @@
-import { existsSync } from 'fs';
+import fs from 'fs-extra';
 
 /**
  * Custom error class for SpecJet CLI with enhanced error information
@@ -270,7 +270,7 @@ export class ErrorHandler {
    * @throws {SpecJetError} When contract file doesn't exist
    */
   static validateContractFile(contractPath) {
-    if (!existsSync(contractPath)) {
+    if (!fs.existsSync(contractPath)) {
       throw SpecJetError.contractNotFound(contractPath);
     }
   }

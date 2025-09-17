@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'fs';
+import fs from 'fs-extra';
 import { resolve, join } from 'path';
 import { SpecJetError } from './errors.js';
 
@@ -7,7 +7,7 @@ class ContractFinder {
     // Strategy 1: Use explicit path if provided
     if (explicitPath) {
       const resolvedPath = resolve(explicitPath);
-      if (existsSync(resolvedPath)) {
+      if (fs.existsSync(resolvedPath)) {
         return resolvedPath;
       }
       throw new SpecJetError(
@@ -25,7 +25,7 @@ class ContractFinder {
     // Strategy 2: Use config-specified contract path
     if (config.contract) {
       const configPath = resolve(config.contract);
-      if (existsSync(configPath)) {
+      if (fs.existsSync(configPath)) {
         return configPath;
       }
       throw new SpecJetError(
@@ -85,8 +85,8 @@ class ContractFinder {
 
     for (const searchPath of searchPaths) {
       try {
-        if (existsSync(searchPath.path)) {
-          const stats = statSync(searchPath.path);
+        if (fs.existsSync(searchPath.path)) {
+          const stats = fs.statSync(searchPath.path);
           candidates.push({
             absolutePath: resolve(searchPath.path),
             relativePath: searchPath.path,
@@ -182,7 +182,7 @@ class ContractFinder {
   }
 
   static async validateContractFile(contractPath) {
-    if (!existsSync(contractPath)) {
+    if (!fs.existsSync(contractPath)) {
       throw new SpecJetError(
         `Contract file does not exist: ${contractPath}`,
         'CONTRACT_NOT_FOUND'
@@ -190,7 +190,7 @@ class ContractFinder {
     }
 
     try {
-      const stats = statSync(contractPath);
+      const stats = fs.statSync(contractPath);
 
       if (!stats.isFile()) {
         throw new SpecJetError(

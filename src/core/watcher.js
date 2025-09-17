@@ -1,5 +1,4 @@
-import { watch } from 'fs';
-import { existsSync } from 'fs';
+import fs from 'fs-extra';
 import { resolve, dirname } from 'path';
 import { ErrorHandler, SpecJetError } from './errors.js';
 
@@ -13,7 +12,7 @@ export class FileWatcher {
   async watchContract(contractPath, onChange) {
     const absolutePath = resolve(contractPath);
     
-    if (!existsSync(absolutePath)) {
+    if (!fs.existsSync(absolutePath)) {
       throw SpecJetError.contractNotFound(absolutePath);
     }
 
@@ -22,7 +21,7 @@ export class FileWatcher {
 
     try {
       // Watch the contract file itself
-      const watcher = watch(absolutePath, { persistent: true }, (eventType, _filename) => {
+      const watcher = fs.watch(absolutePath, { persistent: true }, (eventType, _filename) => {
         if (eventType === 'change') {
           this.debounceCallback(contractPath, () => {
             console.log(`\n🔄 Contract file changed, regenerating...`);
@@ -36,11 +35,11 @@ export class FileWatcher {
 
       // Also watch the directory in case the file gets replaced
       const contractDir = dirname(absolutePath);
-      const dirWatcher = watch(contractDir, { persistent: true }, (eventType, filename) => {
+      const dirWatcher = fs.watch(contractDir, { persistent: true }, (eventType, filename) => {
         if (filename && filename.endsWith(contractPath.split('/').pop()) && eventType === 'rename') {
           // File was renamed/replaced, trigger regeneration after a delay
           setTimeout(() => {
-            if (existsSync(absolutePath)) {
+            if (fs.existsSync(absolutePath)) {
               console.log(`\n🔄 Contract file replaced, regenerating...`);
               onChange().catch(error => {
                 console.error('\n❌ Auto-regeneration failed:');

@@ -1,5 +1,5 @@
 import express from 'express';
-import { writeFileSync } from 'fs';
+import fs from 'fs-extra';
 import { resolve } from 'path';
 import { exec } from 'child_process';
 import ContractParser from '#src/core/parser.js';
@@ -49,7 +49,7 @@ async function docsCommand(options = {}) {
     if (options.output) {
       // Generate static HTML file
       const outputPath = resolve(options.output);
-      writeFileSync(outputPath, htmlContent, 'utf8');
+      fs.writeFileSync(outputPath, htmlContent, 'utf8');
       console.log(`✅ Documentation saved to: ${outputPath}`);
       
       if (options.open) {
