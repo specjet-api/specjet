@@ -9,15 +9,6 @@ import { SpecJetError } from './errors.js';
  * @class ConfigLoader
  */
 class ConfigLoader {
-  /**
-   * Loads configuration from file or returns defaults
-   * @param {string|null} configPath - Path to configuration file (optional)
-   * @returns {Promise<Object>} Merged configuration object
-   * @throws {SpecJetError} When configuration file cannot be loaded or parsed
-   * @example
-   * const config = await ConfigLoader.loadConfig('./specjet.config.js');
-   * console.log(config.contract); // './api-contract.yaml'
-   */
   static async loadConfig(configPath = null) {
     const defaultConfig = {
       contract: './api-contract.yaml',
@@ -102,19 +93,6 @@ class ConfigLoader {
     return merged;
   }
 
-  /**
-   * Validates configuration object against schema requirements
-   * Provides detailed error messages and helpful suggestions for fixes
-   * @param {Object} config - Configuration object to validate
-   * @returns {Object} Validated configuration object
-   * @throws {SpecJetError} When configuration is invalid with detailed error info
-   * @example
-   * try {
-   *   const validConfig = ConfigLoader.validateConfig(config);
-   * } catch (error) {
-   *   console.error(error.suggestions); // Helpful fix suggestions
-   * }
-   */
   static validateConfig(config) {
     const errors = [];
     const warnings = [];
@@ -286,24 +264,10 @@ class ConfigLoader {
     return config;
   }
 
-  /**
-   * Resolves contract file path to absolute path
-   * @param {Object} config - Configuration object
-   * @returns {string} Absolute path to contract file
-   */
   static resolveContractPath(config) {
     return resolve(config.contract);
   }
 
-  /**
-   * Resolves output directory paths to absolute paths
-   * @param {Object} config - Configuration object
-   * @returns {Object} Object with absolute paths for types and client output
-   * @example
-   * const paths = ConfigLoader.resolveOutputPaths(config);
-   * console.log(paths.types); // '/absolute/path/to/src/types'
-   * console.log(paths.client); // '/absolute/path/to/src/api'
-   */
   static resolveOutputPaths(config) {
     return {
       types: resolve(config.output.types),
@@ -311,24 +275,10 @@ class ConfigLoader {
     };
   }
 
-  /**
-   * Applies environment variable substitution to configuration values
-   * Supports ${VARIABLE_NAME} syntax in string values
-   * @param {Object} config - Configuration object
-   * @returns {Object} Configuration with environment variables substituted
-   * @example
-   * // Config: { url: 'https://api.${ENV}.example.com' }
-   * // ENV=staging -> { url: 'https://api.staging.example.com' }
-   */
   static applyEnvironmentVariables(config) {
     return this.substituteVariables(config);
   }
 
-  /**
-   * Recursively substitutes environment variables in configuration values
-   * @param {any} value - Value to process (string, object, array, etc.)
-   * @returns {any} Value with substituted environment variables
-   */
   static substituteVariables(value) {
     if (typeof value === 'string') {
       return value.replace(/\$\{([^}]+)\}/g, (match, varName) => {
@@ -364,14 +314,6 @@ class ConfigLoader {
     return value;
   }
 
-  /**
-   * Gets list of available environment names from configuration
-   * @param {Object} config - Configuration object
-   * @returns {string[]} Array of environment names
-   * @example
-   * const envs = ConfigLoader.getAvailableEnvironments(config);
-   * console.log(envs); // ['staging', 'dev', 'local']
-   */
   static getAvailableEnvironments(config) {
     if (!config.environments || typeof config.environments !== 'object') {
       return [];
@@ -379,16 +321,6 @@ class ConfigLoader {
     return Object.keys(config.environments);
   }
 
-  /**
-   * Gets configuration for a specific environment
-   * @param {Object} config - Configuration object
-   * @param {string} environmentName - Name of the environment
-   * @returns {Object|null} Environment configuration or null if not found
-   * @throws {SpecJetError} When environment is not found
-   * @example
-   * const stagingConfig = ConfigLoader.getEnvironmentConfig(config, 'staging');
-   * console.log(stagingConfig.url); // 'https://api-staging.company.com'
-   */
   static getEnvironmentConfig(config, environmentName) {
     if (!config.environments || typeof config.environments !== 'object') {
       throw new SpecJetError(
@@ -421,32 +353,11 @@ class ConfigLoader {
     return envConfig;
   }
 
-  /**
-   * Validates that an environment exists in the configuration
-   * @param {Object} config - Configuration object
-   * @param {string} environmentName - Name of the environment to validate
-   * @returns {boolean} True if environment exists, false otherwise
-   * @example
-   * if (ConfigLoader.validateEnvironmentExists(config, 'staging')) {
-   *   console.log('Staging environment is configured');
-   * }
-   */
   static validateEnvironmentExists(config, environmentName) {
     const available = this.getAvailableEnvironments(config);
     return available.includes(environmentName);
   }
 
-  /**
-   * Pretty-prints available environments for CLI help
-   * @param {Object} config - Configuration object
-   * @returns {string} Formatted string of available environments
-   * @example
-   * console.log(ConfigLoader.listEnvironments(config));
-   * // Available environments:
-   * //   staging - https://api-staging.company.com
-   * //   dev     - https://api-dev.company.com
-   * //   local   - http://localhost:8000
-   */
   static listEnvironments(config) {
     const environments = this.getAvailableEnvironments(config);
 
@@ -470,11 +381,6 @@ class ConfigLoader {
     return output.trim();
   }
 
-  /**
-   * Validates environment configuration structure
-   * @param {Object} config - Configuration object
-   * @throws {SpecJetError} When environment configuration is invalid
-   */
   static validateEnvironmentConfigs(config) {
     if (!config.environments) {
       return; // Environments are optional

@@ -7,6 +7,9 @@ import { ErrorHandler, SpecJetError } from '../core/errors.js';
 const LARGE_SCHEMA_THRESHOLD = 50;
 const VERY_LARGE_SCHEMA_THRESHOLD = 100;
 
+/**
+ * Start a mock server with realistic data based on OpenAPI contract
+ */
 async function mockCommand(options = {}) {
   return ErrorHandler.withErrorHandling(async () => {
     console.log('🎭 Starting mock server...\n');

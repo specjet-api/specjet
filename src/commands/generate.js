@@ -9,7 +9,6 @@ import FileWatcher from '../core/watcher.js';
 const LARGE_SCHEMA_THRESHOLD = 50;
 const VERY_LARGE_SCHEMA_THRESHOLD = 100;
 
-// Extract the generation logic into a separate function for reuse in watch mode
 async function performGeneration(config, options) {
   const contractPath = ConfigLoader.resolveContractPath(config);
   const outputPaths = ConfigLoader.resolveOutputPaths(config);
@@ -145,6 +144,9 @@ async function performGeneration(config, options) {
   return { config, contractPath, report };
 }
 
+/**
+ * Generate TypeScript types and API client from OpenAPI contract
+ */
 async function generateCommand(options = {}) {
   return ErrorHandler.withErrorHandling(async () => {
     console.log('🚀 Starting TypeScript generation...\n');

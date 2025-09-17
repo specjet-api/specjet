@@ -2,10 +2,6 @@ import { SpecJetError } from './errors.js';
 import { URL } from 'url';
 import fetch, { AbortError } from 'node-fetch';
 
-/**
- * HTTP Client wrapper for making API requests during validation
- * Handles timeouts, retries, and proper error handling
- */
 class HttpClient {
   constructor(baseURL, defaultHeaders = {}, options = {}) {
     this.baseURL = baseURL?.replace(/\/$/, ''); // Remove trailing slash
@@ -18,17 +14,6 @@ class HttpClient {
     this.maxRetries = options.maxRetries || 2;
   }
 
-  /**
-   * Make an HTTP request
-   * @param {string} path - Request path (relative to baseURL)
-   * @param {string} method - HTTP method
-   * @param {Object} options - Request options
-   * @param {Object} options.query - Query parameters
-   * @param {*} options.body - Request body
-   * @param {Object} options.headers - Additional headers
-   * @param {number} options.timeout - Request timeout in milliseconds
-   * @returns {Promise<Object>} Response object with status, headers, data, and metadata
-   */
   async makeRequest(path, method = 'GET', options = {}) {
     const {
       query = {},
@@ -160,10 +145,6 @@ class HttpClient {
     }
   }
 
-  /**
-   * Process the response and extract data
-   * @private
-   */
   async processResponse(response, responseTime) {
     const headers = {};
     response.headers.forEach((value, key) => {
@@ -208,10 +189,6 @@ class HttpClient {
     return result;
   }
 
-  /**
-   * Build full URL with query parameters
-   * @private
-   */
   buildURL(path, query = {}) {
     // Handle absolute URLs
     if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -239,10 +216,6 @@ class HttpClient {
     return url.toString();
   }
 
-  /**
-   * Add query parameters to URL
-   * @private
-   */
   addQueryParams(url, query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== null) {
@@ -255,83 +228,34 @@ class HttpClient {
     }
   }
 
-  /**
-   * Make a GET request
-   * @param {string} path - Request path
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response object
-   */
   async get(path, options = {}) {
     return this.makeRequest(path, 'GET', options);
   }
 
-  /**
-   * Make a POST request
-   * @param {string} path - Request path
-   * @param {*} body - Request body
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response object
-   */
   async post(path, body, options = {}) {
     return this.makeRequest(path, 'POST', { ...options, body });
   }
 
-  /**
-   * Make a PUT request
-   * @param {string} path - Request path
-   * @param {*} body - Request body
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response object
-   */
   async put(path, body, options = {}) {
     return this.makeRequest(path, 'PUT', { ...options, body });
   }
 
-  /**
-   * Make a PATCH request
-   * @param {string} path - Request path
-   * @param {*} body - Request body
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response object
-   */
   async patch(path, body, options = {}) {
     return this.makeRequest(path, 'PATCH', { ...options, body });
   }
 
-  /**
-   * Make a DELETE request
-   * @param {string} path - Request path
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response object
-   */
   async delete(path, options = {}) {
     return this.makeRequest(path, 'DELETE', options);
   }
 
-  /**
-   * Make a HEAD request
-   * @param {string} path - Request path
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response object
-   */
   async head(path, options = {}) {
     return this.makeRequest(path, 'HEAD', options);
   }
 
-  /**
-   * Make an OPTIONS request
-   * @param {string} path - Request path
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response object
-   */
   async options(path, options = {}) {
     return this.makeRequest(path, 'OPTIONS', options);
   }
 
-  /**
-   * Test connectivity to the base URL
-   * @returns {Promise<boolean>} True if connection is successful
-   */
   async testConnection() {
     if (!this.baseURL) {
       throw new SpecJetError(
@@ -356,34 +280,18 @@ class HttpClient {
     }
   }
 
-  /**
-   * Set default headers for all requests
-   * @param {Object} headers - Headers to set
-   */
   setDefaultHeaders(headers) {
     this.defaultHeaders = { ...this.defaultHeaders, ...headers };
   }
 
-  /**
-   * Remove a default header
-   * @param {string} headerName - Name of header to remove
-   */
   removeDefaultHeader(headerName) {
     delete this.defaultHeaders[headerName];
   }
 
-  /**
-   * Update the base URL
-   * @param {string} baseURL - New base URL
-   */
   setBaseURL(baseURL) {
     this.baseURL = baseURL?.replace(/\/$/, '');
   }
 
-  /**
-   * Get current configuration
-   * @returns {Object} Current client configuration
-   */
   getConfig() {
     return {
       baseURL: this.baseURL,

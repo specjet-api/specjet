@@ -8,6 +8,9 @@ import HtmlDocumentationGenerator from '../codegen/html-docs.js';
 import MockServer from '../mock-server/server.js';
 import { ErrorHandler, SpecJetError } from '../core/errors.js';
 
+/**
+ * Generate and serve interactive API documentation
+ */
 async function docsCommand(options = {}) {
   return ErrorHandler.withErrorHandling(async () => {
     console.log('📖 Starting documentation server...\n');

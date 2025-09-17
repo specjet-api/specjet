@@ -2,10 +2,6 @@ import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import ValidationResults from './validation-results.js';
 
-/**
- * Schema Validator using AJV for OpenAPI schema validation
- * Handles JSON Schema validation and generates sample data
- */
 class SchemaValidator {
   constructor() {
     this.ajv = new Ajv({
@@ -22,12 +18,6 @@ class SchemaValidator {
     this.addCustomKeywords();
   }
 
-  /**
-   * Validate response data against OpenAPI schema
-   * @param {*} data - Response data to validate
-   * @param {Object} schema - OpenAPI schema definition
-   * @returns {Array} Array of validation issues
-   */
   async validateResponse(data, schema) {
     try {
       const validate = this.ajv.compile(schema);
@@ -48,10 +38,6 @@ class SchemaValidator {
     }
   }
 
-  /**
-   * Convert AJV validation errors to validation issues
-   * @private
-   */
   convertAjvErrorsToIssues(ajvErrors, data) {
     const issues = [];
 
@@ -65,10 +51,6 @@ class SchemaValidator {
     return issues;
   }
 
-  /**
-   * Create a validation issue from an AJV error
-   * @private
-   */
   createIssueFromAjvError(error, data) {
     const fieldPath = error.instancePath || error.schemaPath;
     const fieldName = this.extractFieldName(fieldPath);
@@ -204,10 +186,6 @@ class SchemaValidator {
     }
   }
 
-  /**
-   * Extract field name from JSON path
-   * @private
-   */
   extractFieldName(path) {
     if (!path) return 'root';
 
@@ -216,10 +194,6 @@ class SchemaValidator {
     return segments[segments.length - 1] || 'root';
   }
 
-  /**
-   * Get field value from data using JSON path
-   * @private
-   */
   getFieldValue(data, path) {
     if (!path || path === '') return data;
 
@@ -240,11 +214,6 @@ class SchemaValidator {
     return current;
   }
 
-  /**
-   * Generate sample data that conforms to a schema
-   * @param {Object} schema - OpenAPI schema definition
-   * @returns {*} Generated sample data
-   */
   generateSampleData(schema) {
     try {
       return this.generateValueFromSchema(schema);
@@ -254,10 +223,6 @@ class SchemaValidator {
     }
   }
 
-  /**
-   * Generate a value from a schema definition
-   * @private
-   */
   generateValueFromSchema(schema, depth = 0) {
     // Prevent infinite recursion
     if (depth > 10) {
@@ -322,10 +287,6 @@ class SchemaValidator {
     }
   }
 
-  /**
-   * Generate object value from schema
-   * @private
-   */
   generateObjectValue(schema, depth) {
     const obj = {};
     const properties = schema.properties || {};
@@ -353,10 +314,6 @@ class SchemaValidator {
     return obj;
   }
 
-  /**
-   * Generate array value from schema
-   * @private
-   */
   generateArrayValue(schema, depth) {
     if (!schema.items) {
       return [];
@@ -375,10 +332,6 @@ class SchemaValidator {
     return array;
   }
 
-  /**
-   * Generate string value from schema
-   * @private
-   */
   generateStringValue(schema) {
     // Handle specific formats
     if (schema.format) {
@@ -427,10 +380,6 @@ class SchemaValidator {
     return 'sample_' + 'x'.repeat(Math.max(0, targetLength - 7));
   }
 
-  /**
-   * Generate number value from schema
-   * @private
-   */
   generateNumberValue(schema) {
     // Handle enum
     if (schema.enum && schema.enum.length > 0) {
@@ -454,10 +403,6 @@ class SchemaValidator {
     return schema.type === 'integer' ? Math.round(value) : value;
   }
 
-  /**
-   * Add custom keywords for OpenAPI extensions
-   * @private
-   */
   addCustomKeywords() {
     // Add support for common OpenAPI keywords that AJV doesn't handle by default
     // Check if keyword already exists before adding
@@ -485,11 +430,6 @@ class SchemaValidator {
     // We don't need to explicitly add them as they should be handled gracefully
   }
 
-  /**
-   * Check if a schema is valid and can be compiled
-   * @param {Object} schema - Schema to validate
-   * @returns {boolean} True if schema is valid
-   */
   isValidSchema(schema) {
     try {
       this.ajv.compile(schema);
@@ -499,11 +439,6 @@ class SchemaValidator {
     }
   }
 
-  /**
-   * Get schema compilation errors
-   * @param {Object} schema - Schema to check
-   * @returns {Array} Array of error messages
-   */
   getSchemaErrors(schema) {
     try {
       this.ajv.compile(schema);

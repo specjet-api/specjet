@@ -367,6 +367,9 @@ async function detectProjectModuleSystem(targetDir) {
   return 'commonjs';
 }
 
+/**
+ * Initialize a new SpecJet project with configuration and sample contract
+ */
 async function initCommand(projectName, options = {}) {
   try {
     // Determine target directory

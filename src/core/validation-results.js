@@ -1,18 +1,4 @@
-/**
- * Validation Results formatting and utilities
- * Provides consistent structure for validation results and issues
- */
 class ValidationResults {
-  /**
-   * Create a standardized validation result object
-   * @param {string} endpoint - The endpoint path
-   * @param {string} method - HTTP method
-   * @param {boolean} success - Whether validation passed
-   * @param {number|null} statusCode - HTTP status code from response
-   * @param {Array} issues - Array of validation issues
-   * @param {Object} metadata - Additional metadata (response time, etc.)
-   * @returns {Object} Standardized validation result
-   */
   static createResult(endpoint, method, success, statusCode = null, issues = [], metadata = {}) {
     return {
       endpoint,
@@ -29,14 +15,6 @@ class ValidationResults {
     };
   }
 
-  /**
-   * Create a standardized validation issue object
-   * @param {string} type - Issue type (missing_field, type_mismatch, etc.)
-   * @param {string|null} field - Field name related to the issue
-   * @param {string} message - Human-readable issue description
-   * @param {Object} details - Additional details about the issue
-   * @returns {Object} Standardized validation issue
-   */
   static createIssue(type, field, message, details = {}) {
     return {
       type,
@@ -47,10 +25,6 @@ class ValidationResults {
     };
   }
 
-  /**
-   * Determine severity level for issue type
-   * @private
-   */
   static getSeverityForType(type) {
     const severityMap = {
       // Critical issues
@@ -79,12 +53,6 @@ class ValidationResults {
     return severityMap[type] || 'info';
   }
 
-  /**
-   * Format validation results for console output
-   * @param {Array} results - Array of validation results
-   * @param {Object} options - Formatting options
-   * @returns {string} Formatted output string
-   */
   static formatConsoleOutput(results, options = {}) {
     const {
       verbose = false,
@@ -124,12 +92,6 @@ class ValidationResults {
     return output;
   }
 
-  /**
-   * Format validation results as JSON
-   * @param {Array} results - Array of validation results
-   * @param {Object} options - Formatting options
-   * @returns {string} JSON string
-   */
   static formatJsonOutput(results, _options = {}) {
     const stats = this.getResultsStats(results);
     const failed = results.filter(r => !r.success);
@@ -154,12 +116,6 @@ class ValidationResults {
     return JSON.stringify(output, null, 2);
   }
 
-  /**
-   * Format validation results as markdown report
-   * @param {Array} results - Array of validation results
-   * @param {Object} options - Formatting options
-   * @returns {string} Markdown string
-   */
   static formatMarkdownReport(results, options = {}) {
     const { title = 'API Validation Report', includeDetails = true } = options;
     const stats = this.getResultsStats(results);
@@ -216,10 +172,6 @@ class ValidationResults {
     return output;
   }
 
-  /**
-   * Format a single result for console output
-   * @private
-   */
   static formatSingleResult(result, options = {}) {
     const { verbose = false, showMetadata = false } = options;
     let output = '';
@@ -254,10 +206,6 @@ class ValidationResults {
     return output;
   }
 
-  /**
-   * Format a single result for markdown output
-   * @private
-   */
   static formatMarkdownResult(result, showIssues = true) {
     let output = '';
 
@@ -278,10 +226,6 @@ class ValidationResults {
     return output;
   }
 
-  /**
-   * Format summary header
-   * @private
-   */
   static formatSummaryHeader(stats) {
     let output = '\n🚀 API Validation Results\n';
     output += '═'.repeat(50) + '\n';
@@ -300,10 +244,6 @@ class ValidationResults {
     return output;
   }
 
-  /**
-   * Format summary footer
-   * @private
-   */
   static formatSummaryFooter(stats) {
     let output = '\n' + '═'.repeat(50) + '\n';
 
@@ -319,10 +259,6 @@ class ValidationResults {
     return output + '\n';
   }
 
-  /**
-   * Get results statistics
-   * @private
-   */
   static getResultsStats(results) {
     const stats = {
       total: results.length,
@@ -369,10 +305,6 @@ class ValidationResults {
     return stats;
   }
 
-  /**
-   * Group results by endpoint
-   * @private
-   */
   static groupResultsByEndpoint(results) {
     const groups = {};
 
@@ -387,10 +319,6 @@ class ValidationResults {
     return groups;
   }
 
-  /**
-   * Get color code for HTTP method
-   * @private
-   */
   static getMethodColor(method) {
     const colors = {
       GET: '\x1b[32m',    // Green
@@ -404,10 +332,6 @@ class ValidationResults {
     return colors[method] || '\x1b[0m';
   }
 
-  /**
-   * Get icon for issue severity
-   * @private
-   */
   static getSeverityIcon(severity) {
     const icons = {
       error: '🚫',
@@ -417,10 +341,6 @@ class ValidationResults {
     return icons[severity] || 'ℹ️';
   }
 
-  /**
-   * Get emoji for issue type
-   * @private
-   */
   static getEmojiForIssueType(type) {
     const emojis = {
       missing_field: '❌',
@@ -442,10 +362,6 @@ class ValidationResults {
     return emojis[type] || '⚠️';
   }
 
-  /**
-   * Format duration in milliseconds to human readable format
-   * @private
-   */
   static formatDuration(ms) {
     if (!ms || ms < 1000) {
       return `${Math.round(ms || 0)}ms`;
@@ -453,13 +369,6 @@ class ValidationResults {
     return `${(ms / 1000).toFixed(1)}s`;
   }
 
-  /**
-   * Export results to different formats
-   * @param {Array} results - Validation results
-   * @param {string} format - Output format (console, json, markdown)
-   * @param {Object} options - Format-specific options
-   * @returns {string} Formatted output
-   */
   static export(results, format = 'console', options = {}) {
     switch (format.toLowerCase()) {
       case 'json':
@@ -473,12 +382,6 @@ class ValidationResults {
     }
   }
 
-  /**
-   * Filter results by criteria
-   * @param {Array} results - Results to filter
-   * @param {Object} criteria - Filter criteria
-   * @returns {Array} Filtered results
-   */
   static filter(results, criteria = {}) {
     const {
       success = null,

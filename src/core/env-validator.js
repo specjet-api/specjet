@@ -2,18 +2,7 @@ import { SpecJetError } from './errors.js';
 import HttpClient from './http-client.js';
 import { URL } from 'url';
 
-/**
- * Environment validator for basic configuration and connectivity checks
- * @class EnvValidator
- */
 class EnvValidator {
-  /**
-   * Validate environment configuration before running tests
-   * @param {Object} envConfig - Environment configuration
-   * @param {string} environmentName - Environment name
-   * @returns {Promise<void>}
-   * @throws {SpecJetError} When environment configuration is invalid
-   */
   static async validateEnvironment(envConfig, environmentName) {
     console.log(`🔍 Validating environment configuration: ${environmentName}`);
 
@@ -90,12 +79,6 @@ class EnvValidator {
     console.log(`✅ Environment validation completed for ${environmentName}`);
   }
 
-  /**
-   * Find missing environment variables in configuration
-   * @param {Object} obj - Object to check for environment variables
-   * @returns {string[]} Array of missing environment variable names
-   * @private
-   */
   static findMissingEnvVars(obj) {
     const missingVars = [];
 
@@ -121,12 +104,6 @@ class EnvValidator {
     return [...new Set(missingVars)]; // Remove duplicates
   }
 
-  /**
-   * Validate multiple environments
-   * @param {Object} config - Full configuration object
-   * @param {string[]} environmentNames - Environment names to validate
-   * @returns {Promise<void>}
-   */
   static async validateEnvironments(config, environmentNames) {
     for (const envName of environmentNames) {
       try {
@@ -141,13 +118,6 @@ class EnvValidator {
     }
   }
 
-  /**
-   * Quick validation without connectivity test
-   * @param {Object} envConfig - Environment configuration
-   * @param {string} environmentName - Environment name
-   * @returns {void}
-   * @throws {SpecJetError} When environment configuration is invalid
-   */
   static validateEnvironmentConfig(envConfig, environmentName) {
     if (!envConfig.url) {
       throw new SpecJetError(

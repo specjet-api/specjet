@@ -7,8 +7,6 @@ import { SpecJetError, ErrorHandler } from '../core/errors.js';
 
 /**
  * Validate API implementation against OpenAPI contract
- * @param {string} environmentName - Name of environment to validate against
- * @param {Object} options - Command options
  */
 async function validateCommand(environmentName, options = {}) {
   const { verbose = false, timeout = 30000, output = 'console', contract: contractOverride } = options;
@@ -162,13 +160,6 @@ async function validateCommand(environmentName, options = {}) {
   }
 }
 
-/**
- * Run validation with progress indication
- * @param {APIValidator} validator - Initialized validator
- * @param {Object} options - Validation options
- * @param {boolean} showProgress - Whether to show progress
- * @returns {Promise<Array>} Validation results
- */
 async function runValidationWithProgress(validator, options, showProgress) {
   if (!showProgress) {
     return await validator.validateAllEndpoints(options);

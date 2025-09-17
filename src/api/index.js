@@ -4,12 +4,11 @@ class SpecJetAPI {
   constructor(config = {}) {
     this.config = config;
   }
-  
-  // TODO: API methods for web platform integration
+
   async syncContract() {
     throw new Error('Web platform integration not yet implemented');
   }
-  
+
   async uploadContract() {
     throw new Error('Web platform integration not yet implemented');
   }

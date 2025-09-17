@@ -4,10 +4,6 @@ import HttpClient from './http-client.js';
 import ValidationResults from './validation-results.js';
 import { SpecJetError } from './errors.js';
 
-/**
- * Core API Validation Engine
- * Compares live API responses against OpenAPI contract specifications
- */
 class APIValidator {
   constructor(contractPath, baseURL, headers = {}) {
     this.contractPath = contractPath;
@@ -19,11 +15,6 @@ class APIValidator {
     this.schemaValidator = new SchemaValidator();
   }
 
-  /**
-   * Initialize the validator by parsing the OpenAPI contract
-   * @returns {Promise<void>}
-   * @throws {SpecJetError} When contract cannot be loaded or parsed
-   */
   async initialize() {
     try {
       const parser = new ContractParser();
@@ -46,17 +37,6 @@ class APIValidator {
     }
   }
 
-  /**
-   * Validate a specific endpoint against the contract
-   * @param {string} path - The endpoint path (e.g., '/users/{id}')
-   * @param {string} method - HTTP method (GET, POST, PUT, DELETE, etc.)
-   * @param {Object} options - Additional validation options
-   * @param {Object} options.pathParams - Path parameters for the request
-   * @param {Object} options.queryParams - Query parameters for the request
-   * @param {Object} options.requestBody - Request body for POST/PUT requests
-   * @param {number} options.timeout - Request timeout in milliseconds
-   * @returns {Promise<Object>} Validation result object
-   */
   async validateEndpoint(path, method, options = {}) {
     if (!this.contract) {
       throw new SpecJetError(
@@ -121,16 +101,6 @@ class APIValidator {
     }
   }
 
-  /**
-   * Validate all endpoints defined in the OpenAPI contract
-   * @param {Object} options - Validation options
-   * @param {Object} options.pathParams - Global path parameters
-   * @param {Object} options.queryParams - Global query parameters
-   * @param {number} options.timeout - Request timeout in milliseconds
-   * @param {number} options.concurrency - Number of concurrent requests (default: 3)
-   * @param {number} options.delay - Delay between requests in ms (default: 100)
-   * @returns {Promise<Array>} Array of validation results
-   */
   async validateAllEndpoints(options = {}) {
     if (!this.contract) {
       throw new SpecJetError(
@@ -192,20 +162,12 @@ class APIValidator {
     return results;
   }
 
-  /**
-   * Find an endpoint definition in the contract
-   * @private
-   */
   findEndpoint(path, method) {
     return this.endpoints.find(ep =>
       ep.path === path && ep.method.toUpperCase() === method.toUpperCase()
     );
   }
 
-  /**
-   * Resolve path parameters in URL template
-   * @private
-   */
   resolvePath(pathTemplate, pathParams) {
     let resolvedPath = pathTemplate;
 
@@ -223,10 +185,6 @@ class APIValidator {
     return resolvedPath;
   }
 
-  /**
-   * Generate appropriate request body for POST/PUT operations
-   * @private
-   */
   async generateRequestBody(endpoint, providedBody) {
     if (!endpoint.requestBody || !endpoint.requestBody.schema) {
       return null;
@@ -240,10 +198,6 @@ class APIValidator {
     return this.schemaValidator.generateSampleData(endpoint.requestBody.schema);
   }
 
-  /**
-   * Validate API response against contract schema
-   * @private
-   */
   async validateResponse(endpoint, response) {
     const issues = [];
     const statusCode = response.status.toString();
@@ -281,10 +235,6 @@ class APIValidator {
     return issues;
   }
 
-  /**
-   * Validate response headers against contract
-   * @private
-   */
   validateHeaders(actualHeaders, expectedHeaders) {
     const issues = [];
 
@@ -303,10 +253,6 @@ class APIValidator {
     return issues;
   }
 
-  /**
-   * Validate endpoint with retry logic for transient failures
-   * @private
-   */
   async validateEndpointWithRetry(endpoint, options, maxRetries = 2) {
     let lastError;
 
@@ -341,10 +287,6 @@ class APIValidator {
     );
   }
 
-  /**
-   * Check if an error is retryable
-   * @private
-   */
   isRetryableError(error) {
     const retryableCodes = ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED'];
     return retryableCodes.includes(error.code) ||
@@ -352,10 +294,6 @@ class APIValidator {
            error.message.includes('ECONNRESET');
   }
 
-  /**
-   * Create batches from endpoints array
-   * @private
-   */
   createBatches(endpoints, batchSize) {
     const batches = [];
     for (let i = 0; i < endpoints.length; i += batchSize) {
@@ -364,19 +302,10 @@ class APIValidator {
     return batches;
   }
 
-  /**
-   * Sleep utility for rate limiting
-   * @private
-   */
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  /**
-   * Get validation statistics
-   * @param {Array} results - Array of validation results
-   * @returns {Object} Statistics object
-   */
   static getValidationStats(results) {
     const stats = {
       total: results.length,

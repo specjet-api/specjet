@@ -1,13 +1,4 @@
-/**
- * TypeMapper - Handles conversion from OpenAPI schemas to TypeScript types
- */
 class TypeMapper {
-  /**
-   * Map OpenAPI schema to TypeScript type
-   * @param {Object} schema - OpenAPI schema object
-   * @param {Object} allSchemas - All schemas for reference resolution
-   * @returns {string} TypeScript type string
-   */
   mapOpenApiTypeToTypeScript(schema, allSchemas = {}) {
     // Handle references
     if (schema.$ref) {
@@ -21,12 +12,6 @@ class TypeMapper {
     return isNullable ? `${baseType} | null` : baseType;
   }
   
-  /**
-   * Get the base TypeScript type for a schema
-   * @param {Object} schema - OpenAPI schema object
-   * @param {Object} allSchemas - All schemas for reference resolution
-   * @returns {string} Base TypeScript type
-   */
   getBaseTypeScript(schema, allSchemas) {
     // Handle enums
     if (schema.enum) {
@@ -99,21 +84,11 @@ class TypeMapper {
     return typeMap[schema.type] || 'any';
   }
   
-  /**
-   * Extract type name from OpenAPI reference
-   * @param {string} ref - OpenAPI reference like "#/components/schemas/User"
-   * @returns {string} Type name
-   */
   extractTypeNameFromRef(ref) {
     const parts = ref.split('/');
     return parts[parts.length - 1];
   }
   
-  /**
-   * Escape property names that are not valid TypeScript identifiers
-   * @param {string} propName - Property name
-   * @returns {string} Escaped property name
-   */
   escapePropertyName(propName) {
     if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(propName)) {
       return propName;
@@ -121,12 +96,6 @@ class TypeMapper {
     return `'${propName}'`;
   }
   
-  /**
-   * Find a named type that matches the given schema structure
-   * @param {Object} schema - Schema to match
-   * @param {Object} schemas - All available schemas
-   * @returns {string|null} Named type or null if no match
-   */
   findNamedTypeForSchema(schema, schemas) {
     if (!schema || typeof schema !== 'object') {
       return null;
@@ -155,12 +124,6 @@ class TypeMapper {
     return null;
   }
   
-  /**
-   * Check if two schemas have matching structure
-   * @param {Object} schema1 - First schema
-   * @param {Object} schema2 - Second schema
-   * @returns {boolean} True if schemas match
-   */
   schemasMatch(schema1, schema2) {
     // Simple schema matching - check if properties and required fields match
     if (!schema1.properties || !schema2.properties) {
@@ -188,11 +151,6 @@ class TypeMapper {
     return JSON.stringify(required1) === JSON.stringify(required2);
   }
   
-  /**
-   * Extract interface names from TypeScript types for import tracking
-   * @param {string} type - TypeScript type string
-   * @param {Set<string>} imports - Set to add imports to
-   */
   extractImportsFromType(type, imports) {
     const matches = type.match(/\b[A-Z][A-Za-z0-9_]*\b/g);
     if (matches) {

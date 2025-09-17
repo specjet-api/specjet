@@ -2,18 +2,7 @@ import { existsSync, statSync } from 'fs';
 import { resolve, join } from 'path';
 import { SpecJetError } from './errors.js';
 
-/**
- * Contract File Discovery Service
- * Automatically finds OpenAPI contract files in common locations
- */
 class ContractFinder {
-  /**
-   * Find contract file using multiple strategies
-   * @param {Object} config - Configuration object
-   * @param {string} [explicitPath] - Explicit contract path override
-   * @returns {Promise<string>} Absolute path to contract file
-   * @throws {SpecJetError} When contract file cannot be found
-   */
   static async findContract(config, explicitPath = null) {
     // Strategy 1: Use explicit path if provided
     if (explicitPath) {
@@ -90,10 +79,6 @@ class ContractFinder {
     return best.absolutePath;
   }
 
-  /**
-   * Auto-discover contract files in common locations
-   * @returns {Promise<Array>} Array of found contract files with metadata
-   */
   static async autoDiscoverContract() {
     const candidates = [];
     const searchPaths = this.getSearchPaths();
@@ -120,10 +105,6 @@ class ContractFinder {
     return candidates;
   }
 
-  /**
-   * Get ordered list of paths to search for contract files
-   * @returns {Array} Array of search path objects with priorities
-   */
   static getSearchPaths() {
     const commonFilenames = [
       'api-contract.yaml',
@@ -188,11 +169,6 @@ class ContractFinder {
     return searchPaths.sort((a, b) => b.priority - a.priority);
   }
 
-  /**
-   * Select the best candidate from multiple found contracts
-   * @param {Array} candidates - Array of contract file candidates
-   * @returns {Object} Best candidate contract file
-   */
   static selectBestCandidate(candidates) {
     // Sort by priority (highest first), then by modification time (newest first)
     const sorted = candidates.sort((a, b) => {
@@ -205,12 +181,6 @@ class ContractFinder {
     return sorted[0];
   }
 
-  /**
-   * Validate that a contract file is readable and appears to be OpenAPI
-   * @param {string} contractPath - Path to contract file
-   * @returns {Promise<boolean>} True if contract appears valid
-   * @throws {SpecJetError} When contract file is invalid
-   */
   static async validateContractFile(contractPath) {
     if (!existsSync(contractPath)) {
       throw new SpecJetError(
@@ -266,11 +236,6 @@ class ContractFinder {
     }
   }
 
-  /**
-   * Get relative path for display purposes
-   * @param {string} absolutePath - Absolute file path
-   * @returns {string} Relative path from current directory
-   */
   static getRelativePath(absolutePath) {
     const cwd = process.cwd();
     const relative = resolve(absolutePath).replace(cwd, '.');
