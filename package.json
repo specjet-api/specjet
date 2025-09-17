@@ -11,8 +11,11 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:stress": "RUN_STRESS_TESTS=true vitest run tests/stress-test.skip.test.js",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
     "lint": "eslint src/",
-    "start": "node src/index.js",
+    "lint:fix": "eslint src/ --fix",
+    "dev": "node bin/specjet",
     "audit": "npm audit --audit-level high",
     "audit:fix": "npm audit fix --audit-level high",
     "security:check": "npm audit && npm outdated"
