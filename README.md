@@ -1,8 +1,11 @@
-# SpecJet CLI
+# [SpecJet CLI](https://specjet.dev)
 
 > **Design APIs together, build separately, integrate seamlessly**
 
 SpecJet is an API contract collaboration tool that enables frontend and backend developers to design APIs together, then provides automatic TypeScript generation and realistic mock servers for immediate development.
+
+[![npm](https://img.shields.io/npm/v/specjet.svg)](https://www.npmjs.com/package/specjet)
+[![npm](https://img.shields.io/npm/l/specjet.svg)](https://www.npmjs.com/package/specjet)
 
 ## Why SpecJet?
 
