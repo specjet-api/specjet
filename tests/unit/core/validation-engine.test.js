@@ -141,8 +141,10 @@ components:
 
   describe('APIValidator', () => {
     test('should initialize with contract and discover endpoints', async () => {
-      const validator = new APIValidator(contractPath, 'https://api.example.com');
-      await validator.initialize();
+      const httpClient = new HttpClient('https://api.example.com');
+      const schemaValidator = new SchemaValidator();
+      const validator = new APIValidator({ httpClient, schemaValidator });
+      await validator.initialize(contractPath);
 
       expect(validator.contract).toBeDefined();
       expect(validator.endpoints).toBeDefined();
@@ -150,14 +152,18 @@ components:
     });
 
     test('should throw error when contract file does not exist', async () => {
-      const validator = new APIValidator('/nonexistent/contract.yaml', 'https://api.example.com');
+      const httpClient = new HttpClient('https://api.example.com');
+      const schemaValidator = new SchemaValidator();
+      const validator = new APIValidator({ httpClient, schemaValidator });
 
-      await expect(validator.initialize()).rejects.toThrow('Failed to initialize validator');
+      await expect(validator.initialize('/nonexistent/contract.yaml')).rejects.toThrow('Failed to initialize validator');
     });
 
     test('should find endpoint definition', async () => {
-      const validator = new APIValidator(contractPath, 'https://api.example.com');
-      await validator.initialize();
+      const httpClient = new HttpClient('https://api.example.com');
+      const schemaValidator = new SchemaValidator();
+      const validator = new APIValidator({ httpClient, schemaValidator });
+      await validator.initialize(contractPath);
 
       const endpoint = validator.findEndpoint('/users', 'GET');
       expect(endpoint).toBeDefined();
@@ -169,8 +175,10 @@ components:
     });
 
     test('should resolve path parameters', async () => {
-      const validator = new APIValidator(contractPath, 'https://api.example.com');
-      await validator.initialize();
+      const httpClient = new HttpClient('https://api.example.com');
+      const schemaValidator = new SchemaValidator();
+      const validator = new APIValidator({ httpClient, schemaValidator });
+      await validator.initialize(contractPath);
 
       const resolved = validator.resolvePath('/users/{id}', { id: 123 });
       expect(resolved).toBe('/users/123');
@@ -181,8 +189,10 @@ components:
     });
 
     test('should generate request body from schema', async () => {
-      const validator = new APIValidator(contractPath, 'https://api.example.com');
-      await validator.initialize();
+      const httpClient = new HttpClient('https://api.example.com');
+      const schemaValidator = new SchemaValidator();
+      const validator = new APIValidator({ httpClient, schemaValidator });
+      await validator.initialize(contractPath);
 
       const endpoint = validator.findEndpoint('/users', 'POST');
       const requestBody = await validator.generateRequestBody(endpoint);
@@ -195,8 +205,10 @@ components:
     });
 
     test('should validate endpoint not found', async () => {
-      const validator = new APIValidator(contractPath, 'https://api.example.com');
-      await validator.initialize();
+      const httpClient = new HttpClient('https://api.example.com');
+      const schemaValidator = new SchemaValidator();
+      const validator = new APIValidator({ httpClient, schemaValidator });
+      await validator.initialize(contractPath);
 
       const result = await validator.validateEndpoint('/nonexistent', 'GET');
 
@@ -206,7 +218,9 @@ components:
     });
 
     test('should throw error when not initialized', async () => {
-      const validator = new APIValidator(contractPath, 'https://api.example.com');
+      const httpClient = new HttpClient('https://api.example.com');
+      const schemaValidator = new SchemaValidator();
+      const validator = new APIValidator({ httpClient, schemaValidator });
 
       await expect(validator.validateEndpoint('/users', 'GET')).rejects.toThrow('Validator not initialized');
     });

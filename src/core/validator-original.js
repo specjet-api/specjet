@@ -1,57 +1,31 @@
 import ContractParser from './parser.js';
+import SchemaValidator from './schema-validator.js';
+import HttpClient from './http-client.js';
+import ValidationResults from './validation-results.js';
 import { SpecJetError } from './errors.js';
 
-/**
- * Focused API validator with single responsibility
- * Handles only individual endpoint validation, delegates other concerns
- */
 class APIValidator {
-  constructor(dependencies = {}) {
-    this.httpClient = dependencies.httpClient;
-    this.schemaValidator = dependencies.schemaValidator;
-    this.logger = dependencies.logger || console;
-
-    // Validation state
+  constructor(contractPath, baseURL, headers = {}) {
+    this.contractPath = contractPath;
+    this.baseURL = baseURL;
+    this.headers = headers;
     this.contract = null;
     this.endpoints = null;
-    this.contractPath = null;
-
-    // Validate required dependencies
-    if (!this.httpClient) {
-      throw new SpecJetError(
-        'HTTPClient dependency is required',
-        'MISSING_DEPENDENCY',
-        null,
-        ['Provide an httpClient instance when creating APIValidator']
-      );
-    }
-
-    if (!this.schemaValidator) {
-      throw new SpecJetError(
-        'SchemaValidator dependency is required',
-        'MISSING_DEPENDENCY',
-        null,
-        ['Provide a schemaValidator instance when creating APIValidator']
-      );
-    }
+    this.httpClient = new HttpClient(baseURL, headers);
+    this.schemaValidator = new SchemaValidator();
   }
 
-  /**
-   * Initialize the validator with a contract
-   * @param {string} contractPath - Path to the OpenAPI contract
-   */
-  async initialize(contractPath) {
+  async initialize() {
     try {
-      this.contractPath = contractPath;
       const parser = new ContractParser();
-      this.contract = await parser.parseContract(contractPath);
+      this.contract = await parser.parseContract(this.contractPath);
       this.endpoints = this.contract.endpoints;
 
-      this.logger.log(`✅ Loaded contract: ${this.contract.info.title} v${this.contract.info.version}`);
-      this.logger.log(`📊 Found ${this.endpoints.length} endpoints to validate`);
+      console.log(`✅ Loaded contract: ${this.contract.info.title} v${this.contract.info.version}`);
+      console.log(`📊 Found ${this.endpoints.length} endpoints to validate`);
     } catch (error) {
       throw new SpecJetError(
-        `Failed to initialize validator with contract: ${contractPath}`,
+        `Failed to initialize validator with contract: ${this.contractPath}`,
         'VALIDATOR_INIT_ERROR',
         error,
         [
@@ -63,13 +37,6 @@ class APIValidator {
     }
   }
 
-  /**
-   * Validate a single endpoint
-   * @param {string} path - Endpoint path
-   * @param {string} method - HTTP method
-   * @param {object} options - Validation options
-   * @returns {Promise<object>} Validation result
-   */
   async validateEndpoint(path, method, options = {}) {
     if (!this.contract) {
       throw new SpecJetError(
@@ -80,7 +47,13 @@ class APIValidator {
 
     const endpoint = this.findEndpoint(path, method);
     if (!endpoint) {
-      return this.createNotFoundResult(path, method);
+      return ValidationResults.createResult(path, method, false, null, [
+        ValidationResults.createIssue(
+          'endpoint_not_found',
+          null,
+          `Endpoint ${method} ${path} not found in OpenAPI contract`
+        )
+      ]);
     }
 
     try {
@@ -104,7 +77,7 @@ class APIValidator {
       // Validate the response against the contract
       const issues = await this.validateResponse(endpoint, response);
 
-      return this.createValidationResult(
+      return ValidationResults.createResult(
         path,
         method,
         issues.length === 0,
@@ -116,28 +89,85 @@ class APIValidator {
         }
       );
     } catch (error) {
-      return this.createNetworkErrorResult(path, method, error);
+      // Handle network errors, timeouts, etc.
+      return ValidationResults.createResult(path, method, false, null, [
+        ValidationResults.createIssue(
+          'network_error',
+          null,
+          `Network error: ${error.message}`,
+          { originalError: error.code || error.name }
+        )
+      ]);
     }
   }
 
-  /**
-   * Find endpoint definition in contract
-   * @param {string} path - Endpoint path
-   * @param {string} method - HTTP method
-   * @returns {object|null} Endpoint definition
-   */
+  async validateAllEndpoints(options = {}) {
+    if (!this.contract) {
+      throw new SpecJetError(
+        'Validator not initialized. Call initialize() first.',
+        'VALIDATOR_NOT_INITIALIZED'
+      );
+    }
+
+    const {
+      concurrency = 3,
+      delay = 100,
+      ...validateOptions
+    } = options;
+
+    console.log(`🚀 Starting validation of ${this.endpoints.length} endpoints`);
+    console.log(`⚙️  Concurrency: ${concurrency}, Delay: ${delay}ms`);
+
+    const results = [];
+    const batches = this.createBatches(this.endpoints, concurrency);
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      console.log(`📦 Processing batch ${i + 1}/${batches.length} (${batch.length} endpoints)`);
+
+      // Process endpoints in this batch concurrently
+      const batchPromises = batch.map(endpoint =>
+        this.validateEndpointWithRetry(endpoint, validateOptions)
+      );
+
+      const batchResults = await Promise.allSettled(batchPromises);
+
+      // Add results and handle any rejections
+      batchResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          const endpoint = batch[index];
+          results.push(ValidationResults.createResult(
+            endpoint.path,
+            endpoint.method,
+            false,
+            null,
+            [ValidationResults.createIssue(
+              'validation_error',
+              null,
+              `Validation failed: ${result.reason.message}`
+            )]
+          ));
+        }
+      });
+
+      // Add delay between batches to avoid overwhelming the API
+      if (i < batches.length - 1 && delay > 0) {
+        await this.sleep(delay);
+      }
+    }
+
+    console.log(`✅ Validation complete. ${results.length} endpoints processed`);
+    return results;
+  }
+
   findEndpoint(path, method) {
     return this.endpoints.find(ep =>
       ep.path === path && ep.method.toUpperCase() === method.toUpperCase()
     );
   }
 
-  /**
-   * Resolve path parameters in URL template
-   * @param {string} pathTemplate - URL template with {param} placeholders
-   * @param {object} pathParams - Parameter values
-   * @returns {string} Resolved URL
-   */
   resolvePath(pathTemplate, pathParams) {
     let resolvedPath = pathTemplate;
 
@@ -155,12 +185,6 @@ class APIValidator {
     return resolvedPath;
   }
 
-  /**
-   * Generate request body from schema or use provided body
-   * @param {object} endpoint - Endpoint definition
-   * @param {*} providedBody - User-provided request body
-   * @returns {Promise<*>} Request body
-   */
   async generateRequestBody(endpoint, providedBody) {
     if (!endpoint.requestBody || !endpoint.requestBody.schema) {
       return null;
@@ -174,12 +198,6 @@ class APIValidator {
     return this.schemaValidator.generateSampleData(endpoint.requestBody.schema);
   }
 
-  /**
-   * Validate response against contract specification
-   * @param {object} endpoint - Endpoint definition
-   * @param {object} response - HTTP response
-   * @returns {Promise<Array>} Array of validation issues
-   */
   async validateResponse(endpoint, response) {
     const issues = [];
     const statusCode = response.status.toString();
@@ -187,7 +205,7 @@ class APIValidator {
     // Check if status code is defined in contract
     const responseSpec = endpoint.responses[statusCode] || endpoint.responses['default'];
     if (!responseSpec) {
-      issues.push(this.createIssue(
+      issues.push(ValidationResults.createIssue(
         'unexpected_status_code',
         null,
         `Status code ${statusCode} not defined in contract`,
@@ -217,12 +235,6 @@ class APIValidator {
     return issues;
   }
 
-  /**
-   * Validate response headers
-   * @param {object} actualHeaders - Actual response headers
-   * @param {object} expectedHeaders - Expected headers from contract
-   * @returns {Array} Array of header validation issues
-   */
   validateHeaders(actualHeaders, expectedHeaders) {
     const issues = [];
 
@@ -230,7 +242,7 @@ class APIValidator {
       const actualValue = actualHeaders[headerName.toLowerCase()];
 
       if (headerSpec.required && !actualValue) {
-        issues.push(this.createIssue(
+        issues.push(ValidationResults.createIssue(
           'missing_header',
           headerName,
           `Required header '${headerName}' is missing`
@@ -241,97 +253,59 @@ class APIValidator {
     return issues;
   }
 
-  /**
-   * Create validation result object
-   * @param {string} path - Endpoint path
-   * @param {string} method - HTTP method
-   * @param {boolean} success - Whether validation passed
-   * @param {number} statusCode - HTTP status code
-   * @param {Array} issues - Validation issues
-   * @param {object} metadata - Additional metadata
-   * @returns {object} Validation result
-   */
-  createValidationResult(path, method, success, statusCode, issues, metadata = {}) {
-    return {
-      endpoint: path,
-      method: method.toUpperCase(),
-      success,
-      statusCode,
-      issues: issues || [],
-      metadata,
-      timestamp: new Date().toISOString()
-    };
-  }
+  async validateEndpointWithRetry(endpoint, options, maxRetries = 2) {
+    let lastError;
 
-  /**
-   * Create validation issue object
-   * @param {string} type - Issue type
-   * @param {string} field - Field that caused the issue
-   * @param {string} message - Issue description
-   * @param {object} metadata - Additional issue metadata
-   * @returns {object} Validation issue
-   */
-  createIssue(type, field, message, metadata = {}) {
-    return {
-      type,
-      field,
-      message,
-      metadata
-    };
-  }
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.validateEndpoint(endpoint.path, endpoint.method, options);
+      } catch (error) {
+        lastError = error;
 
-  /**
-   * Create result for endpoint not found in contract
-   * @param {string} path - Endpoint path
-   * @param {string} method - HTTP method
-   * @returns {object} Validation result
-   */
-  createNotFoundResult(path, method) {
-    return this.createValidationResult(path, method, false, null, [
-      this.createIssue(
-        'endpoint_not_found',
+        // Only retry on network errors, not validation errors
+        if (attempt < maxRetries && this.isRetryableError(error)) {
+          console.warn(`⚠️  Retry ${attempt + 1}/${maxRetries} for ${endpoint.method} ${endpoint.path}`);
+          await this.sleep(1000 * (attempt + 1)); // Exponential backoff
+          continue;
+        }
+
+        break;
+      }
+    }
+
+    // All retries failed
+    return ValidationResults.createResult(
+      endpoint.path,
+      endpoint.method,
+      false,
+      null,
+      [ValidationResults.createIssue(
+        'validation_failed',
         null,
-        `Endpoint ${method} ${path} not found in OpenAPI contract`
-      )
-    ]);
+        `Validation failed after ${maxRetries + 1} attempts: ${lastError.message}`
+      )]
+    );
   }
 
-  /**
-   * Create result for network errors
-   * @param {string} path - Endpoint path
-   * @param {string} method - HTTP method
-   * @param {Error} error - Network error
-   * @returns {object} Validation result
-   */
-  createNetworkErrorResult(path, method, error) {
-    return this.createValidationResult(path, method, false, null, [
-      this.createIssue(
-        'network_error',
-        null,
-        `Network error: ${error.message}`,
-        { originalError: error.code || error.name }
-      )
-    ]);
+  isRetryableError(error) {
+    const retryableCodes = ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED'];
+    return retryableCodes.includes(error.code) ||
+           error.message.includes('timeout') ||
+           error.message.includes('ECONNRESET');
   }
 
-  /**
-   * Get validator configuration
-   * @returns {object} Current configuration
-   */
-  getConfig() {
-    return {
-      contractPath: this.contractPath,
-      hasContract: !!this.contract,
-      endpointCount: this.endpoints ? this.endpoints.length : 0,
-      contractInfo: this.contract ? this.contract.info : null
-    };
+  createBatches(endpoints, batchSize) {
+    const batches = [];
+    for (let i = 0; i < endpoints.length; i += batchSize) {
+      batches.push(endpoints.slice(i, i + batchSize));
+    }
+    return batches;
   }
 
-  /**
-   * Static method to calculate validation statistics (moved from original class)
-   * @param {Array} results - Validation results
-   * @returns {object} Statistics
-   */
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   static getValidationStats(results) {
     const stats = {
       total: results.length,
