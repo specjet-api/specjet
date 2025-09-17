@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import MockServer from '../src/mock-server/server.js';
+import MockServer from '../../src/mock-server/server.js';
 
 describe('Memory Limits for Mock Data', () => {
   let server;

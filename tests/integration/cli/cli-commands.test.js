@@ -6,8 +6,8 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync, rmSync, cpSync } fr
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const CLI_PATH = join(__dirname, '../bin/specjet');
-const FIXTURES_DIR = join(__dirname, 'fixtures');
+const CLI_PATH = join(__dirname, '../../../bin/specjet');
+const FIXTURES_DIR = join(__dirname, '../../fixtures');
 
 // Helper function to run CLI commands
 function runCLI(args, options = {}) {

@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import EnvValidator from '../../src/core/env-validator.js';
+import EnvValidator from '../../../src/core/env-validator.js';
 
 describe('Environment Variable Security Tests', () => {
   let originalEnv;
@@ -157,7 +157,7 @@ describe('Environment Variable Security Tests', () => {
 
     test('should handle complex nested variable patterns', async () => {
       // Import the real EnvValidator to avoid mocking issues
-      const { default: RealEnvValidator } = await vi.importActual('../../src/core/env-validator.js');
+      const { default: RealEnvValidator } = await vi.importActual('../../../src/core/env-validator.js');
 
       process.env.PREFIX = 'API';
       process.env.SUFFIX = 'KEY';

@@ -80,8 +80,8 @@ describe.skipIf(!process.env.RUN_STRESS_TESTS)('SpecJet CLI Stress Tests - Manua
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: './src/types',
-    client: './src/api'
+    types: ../../src/types',
+    client: ../../src/api'
   }
 };
       `.trim());
@@ -117,8 +117,8 @@ export default {
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: './src/types',
-    client: './src/api'
+    types: ../../src/types',
+    client: ../../src/api'
   }
 };
       `.trim());
@@ -156,8 +156,8 @@ export default {
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: './src/types',
-    client: './src/api'
+    types: ../../src/types',
+    client: ../../src/api'
   }
 };
       `.trim());
@@ -319,8 +319,8 @@ export default {
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: './src/types',
-    client: './src/api'
+    types: ../../src/types',
+    client: ../../src/api'
   }
 };
         `.trim());
@@ -409,8 +409,8 @@ export default {
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: './src/types',
-    client: './src/api'
+    types: ../../src/types',
+    client: ../../src/api'
   }
 };
       `.trim());
