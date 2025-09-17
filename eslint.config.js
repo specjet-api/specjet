@@ -16,6 +16,13 @@ export default [
         clearInterval: 'readonly'
       }
     },
+    settings: {
+      'import/resolver': {
+        node: {
+          paths: ['src']
+        }
+      }
+    },
     rules: {
       'no-unused-vars': ['error', { 
         argsIgnorePattern: '^_',
