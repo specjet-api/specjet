@@ -1,7 +1,11 @@
-import { SpecJetError } from './errors.js';
+// Node.js built-ins
 import { URL } from 'url';
 import https from 'https';
 import http from 'http';
+
+// Internal modules
+import { SpecJetError } from './errors.js';
+import ParameterValidator from './parameter-validator.js';
 
 class HttpClient {
   constructor(baseURL, defaultHeaders = {}, options = {}) {
@@ -11,8 +15,11 @@ class HttpClient {
       'User-Agent': 'SpecJet-Validator/1.0',
       ...defaultHeaders
     };
-    this.defaultTimeout = options.timeout || 10000; // 10 seconds default
-    this.maxRetries = options.maxRetries || 2;
+
+    // Use parameter validator for type safety
+    this.parameterValidator = options.parameterValidator || new ParameterValidator();
+    this.defaultTimeout = this.parameterValidator.validateTimeout(options.timeout, 10000);
+    this.maxRetries = this.parameterValidator.validateMaxRetries(options.maxRetries, 2);
     this.agent = this.createAgent(options);
   }
 
@@ -22,7 +29,7 @@ class HttpClient {
       keepAliveMsecs: 1000,
       maxSockets: 10,
       maxFreeSockets: 5,
-      timeout: options.timeout || 10000,
+      timeout: this.parameterValidator.validateTimeout(options.timeout, 10000),
       freeSocketTimeout: 30000, // Free socket timeout
       ...options.agentOptions
     };
@@ -71,6 +78,8 @@ class HttpClient {
       }
     }
 
+    const validatedTimeout = this.parameterValidator.validateTimeout(timeout, 30000);
+
     const requestOptions = {
       hostname: parsedUrl.hostname,
       port: parsedUrl.port,
@@ -78,7 +87,7 @@ class HttpClient {
       method: method.toUpperCase(),
       headers: requestHeaders,
       agent: parsedUrl.protocol === 'https:' ? this.httpsAgent : this.httpAgent,
-      timeout: parseInt(timeout, 10) || 30000
+      timeout: validatedTimeout
     };
 
     const startTime = Date.now();
@@ -98,11 +107,11 @@ class HttpClient {
       });
 
       // Handle request timeout
-      req.setTimeout(parseInt(timeout, 10) || 30000, () => {
+      req.setTimeout(validatedTimeout, () => {
         req.destroy();
-        console.error(`⏰ Request timeout after ${timeout}ms`);
+        console.error(`⏰ Request timeout after ${validatedTimeout}ms`);
         reject(new SpecJetError(
-          `Request timeout after ${timeout}ms`,
+          `Request timeout after ${validatedTimeout}ms`,
           'REQUEST_TIMEOUT',
           null,
           [

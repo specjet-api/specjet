@@ -1,11 +1,13 @@
+// Internal modules
 import ConfigLoader from '../core/config.js';
 import ContractFinder from '../core/contract-finder.js';
 import EnvValidator from '../core/env-validator.js';
+import ParameterValidator from '../core/parameter-validator.js';
 import ValidationResults from '../core/validation-results.js';
-import ValidatorFactory from '../factories/validator-factory.js';
 import ServiceContainer from '../core/service-container.js';
 import ResourceManager from '../core/resource-manager.js';
 import { SpecJetError, ErrorHandler } from '../core/errors.js';
+import ValidatorFactory from '../factories/validator-factory.js';
 
 /**
  * Business logic service for API validation
@@ -17,6 +19,7 @@ class ValidationService {
     this.configLoader = dependencies.configLoader || ConfigLoader;
     this.contractFinder = dependencies.contractFinder || ContractFinder;
     this.envValidator = dependencies.envValidator || EnvValidator;
+    this.parameterValidator = dependencies.parameterValidator || new ParameterValidator();
     this.validatorFactory = dependencies.validatorFactory || new ValidatorFactory();
     this.resultsFormatter = dependencies.resultsFormatter || ValidationResults;
     this.serviceContainer = dependencies.serviceContainer || new ServiceContainer();
@@ -172,9 +175,9 @@ class ValidationService {
     const isCI = process.env.CI || !process.stdin.isTTY;
 
     const validationOptions = {
-      timeout: parseInt(options.timeout, 10) || 30000,
-      concurrency: isCI ? 1 : (options.concurrency || 3),
-      delay: isCI ? 500 : (options.delay || 100),
+      timeout: this.parameterValidator.validateTimeout(options.timeout, 30000),
+      concurrency: isCI ? 1 : this.parameterValidator.validateConcurrency(options.concurrency, 3),
+      delay: isCI ? 500 : this.parameterValidator.validateDelay(options.delay, 100),
       progressCallback: this.createProgressCallback(options)
     };
 
