@@ -5,6 +5,9 @@ export default defineConfig({
   test: {
     // Test environment
     environment: 'node',
+
+    // Suppress console output from tests
+    silent: true,
     
     // Test file patterns
     include: [

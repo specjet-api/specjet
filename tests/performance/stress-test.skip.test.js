@@ -6,8 +6,8 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync, rmSync, cpSync } fr
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const CLI_PATH = join(__dirname, '../bin/specjet');
-const FIXTURES_DIR = join(__dirname, 'fixtures');
+const CLI_PATH = join(__dirname, '../../bin/specjet');
+const FIXTURES_DIR = join(__dirname, '../fixtures');
 
 // Helper function to run CLI commands
 function runCLI(args, options = {}) {
@@ -80,8 +80,8 @@ describe.skipIf(!process.env.RUN_STRESS_TESTS)('SpecJet CLI Stress Tests - Manua
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: ../../src/types',
-    client: ../../src/api'
+    types: './src/types',
+    client: './src/api'
   }
 };
       `.trim());
@@ -117,8 +117,8 @@ export default {
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: ../../src/types',
-    client: ../../src/api'
+    types: './src/types',
+    client: './src/api'
   }
 };
       `.trim());
@@ -156,8 +156,8 @@ export default {
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: ../../src/types',
-    client: ../../src/api'
+    types: './src/types',
+    client: './src/api'
   }
 };
       `.trim());
@@ -319,8 +319,8 @@ export default {
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: ../../src/types',
-    client: ../../src/api'
+    types: './src/types',
+    client: './src/api'
   }
 };
         `.trim());
@@ -409,8 +409,8 @@ export default {
 export default {
   contract: './api-contract.yaml',
   output: {
-    types: ../../src/types',
-    client: ../../src/api'
+    types: './src/types',
+    client: './src/api'
   }
 };
       `.trim());

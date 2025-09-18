@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:stress": "RUN_STRESS_TESTS=true vitest run tests/stress-test.skip.test.js",
+    "test:stress": "RUN_STRESS_TESTS=true vitest run tests/performance/stress-test.skip.test.js",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "lint": "eslint src/",
