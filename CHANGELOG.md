@@ -5,38 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-## [0.1.0] - 2025-09-16 - Initial Release - Core MVP
+## [0.2.0] - 2025-09-18
 
 ### Added
-- Core CLI tool with `init`, `generate`, and `mock` commands
-- TypeScript type generation from OpenAPI specifications
-- Mock server with realistic data generation using Faker.js
-- Request validation and comprehensive error handling
-- CORS support (enabled by default for development)
-- In-memory storage system for mock data persistence
-- Custom entity detection and mapping capabilities
-- Header parameter support for API requests
-- Comprehensive test suite using Vitest
-- Stress testing capabilities for performance validation
-- Documentation generation from OpenAPI specs
-- Example API projects (basic and advanced e-commerce)
-- Support for OpenAPI 3.x specifications
-
-### Fixed
-- Schema parsing and resolution for complex nested objects
-- Parameter naming to avoid underscore anti-patterns
-- In-memory storage ID collision errors
-- Critical, high, and medium priority code quality issues
+- **`specjet validate` command** - Validate real API implementations against OpenAPI contracts
+- Response schema validation with detailed error reporting
+- HTTP status code compliance checking
+- Authentication support via custom headers (`--header` option)
+- Path filtering with `--paths` and `--exclude` options
+- Multiple output formats: `text`, `json`, and `junit`
+- Request timeout configuration (`--timeout` option)
+- Verbose output mode for detailed debugging (`--verbose`)
+- CI/CD integration examples for GitHub Actions and Jenkins
+- Comprehensive validation documentation and examples
 
 ### Changed
-- Refactored TypeScript generator into focused, maintainable classes
-- Enhanced mock data quality and user interface
-- Improved CLI output consistency and user experience
-- Optimized performance for large API specifications
+- Enhanced configuration system to support validation settings
+- Improved error messaging across all commands
 
-### Removed
-- Health endpoint and non-essential mock API endpoints
-- Automatic mock file generation (replaced with in-memory storage)
-- README generation from generate command (docs command handles this)
+## [0.1.1] - 2025-09-17
+
+### Fixed
+- Fixed `specjet init` command configuration loading issue
+- Generated config files now use CommonJS (`module.exports`) for better compatibility
+- Resolved "Failed to load configuration" error when running `specjet generate` after init
+
+## [0.1.0] - 2025-09-16
+
+### Added
+- Initial release of SpecJet CLI
+- `specjet init` - Initialize new projects with OpenAPI contracts
+- `specjet generate` - Generate TypeScript types and API clients
+- `specjet mock` - Local mock server with realistic data scenarios
+- `specjet docs` - Interactive documentation generation
+- Support for demo, realistic, large, and error data scenarios
+- File-based contract workflow for individual developers
+- Complete offline development capabilities
