@@ -4,7 +4,7 @@ import ValidationResults, { ValidationResultsAggregator } from '../../src/core/v
 import HttpClient from '../../src/core/http-client.js';
 import http from 'http';
 
-describe('Performance Benchmarks', () => {
+describe.skipIf(!process.env.RUN_PERFORMANCE_TESTS)('Performance Benchmarks', () => {
   let mockServer;
   let serverPort;
 

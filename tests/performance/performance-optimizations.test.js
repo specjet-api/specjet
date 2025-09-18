@@ -10,7 +10,7 @@ import MockServer from '#src/mock-server/server.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-describe('Performance and Scalability Optimizations', () => {
+describe.skipIf(!process.env.RUN_PERFORMANCE_TESTS)('Performance and Scalability Optimizations', () => {
   let testDir;
 
   beforeEach(() => {

@@ -41,12 +41,17 @@ export default defineConfig({
         testMatch: ['tests/codegen/**/*.test.js', 'tests/mock-server/**/*.test.js']
       },
       {
-        name: 'integration', 
+        name: 'integration',
         testMatch: ['tests/cli-integration.test.js']
       },
       {
         name: 'core',
         testMatch: ['tests/core-modules.test.js']
+      },
+      {
+        name: 'performance',
+        testMatch: ['tests/performance/**/*.test.js'],
+        testTimeout: 60000 // 60 seconds for performance tests
       }
     ]
   }
