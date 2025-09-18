@@ -1,6 +1,6 @@
 {
   "name": "specjet",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "API contract collaboration tool - Design APIs together, build separately, integrate seamlessly",
   "main": "src/index.js",
   "bin": {
