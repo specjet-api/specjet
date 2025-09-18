@@ -8,7 +8,7 @@ permalink: /
 
 # Getting Started with SpecJet CLI
 
-This guide provides step-by-step instructions for getting up and running with SpecJet CLI. For a quick overview, see the [main README](../README.md).
+This guide provides step-by-step instructions for getting up and running with SpecJet CLI. For a quick overview, see the [README](https://github.com/specjet-api/specjet/blob/main/README.md).
 
 ## Prerequisites
 
