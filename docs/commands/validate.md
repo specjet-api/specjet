@@ -8,6 +8,10 @@ description: "Validate API implementation against your OpenAPI contract"
 
 # `specjet validate` Command Reference
 
+> ⚠️ **Advanced Feature** - This is an advanced feature for API validation. Most users should focus on the core workflow: **init → generate → mock → docs**
+>
+> **Prerequisites**: You should be comfortable with the 4 core SpecJet commands before using validation. This feature is designed for teams ready to integrate with backend APIs.
+
 The `validate` command validates a real API against your OpenAPI contract to ensure compliance and catch discrepancies.
 
 ## Basic Usage
@@ -653,6 +657,17 @@ specjet generate  # Should succeed without errors
 specjet mock &
 specjet validate http://localhost:3001  # Should pass
 ```
+
+## Prerequisites
+
+Before using `validate`, make sure you've mastered the core workflow:
+
+1. **[`init`](./init.md)**: Set up your project and contract
+2. **[`generate`](./generate.md)**: Generate TypeScript types
+3. **[`mock`](./mock.md)**: Develop with mock server
+4. **[`docs`](./docs.md)**: Create API documentation
+
+**Then** use validation to ensure your backend implementation matches the contract.
 
 ## Related Commands
 

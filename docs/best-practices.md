@@ -593,11 +593,11 @@ components:
         timestamp: { type: string, format: date-time }
 ```
 
-## Validation and Testing
+## Core Workflow Validation
 
 ### 1. Contract Validation
 
-Ensure your contract is valid before using with SpecJet:
+Ensure your contract works with the core SpecJet workflow:
 
 ```bash
 # Validate contract syntax
@@ -606,11 +606,22 @@ specjet generate --dry-run
 # Test with mock server
 specjet mock --scenario demo
 
+# Generate documentation
+specjet docs
+```
+
+### 2. Advanced: API Implementation Validation
+
+> ⚠️ **Advanced Feature**: Only use after mastering the core workflow (init → generate → mock → docs)
+
+Once your backend is implemented, validate it matches your contract:
+
+```bash
 # Validate against real API
 specjet validate http://localhost:8000
 ```
 
-### 2. Mock Data Quality
+### 3. Mock Data Quality
 
 Design schemas that generate realistic mock data:
 
@@ -625,18 +636,18 @@ User:
       maxLength: 50
       pattern: '^[A-Za-z\s]+$'
       example: "Sarah Johnson"
-    
+
     email:
       type: string
       format: email
       example: "sarah.johnson@company.com"
-    
+
     age:
       type: integer
       minimum: 18
       maximum: 100
       example: 29
-    
+
     salary:
       type: number
       minimum: 30000
@@ -654,7 +665,7 @@ User:
     salary: { type: number }    # Could be unrealistic
 ```
 
-### 3. Comprehensive Examples
+### 5. Comprehensive Examples
 
 Provide examples for different scenarios:
 
@@ -904,16 +915,22 @@ Use examples to document expected behavior:
 
 ## Conclusion
 
-Following these best practices ensures that your OpenAPI contracts work seamlessly with SpecJet's code generation and mock server features. The key principles are:
+Following these best practices ensures that your OpenAPI contracts work seamlessly with SpecJet's core features. The key principles are:
 
-1. **Consistency**: Use consistent patterns throughout your API
-2. **Clarity**: Make schemas and operations self-documenting
-3. **Reusability**: Design for code reuse and maintainability
-4. **Realism**: Provide realistic examples and constraints
-5. **Evolution**: Plan for API changes and versioning
+### Core Workflow Focus
+1. **Master the basics first**: init → generate → mock → docs
+2. **Consistency**: Use consistent patterns throughout your API
+3. **Clarity**: Make schemas and operations self-documenting
+4. **Reusability**: Design for code reuse and maintainability
+5. **Realism**: Provide realistic examples and constraints for mock data
+
+### Advanced Features
+6. **Evolution**: Plan for API changes and versioning
+7. **Validation**: Use `specjet validate` once backend is implemented
 
 For more specific guidance, see:
+- **[Getting Started](./getting-started.md)**: Master the core workflow first
+- **[Commands Reference](./commands/)**: Learn all SpecJet commands
 - **[Configuration Guide](./configuration.md)**: Customize SpecJet for your patterns
-- **[Commands Reference](./commands/)**: Use SpecJet tools effectively
 - **[Integration Guides](./integrations/)**: Framework-specific patterns
 - **[Troubleshooting](./troubleshooting.md)**: Solve common issues

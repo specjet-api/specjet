@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-09-18
+
+### Changed
+- **Documentation restructuring** - Emphasized core workflow and positioned validate as advanced feature
+  - Updated README.md to highlight core workflow: `init → generate → mock → docs`
+  - Moved `validate` command examples to "Advanced users" sections
+  - Reorganized CLI documentation with clear "Core Commands" vs "Advanced Commands" separation
+  - Added prominent warnings that `validate` is an advanced feature in all relevant documentation
+  - Updated getting-started guide to focus on 4 core commands with validate as optional advanced feature
+  - Enhanced best practices guide to emphasize core workflow mastery before advancing to validation
+  - Added consistent messaging that 90% of users should focus on core workflow first
+
 ## [0.2.0] - 2025-09-18
 
 ### Added

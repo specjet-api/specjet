@@ -22,20 +22,18 @@ const program = new Command();
 
 program
   .name('specjet')
-  .description('🚀 SpecJet - API contract collaboration tool\nDesign APIs together, build separately, integrate seamlessly')
+  .description('🚀 SpecJet - Build frontend features immediately, no waiting for backend APIs')
   .version(packageJson.version)
   .option('--verbose', 'Enable verbose output for debugging and error details')
   .option('--config <path>', 'Path to configuration file (default: ./specjet.config.js)')
   .addHelpText('after', `
 Examples:
-  $ specjet init my-api             Initialize a new project
+  $ specjet init my-api             Get started with a new project
   $ specjet generate                Generate TypeScript types from contract
-  $ specjet generate --watch        Generate and watch for changes
-  $ specjet mock                    Start mock server on port 3001
-  $ specjet mock --port 8080        Start mock server on custom port
-  $ specjet mock --scenario large   Start mock server with large dataset  
-  $ specjet docs                    Start documentation server on port 3002
-  $ specjet docs --port 8081        Start documentation server on custom port
+  $ specjet mock                    Start mock server with realistic data
+  $ specjet docs                    View your API documentation
+
+🚀 Complete workflow: init → generate → mock → build your frontend!
 
 Documentation:
   https://docs.specjet.dev
@@ -155,7 +153,7 @@ Documentation Features:
 
 // specjet validate <environment>
 program
-  .command('validate')
+  .command('validate', { hidden: true })
   .description('🔍 Validate API implementation against OpenAPI contract')
   .argument('<environment>', 'Environment to validate (staging, dev, local, etc.)')
   .option('--verbose', 'Show detailed validation output and request/response data')

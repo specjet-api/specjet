@@ -57,8 +57,16 @@ Or add scripts to your `package.json`:
     "api:generate": "specjet generate",
     "api:mock": "specjet mock",
     "api:docs": "specjet docs",
-    "api:validate": "specjet validate http://localhost:8000",
     "api:watch": "specjet generate --watch"
+  }
+}
+```
+
+**Advanced users** can also add validation:
+```json
+{
+  "scripts": {
+    "api:validate": "specjet validate http://localhost:8000"
   }
 }
 ```
@@ -114,6 +122,9 @@ my-app/
 - ✅ Realistic mock server running on `http://localhost:3001`
 - ✅ OpenAPI contract that your backend team can implement
 
+> 🚀 **Core Workflow**: `init` → `generate` → `mock` → `docs`
+> This is the main workflow for 90% of users. Focus on mastering these 4 commands first!
+
 ## Adding SpecJet to Existing Projects
 
 SpecJet integrates seamlessly with existing codebases. Here's how to add it to different types of projects:
@@ -154,8 +165,16 @@ Add convenient scripts to your `package.json`:
     "dev": "next dev",
     "api:generate": "specjet generate",
     "api:mock": "specjet mock --port 3001",
-    "api:validate": "specjet validate http://localhost:8000",
     "api:dev": "concurrently \"npm run dev\" \"npm run api:mock\""
+  }
+}
+```
+
+**Advanced users** can add validation:
+```json
+{
+  "scripts": {
+    "api:validate": "specjet validate http://localhost:8000"
   }
 }
 ```
@@ -514,6 +533,10 @@ const api = new ApiClient('https://api.yourapp.com')
 
 ## CLI Commands
 
+### Core Commands
+
+These 4 commands handle 90% of use cases. Master these first!
+
 ### `specjet init [project-name]`
 
 Initialize a new SpecJet project:
@@ -554,6 +577,10 @@ specjet docs --port 3003            # Start documentation server
 specjet docs --open                 # Generate and open in browser
 specjet docs --output ./public/     # Custom output location
 ```
+
+### Advanced Commands
+
+> ⚠️ **Advanced Feature**: This is an advanced feature. Most users should focus on the core workflow of init → generate → mock → docs
 
 ### `specjet validate <api-url>`
 
@@ -613,19 +640,21 @@ export default {
 ### For Frontend Developers:
 1. **Design Phase**: Collaborate with backend team on API contract
 2. **Development Phase**: Generate types and work with mock server
-3. **Integration Phase**: Switch to real API when backend is ready and validate compliance
-4. **Maintenance**: Contract changes automatically update your types
+3. **Documentation Phase**: Create beautiful API docs
+4. **Integration Phase**: Switch to real API when backend is ready
+5. **Advanced**: Optionally validate API compliance using `specjet validate`
 
 ### For Backend Developers:
 1. Use the same OpenAPI contract as implementation guide
-2. Backend can validate against the contract using `specjet validate`
-3. Contract serves as living documentation and tests
+2. Contract serves as living documentation and tests
+3. **Advanced**: Validate against the contract using `specjet validate`
 
 ### For Teams:
 - **Version control the contract** - treat it like any other code
-- **CI/CD integration** - validate API contracts in your pipeline  
+- **Core workflow** - focus on init → generate → mock → docs first
 - **Documentation** - contract becomes your API documentation
 - **Testing** - use mock scenarios for comprehensive frontend testing
+- **Advanced CI/CD** - validate API contracts in your pipeline using `specjet validate`
 
 ## Common Patterns
 

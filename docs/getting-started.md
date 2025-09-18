@@ -66,8 +66,7 @@ Or add scripts to your `package.json`:
     "api:generate": "specjet generate",
     "api:watch": "specjet generate --watch",
     "api:mock": "specjet mock",
-    "api:docs": "specjet docs",
-    "api:validate": "specjet validate"
+    "api:docs": "specjet docs"
   }
 }
 ```
@@ -286,7 +285,7 @@ Example output:
    🔧 Admin panel: http://localhost:3001/admin
 ```
 
-### Step 4: Generate Documentation (Optional)
+### Step 4: Generate Documentation
 
 Generate beautiful static documentation for your API:
 
@@ -318,6 +317,8 @@ You can also start a documentation server:
 ```bash
 specjet docs --port 3003 --open
 ```
+
+> 🎉 **Congratulations!** You've completed the core SpecJet workflow: `init` → `generate` → `mock` → `docs`
 
 ### Step 5: Use in Your Application
 
@@ -493,15 +494,36 @@ export function createApiClient() {
 export const api = createApiClient();
 ```
 
+## Advanced Features
+
+Once you've mastered the core workflow (init → generate → mock → docs), you can explore advanced features:
+
+### API Validation
+
+> ⚠️ **Advanced Feature**: This is for teams ready to integrate with backend APIs
+
+Once your backend is implemented, you can validate it against your contract:
+
+```bash
+# Validate your backend API matches the contract
+specjet validate http://localhost:8000
+
+# For staging/production
+specjet validate https://api-staging.myapp.com
+```
+
+This ensures your backend implementation matches the contract exactly.
+
 ## Next Steps
 
-Once you're comfortable with the basics:
+Once you're comfortable with the core workflow:
 
 1. **Explore Commands**: Learn about all CLI options in [Commands Reference](./commands/)
 2. **Customize Configuration**: See [Configuration Guide](./configuration.md)
 3. **Learn Best Practices**: Check [Best Practices](./best-practices.md)
 4. **Framework Integration**: See detailed guides in [Integrations](./integrations/)
-5. **Troubleshooting**: Common issues and solutions in [Troubleshooting](./troubleshooting.md)
+5. **Advanced Validation**: Use `specjet validate` for API compliance testing
+6. **Troubleshooting**: Common issues and solutions in [Troubleshooting](./troubleshooting.md)
 
 ## Common First-Time Issues
 

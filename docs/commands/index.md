@@ -10,31 +10,42 @@ description: "Complete reference for all SpecJet CLI commands"
 
 This section contains detailed documentation for all SpecJet CLI commands. Each command includes usage examples, options, and configuration details.
 
-## Available Commands
+## Core Commands
+
+These 4 commands handle 90% of use cases. **Master these first!**
 
 - **[init](./init.html)** - Initialize a new SpecJet project
 - **[generate](./generate.html)** - Generate TypeScript types and API client from OpenAPI contract
 - **[mock](./mock.html)** - Start a mock server with realistic data
 - **[docs](./docs.html)** - Generate API documentation
-- **[validate](./validate.html)** - Validate OpenAPI contract for compliance and best practices
+
+## Advanced Commands
+
+> ⚠️ **Advanced Feature**: This is an advanced feature. Most users should focus on the core workflow of init → generate → mock → docs
+
+- **[validate](./validate.html)** - Validate API implementation against your OpenAPI contract
 
 ## Quick Reference
 
+**Core Workflow** (start here!):
 ```bash
-# Initialize new project
+# 1. Initialize new project
 specjet init my-project
 
-# Generate TypeScript code
+# 2. Generate TypeScript code
 specjet generate
 
-# Start mock server
+# 3. Start mock server
 specjet mock
 
-# Generate documentation
+# 4. Generate documentation
 specjet docs
+```
 
-# Validate contract
-specjet validate
+**Advanced** (after mastering core workflow):
+```bash
+# Validate API implementation
+specjet validate http://localhost:8000
 ```
 
 For detailed information about each command, click on the command name above or use the navigation sidebar.
