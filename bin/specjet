@@ -61,8 +61,8 @@ Examples:
 What this creates:
   • specjet.config.js     Configuration file
   • api-contract.yaml     OpenAPI contract template
-  • src/types/            Generated TypeScript types (gitignored)
-  • src/api/              Generated API client (gitignored)
+  • src/types/            Generated TypeScript types directory
+  • src/api/              Generated API client directory
 `)
   .action(commands.init);
 

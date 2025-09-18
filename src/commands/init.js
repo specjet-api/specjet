@@ -2,23 +2,49 @@ import fs from 'fs-extra';
 import path from 'path';
 import { ErrorHandler, SpecJetError } from '../core/errors.js';
 
-const DEFAULT_CONFIG = `export default {
+const DEFAULT_CONFIG_ESM = `export default {
   // Contract file location
   contract: './api-contract.yaml',
-  
+
   // Output directories
   output: {
     types: './src/types',
     client: './src/api'
   },
-  
+
   // Mock server settings
   mock: {
     port: 3001,
     cors: true,
     scenario: 'realistic'
   },
-  
+
+  // TypeScript generation options
+  typescript: {
+    strictMode: true,
+    exportType: 'named',
+    clientName: 'ApiClient'
+  },
+};
+`;
+
+const DEFAULT_CONFIG_COMMONJS = `module.exports = {
+  // Contract file location
+  contract: './api-contract.yaml',
+
+  // Output directories
+  output: {
+    types: './src/types',
+    client: './src/api'
+  },
+
+  // Mock server settings
+  mock: {
+    port: 3001,
+    cors: true,
+    scenario: 'realistic'
+  },
+
   // TypeScript generation options
   typescript: {
     strictMode: true,
@@ -296,9 +322,11 @@ specjet mock --port 3002
 
 Edit \`specjet.config.js\` to customize:
 - Output directories
-- TypeScript generation options  
+- TypeScript generation options
 - Mock server settings
 - Authentication requirements
+
+Note: The config file syntax (ESM vs CommonJS) is automatically detected based on your project setup.
 
 ## Next Steps
 
@@ -312,56 +340,32 @@ Edit \`specjet.config.js\` to customize:
 **Need help?** Visit [SpecJet Documentation](https://docs.specjet.dev) or run \`specjet --help\`
 `;
 
-const GITIGNORE_TEMPLATE = `# SpecJet generated files (optional - you can commit these if you prefer)
-# src/types/
-# src/api/
+/**
+ * Detects whether the target project uses ES modules or CommonJS
+ * @param {string} targetDir - The target directory to check
+ * @returns {Promise<'esm'|'commonjs'>} The detected module system
+ */
+async function detectProjectModuleSystem(targetDir) {
+  const packageJsonPath = path.join(targetDir, 'package.json');
 
-# Dependencies
-node_modules/
+  try {
+    if (await fs.pathExists(packageJsonPath)) {
+      const packageJsonContent = await fs.readFile(packageJsonPath, 'utf8');
+      const packageJson = JSON.parse(packageJsonContent);
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+      // Check if package.json has "type": "module"
+      if (packageJson.type === 'module') {
+        return 'esm';
+      }
+    }
+  } catch {
+    // If we can't read or parse package.json, default to CommonJS
+    console.log('⚠️  Could not read package.json, defaulting to CommonJS config syntax');
+  }
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Build output
-dist/
-build/
-out/
-
-# Testing
-coverage/
-.nyc_output/
-
-# Misc
-.tmp/
-temp/
-`;
+  // Default to CommonJS (most common, especially for projects without package.json)
+  return 'commonjs';
+}
 
 async function initCommand(projectName, options = {}) {
   try {
@@ -415,7 +419,6 @@ async function initCommand(projectName, options = {}) {
     const contractPath = path.join(targetDir, 'api-contract.yaml');
     const configPath = path.join(targetDir, 'specjet.config.js');
     const readmePath = path.join(targetDir, 'README.md');
-    const gitignorePath = path.join(targetDir, '.gitignore');
     
     // Contract file
     if (!await fs.pathExists(contractPath) || options.force) {
@@ -428,8 +431,18 @@ async function initCommand(projectName, options = {}) {
     
     // Config file
     if (!await fs.pathExists(configPath) || options.force) {
-      await fs.writeFile(configPath, DEFAULT_CONFIG, 'utf8');
+      // Detect project module system to use appropriate config syntax
+      const moduleSystem = await detectProjectModuleSystem(targetDir);
+      const configTemplate = moduleSystem === 'esm' ? DEFAULT_CONFIG_ESM : DEFAULT_CONFIG_COMMONJS;
+
+      await fs.writeFile(configPath, configTemplate, 'utf8');
       filesToCreate.push('⚙️  specjet.config.js');
+
+      if (moduleSystem === 'commonjs') {
+        console.log('   📝 Using CommonJS syntax (detected project uses CommonJS)');
+      } else {
+        console.log('   📝 Using ESM syntax (detected project uses ES modules)');
+      }
     } else {
       console.log('⚙️  specjet.config.js (exists, skipped)');
     }
@@ -443,13 +456,6 @@ async function initCommand(projectName, options = {}) {
       console.log('📖 README.md (exists, skipped)');
     }
     
-    // .gitignore file (only create if it doesn't exist)
-    if (!await fs.pathExists(gitignorePath)) {
-      await fs.writeFile(gitignorePath, GITIGNORE_TEMPLATE, 'utf8');
-      filesToCreate.push('🙈 .gitignore');
-    } else {
-      console.log('🙈 .gitignore (exists, skipped)');
-    }
     
     // Create src directory structure
     await fs.ensureDir(path.join(targetDir, 'src', 'types'));
