@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import Logger from './logger.js';
 
 /**
  * Custom error class for SpecJet CLI with enhanced error information
@@ -318,4 +319,180 @@ export class ErrorHandler {
   }
 }
 
-export default { SpecJetError, ErrorHandler };
+/**
+ * Specific error class for validation failures
+ * Extends SpecJetError with validation-specific context
+ */
+export class ValidationError extends SpecJetError {
+  constructor(message, code, details = {}) {
+    super(message, code, null, []);
+    this.name = 'ValidationError';
+    this.details = details;
+    this.severity = details.severity || 'error';
+    this.field = details.field || null;
+    this.expectedValue = details.expectedValue || null;
+    this.actualValue = details.actualValue || null;
+  }
+
+  /**
+   * Create a validation error for missing required fields
+   * @param {string} field - The missing field
+   * @param {string} location - Where the field should be (e.g., 'request body', 'response')
+   * @returns {ValidationError}
+   */
+  static missingField(field, location = 'data') {
+    return new ValidationError(
+      `Missing required field: ${field}`,
+      'VALIDATION_MISSING_FIELD',
+      {
+        field,
+        location,
+        severity: 'error',
+        suggestion: `Add the required field '${field}' to the ${location}`
+      }
+    );
+  }
+
+  /**
+   * Create a validation error for type mismatches
+   * @param {string} field - The field with type mismatch
+   * @param {string} expected - Expected type
+   * @param {string} actual - Actual type
+   * @returns {ValidationError}
+   */
+  static typeMismatch(field, expected, actual) {
+    return new ValidationError(
+      `Type mismatch for field '${field}': expected ${expected}, got ${actual}`,
+      'VALIDATION_TYPE_MISMATCH',
+      {
+        field,
+        expectedValue: expected,
+        actualValue: actual,
+        severity: 'error',
+        suggestion: `Change the type of '${field}' to ${expected}`
+      }
+    );
+  }
+
+  /**
+   * Create a validation error for schema violations
+   * @param {string} path - JSON path to the violation
+   * @param {string} message - Schema violation message
+   * @param {object} context - Additional context
+   * @returns {ValidationError}
+   */
+  static schemaViolation(path, message, context = {}) {
+    return new ValidationError(
+      `Schema violation at '${path}': ${message}`,
+      'VALIDATION_SCHEMA_VIOLATION',
+      {
+        field: path,
+        severity: context.severity || 'error',
+        ...context
+      }
+    );
+  }
+}
+
+/**
+ * Enhanced error handler with structured logging
+ */
+export class EnhancedErrorHandler extends ErrorHandler {
+  constructor(logger = null) {
+    super();
+    this.logger = logger || new Logger({ context: 'ErrorHandler' });
+  }
+
+  /**
+   * Handle errors with structured logging
+   * @param {Error} error - The error to handle
+   * @param {Object} [options={}] - Error handling options
+   */
+  handle(error, options = {}) {
+    const verbose = options.verbose || false;
+    const context = options.context || {};
+
+    // Log the error with structured logging
+    this.logger.error('Error occurred', error, {
+      code: error.code,
+      name: error.name,
+      verbose,
+      ...context
+    });
+
+    if (error instanceof SpecJetError) {
+      this.handleSpecJetError(error, verbose);
+    } else if (error instanceof ValidationError) {
+      this.handleValidationError(error, verbose);
+    } else {
+      // Use parent class method for other error types
+      super.handle(error, options);
+    }
+  }
+
+  /**
+   * Handle validation-specific errors
+   * @param {ValidationError} error - Validation error to handle
+   * @param {boolean} verbose - Show detailed error information
+   */
+  handleValidationError(error, verbose) {
+    console.error(`\n❌ Validation Error: ${error.message}`);
+
+    if (error.field) {
+      console.error(`   Field: ${error.field}`);
+    }
+
+    if (error.expectedValue && error.actualValue) {
+      console.error(`   Expected: ${error.expectedValue}`);
+      console.error(`   Actual: ${error.actualValue}`);
+    }
+
+    if (error.details.suggestion) {
+      console.error(`\n💡 Suggestion: ${error.details.suggestion}`);
+    }
+
+    if (verbose && error.details) {
+      console.error('\n🔍 Additional details:');
+      console.error(JSON.stringify(error.details, null, 2));
+    }
+  }
+
+  /**
+   * Create an error context for tracking
+   * @param {string} operation - The operation being performed
+   * @param {object} metadata - Additional metadata
+   * @returns {object} Error context
+   */
+  createErrorContext(operation, metadata = {}) {
+    return {
+      operation,
+      timestamp: new Date().toISOString(),
+      ...metadata
+    };
+  }
+
+  /**
+   * Handle async operations with enhanced error context
+   * @param {Function} fn - Async function to execute
+   * @param {string} operation - Operation name for context
+   * @param {Object} [options={}] - Error handling options
+   * @returns {Promise<any>} Result of the function
+   */
+  async withEnhancedErrorHandling(fn, operation, options = {}) {
+    const context = this.createErrorContext(operation, options.context);
+
+    try {
+      return await fn();
+    } catch (error) {
+      this.handle(error, { ...options, context });
+
+      if (options.rethrow) {
+        throw error;
+      }
+
+      process.exit(options.exitCode || 1);
+    }
+  }
+}
+
+export default { SpecJetError, ErrorHandler, ValidationError, EnhancedErrorHandler };

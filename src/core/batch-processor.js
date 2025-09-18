@@ -1,6 +1,114 @@
 import ValidationResults from './validation-results.js';
 
 /**
+ * Circuit breaker pattern implementation for fault tolerance
+ */
+class CircuitBreaker {
+  constructor(options = {}) {
+    this.failureThreshold = options.failureThreshold || 5;
+    this.resetTimeout = options.resetTimeout || 30000;
+    this.monitoringPeriod = options.monitoringPeriod || 10000;
+
+    this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
+    this.failures = 0;
+    this.lastFailureTime = null;
+    this.successCount = 0;
+  }
+
+  async execute(operation) {
+    if (this.state === 'OPEN') {
+      if (Date.now() - this.lastFailureTime > this.resetTimeout) {
+        this.state = 'HALF_OPEN';
+        this.successCount = 0;
+      } else {
+        throw new Error('Circuit breaker is OPEN');
+      }
+    }
+
+    try {
+      const result = await operation();
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      this.onFailure();
+      throw error;
+    }
+  }
+
+  onSuccess() {
+    this.failures = 0;
+    if (this.state === 'HALF_OPEN') {
+      this.successCount++;
+      if (this.successCount >= 3) {
+        this.state = 'CLOSED';
+      }
+    }
+  }
+
+  onFailure() {
+    this.failures++;
+    this.lastFailureTime = Date.now();
+
+    if (this.state === 'HALF_OPEN') {
+      // In HALF_OPEN state, any failure immediately opens the circuit
+      this.state = 'OPEN';
+    } else if (this.failures >= this.failureThreshold) {
+      this.state = 'OPEN';
+    }
+  }
+
+  getState() {
+    return this.state;
+  }
+
+  reset() {
+    this.state = 'CLOSED';
+    this.failures = 0;
+    this.lastFailureTime = null;
+    this.successCount = 0;
+  }
+}
+
+/**
+ * Token bucket rate limiter implementation
+ */
+class RateLimiter {
+  constructor(requestsPerSecond = 10) {
+    this.requestsPerSecond = requestsPerSecond;
+    this.tokens = requestsPerSecond;
+    this.lastRefill = Date.now();
+  }
+
+  async waitForToken() {
+    this.refillTokens();
+
+    if (this.tokens >= 1) {
+      this.tokens--;
+      return;
+    }
+
+    // Wait for next token
+    const waitTime = (1 / this.requestsPerSecond) * 1000;
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+    return this.waitForToken();
+  }
+
+  refillTokens() {
+    const now = Date.now();
+    const timePassed = now - this.lastRefill;
+    const tokensToAdd = (timePassed / 1000) * this.requestsPerSecond;
+
+    this.tokens = Math.min(this.requestsPerSecond, this.tokens + tokensToAdd);
+    this.lastRefill = now;
+  }
+
+  setRate(requestsPerSecond) {
+    this.requestsPerSecond = requestsPerSecond;
+    this.tokens = Math.min(requestsPerSecond, this.tokens);
+  }
+}
+
+/**
  * Handles batch processing of validation operations
  * Manages concurrency, batching, and coordination
  */
@@ -11,6 +119,22 @@ class ValidationBatchProcessor {
     this.delay = options.delay || 100;
     this.retryHandler = options.retryHandler;
     this.progressCallback = options.progressCallback;
+
+    // Initialize rate limiter and circuit breaker
+    this.rateLimiter = new RateLimiter(options.requestsPerSecond || 10);
+    this.circuitBreaker = new CircuitBreaker({
+      failureThreshold: options.circuitBreakerFailureThreshold || 5,
+      resetTimeout: options.circuitBreakerResetTimeout || 30000,
+      ...options.circuitBreakerOptions
+    });
+
+    // Performance monitoring
+    this.stats = {
+      requestsSent: 0,
+      requestsFailed: 0,
+      circuitBreakerTripped: 0,
+      averageResponseTime: 0
+    };
   }
 
   /**
@@ -81,19 +205,34 @@ class ValidationBatchProcessor {
    * @returns {Promise<object>} Validation result
    */
   async processEndpoint(endpoint, options) {
-    if (this.retryHandler) {
-      return await this.retryHandler.withRetry(
-        () => this.validator.validateEndpoint(endpoint.path, endpoint.method, options),
-        {
-          path: endpoint.path,
-          method: endpoint.method,
-          onRetry: (attempt, maxRetries, error, backoffTime) => {
-            console.warn(`⚠️  Retry ${attempt}/${maxRetries} for ${endpoint.method} ${endpoint.path} (${backoffTime}ms delay)`);
-          }
+    const startTime = Date.now();
+
+    try {
+      // Wait for rate limiter token
+      await this.rateLimiter.waitForToken();
+
+      // Execute with circuit breaker protection
+      const result = await this.circuitBreaker.execute(async () => {
+        if (this.retryHandler) {
+          return await this.retryHandler.withRetry(
+            () => this.validator.validateEndpoint(endpoint.path, endpoint.method, options),
+            {
+              path: endpoint.path,
+              method: endpoint.method,
+              onRetry: (attempt, maxRetries, error, backoffTime) => {
+                console.warn(`⚠️  Retry ${attempt}/${maxRetries} for ${endpoint.method} ${endpoint.path} (${backoffTime}ms delay)`);
+              }
+            }
+          );
+        } else {
+          return await this.validator.validateEndpoint(endpoint.path, endpoint.method, options);
         }
-      );
-    } else {
-      const result = await this.validator.validateEndpoint(endpoint.path, endpoint.method, options);
+      });
+
+      // Update stats
+      this.stats.requestsSent++;
+      const responseTime = Date.now() - startTime;
+      this.updateAverageResponseTime(responseTime);
 
       // Call progress callback if provided
       if (this.progressCallback) {
@@ -101,6 +240,33 @@ class ValidationBatchProcessor {
       }
 
       return result;
+
+    } catch (error) {
+      this.stats.requestsFailed++;
+
+      if (error.message === 'Circuit breaker is OPEN') {
+        this.stats.circuitBreakerTripped++;
+        console.warn(`🔌 Circuit breaker OPEN for ${endpoint.method} ${endpoint.path}`);
+
+        // Return circuit breaker error result
+        return ValidationResults.createResult(
+          endpoint.path,
+          endpoint.method,
+          false,
+          null,
+          [ValidationResults.createIssue(
+            'circuit_breaker_open',
+            null,
+            'Circuit breaker is open due to repeated failures',
+            {
+              circuitBreakerState: this.circuitBreaker.getState(),
+              failureThreshold: this.circuitBreaker.failureThreshold
+            }
+          )]
+        );
+      }
+
+      throw error;
     }
   }
 
@@ -140,12 +306,34 @@ class ValidationBatchProcessor {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  updateAverageResponseTime(responseTime) {
+    if (this.stats.requestsSent === 1) {
+      this.stats.averageResponseTime = responseTime;
+    } else {
+      // Calculate running average
+      this.stats.averageResponseTime = (
+        (this.stats.averageResponseTime * (this.stats.requestsSent - 1)) + responseTime
+      ) / this.stats.requestsSent;
+    }
+  }
+
   getConfig() {
     return {
       concurrency: this.concurrency,
       delay: this.delay,
       hasRetryHandler: !!this.retryHandler,
-      hasProgressCallback: !!this.progressCallback
+      hasProgressCallback: !!this.progressCallback,
+      rateLimiter: {
+        requestsPerSecond: this.rateLimiter.requestsPerSecond,
+        currentTokens: this.rateLimiter.tokens
+      },
+      circuitBreaker: {
+        state: this.circuitBreaker.getState(),
+        failureThreshold: this.circuitBreaker.failureThreshold,
+        resetTimeout: this.circuitBreaker.resetTimeout,
+        failures: this.circuitBreaker.failures
+      },
+      stats: { ...this.stats }
     };
   }
 
@@ -161,6 +349,12 @@ class ValidationBatchProcessor {
     }
     if (newOptions.progressCallback !== undefined) {
       this.progressCallback = newOptions.progressCallback;
+    }
+    if (newOptions.requestsPerSecond !== undefined) {
+      this.rateLimiter.setRate(newOptions.requestsPerSecond);
+    }
+    if (newOptions.resetCircuitBreaker) {
+      this.circuitBreaker.reset();
     }
   }
 
@@ -218,3 +412,4 @@ class ValidationBatchProcessor {
 }
 
 export default ValidationBatchProcessor;
+export { CircuitBreaker, RateLimiter };

@@ -1,6 +1,7 @@
 import { SpecJetError } from './errors.js';
 import { URL } from 'url';
-import fetch, { AbortError } from 'node-fetch';
+import https from 'https';
+import http from 'http';
 
 class HttpClient {
   constructor(baseURL, defaultHeaders = {}, options = {}) {
@@ -12,6 +13,27 @@ class HttpClient {
     };
     this.defaultTimeout = options.timeout || 10000; // 10 seconds default
     this.maxRetries = options.maxRetries || 2;
+    this.agent = this.createAgent(options);
+  }
+
+  createAgent(options) {
+    const agentOptions = {
+      keepAlive: true,
+      keepAliveMsecs: 1000,
+      maxSockets: 10,
+      maxFreeSockets: 5,
+      timeout: options.timeout || 10000,
+      freeSocketTimeout: 30000, // Free socket timeout
+      ...options.agentOptions
+    };
+
+    // Create both HTTP and HTTPS agents to handle different URLs
+    this.httpAgent = new http.Agent(agentOptions);
+    this.httpsAgent = new https.Agent(agentOptions);
+
+    return this.baseURL && this.baseURL.startsWith('https:')
+      ? this.httpsAgent
+      : this.httpAgent;
   }
 
   async makeRequest(path, method = 'GET', options = {}) {
@@ -24,6 +46,7 @@ class HttpClient {
 
     // Construct full URL
     const url = this.buildURL(path, query);
+    const parsedUrl = new URL(url);
 
     // Merge headers
     const requestHeaders = {
@@ -36,157 +59,173 @@ class HttpClient {
       delete requestHeaders['Content-Type'];
     }
 
-    const requestOptions = {
-      method: method.toUpperCase(),
-      headers: requestHeaders
-    };
-
-    // Add body for non-GET requests
+    // Prepare request body
+    let requestBody = null;
     if (body && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
       if (typeof body === 'object') {
-        requestOptions.body = JSON.stringify(body);
+        requestBody = JSON.stringify(body);
+        requestHeaders['Content-Length'] = Buffer.byteLength(requestBody);
       } else {
-        requestOptions.body = body;
+        requestBody = body;
+        requestHeaders['Content-Length'] = Buffer.byteLength(requestBody);
       }
     }
 
+    const requestOptions = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: method.toUpperCase(),
+      headers: requestHeaders,
+      agent: parsedUrl.protocol === 'https:' ? this.httpsAgent : this.httpAgent,
+      timeout: parseInt(timeout, 10) || 30000
+    };
+
     const startTime = Date.now();
 
-    try {
+    return new Promise((resolve, reject) => {
       console.log(`🌐 ${method.toUpperCase()} ${url}`);
 
-      // Use Promise.race to implement timeout
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), timeout)
-      );
+      const client = parsedUrl.protocol === 'https:' ? https : http;
 
-      const response = await Promise.race([
-        fetch(url, requestOptions),
-        timeoutPromise
-      ]);
+      const req = client.request(requestOptions, (res) => {
+        const responseTime = Date.now() - startTime;
+        console.log(`✅ ${res.statusCode} ${res.statusMessage} (${responseTime}ms)`);
 
-      const responseTime = Date.now() - startTime;
+        this.processNativeResponse(res, responseTime, url)
+          .then(resolve)
+          .catch(reject);
+      });
 
-      const result = await this.processResponse(response, responseTime);
-
-      console.log(`✅ ${response.status} ${response.statusText} (${responseTime}ms)`);
-
-      return result;
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
-
-      if (error.message === 'Request timeout') {
+      // Handle request timeout
+      req.setTimeout(parseInt(timeout, 10) || 30000, () => {
+        req.destroy();
         console.error(`⏰ Request timeout after ${timeout}ms`);
-        throw new SpecJetError(
+        reject(new SpecJetError(
           `Request timeout after ${timeout}ms`,
           'REQUEST_TIMEOUT',
-          error,
+          null,
           [
             'Increase the timeout value',
             'Check if the API server is responding',
             'Verify network connectivity'
           ]
-        );
+        ));
+      });
+
+      // Handle request errors
+      req.on('error', (error) => {
+        const responseTime = Date.now() - startTime;
+
+        if (error.code === 'ENOTFOUND') {
+          console.error(`🔍 DNS lookup failed for ${url}`);
+          reject(new SpecJetError(
+            `Cannot resolve hostname: ${parsedUrl.hostname}`,
+            'DNS_LOOKUP_FAILED',
+            error,
+            [
+              'Check the base URL in your configuration',
+              'Verify internet connectivity',
+              'Ensure the hostname is correct'
+            ]
+          ));
+        } else if (error.code === 'ECONNREFUSED') {
+          console.error(`🚫 Connection refused to ${url}`);
+          reject(new SpecJetError(
+            `Connection refused to ${url}`,
+            'CONNECTION_REFUSED',
+            error,
+            [
+              'Check if the API server is running',
+              'Verify the port number is correct',
+              'Check firewall settings'
+            ]
+          ));
+        } else {
+          console.error(`❌ Request failed: ${error.message} (${responseTime}ms)`);
+          reject(new SpecJetError(
+            `HTTP request failed: ${error.message}`,
+            'HTTP_REQUEST_FAILED',
+            error,
+            [
+              'Check your internet connection',
+              'Verify the API endpoint is accessible',
+              'Check authentication credentials'
+            ]
+          ));
+        }
+      });
+
+      // Write request body if present
+      if (requestBody) {
+        req.write(requestBody);
       }
 
-      if (error instanceof AbortError) {
-        console.error(`🚫 Request aborted after ${responseTime}ms`);
-        throw new SpecJetError(
-          'Request was aborted',
-          'REQUEST_ABORTED',
-          error,
-          [
-            'Check if the API endpoint exists',
-            'Verify the request parameters',
-            'Try increasing the timeout'
-          ]
-        );
-      }
-
-      if (error.code === 'ENOTFOUND') {
-        console.error(`🔍 DNS lookup failed for ${url}`);
-        throw new SpecJetError(
-          `Cannot resolve hostname: ${new URL(url).hostname}`,
-          'DNS_LOOKUP_FAILED',
-          error,
-          [
-            'Check the base URL in your configuration',
-            'Verify internet connectivity',
-            'Ensure the hostname is correct'
-          ]
-        );
-      }
-
-      if (error.code === 'ECONNREFUSED') {
-        console.error(`🚫 Connection refused to ${url}`);
-        throw new SpecJetError(
-          `Connection refused to ${url}`,
-          'CONNECTION_REFUSED',
-          error,
-          [
-            'Check if the API server is running',
-            'Verify the port number is correct',
-            'Check firewall settings'
-          ]
-        );
-      }
-
-      console.error(`❌ Request failed: ${error.message} (${responseTime}ms)`);
-      throw new SpecJetError(
-        `HTTP request failed: ${error.message}`,
-        'HTTP_REQUEST_FAILED',
-        error,
-        [
-          'Check your internet connection',
-          'Verify the API endpoint is accessible',
-          'Check authentication credentials'
-        ]
-      );
-    }
+      req.end();
+    });
   }
 
-  async processResponse(response, responseTime) {
-    const headers = {};
-    response.headers.forEach((value, key) => {
-      headers[key.toLowerCase()] = value;
-    });
+  async processNativeResponse(response, responseTime, url) {
+    return new Promise((resolve, reject) => {
+      const headers = {};
+      Object.keys(response.headers).forEach(key => {
+        headers[key.toLowerCase()] = response.headers[key];
+      });
 
-    let data = null;
-    let parseError = null;
+      const chunks = [];
 
-    // Try to parse response body
-    try {
-      const contentType = headers['content-type'] || '';
-      const text = await response.text();
+      response.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
 
-      if (text) {
-        if (contentType.includes('application/json')) {
-          data = JSON.parse(text);
-        } else {
+      response.on('end', () => {
+        const rawData = Buffer.concat(chunks);
+        const text = rawData.toString();
+
+        let data = null;
+        let parseError = null;
+
+        // Try to parse response body
+        try {
+          const contentType = headers['content-type'] || '';
+
+          if (text) {
+            if (contentType.includes('application/json')) {
+              data = JSON.parse(text);
+            } else {
+              data = text;
+            }
+          }
+        } catch (error) {
+          parseError = error;
           data = text;
         }
-      }
-    } catch (error) {
-      parseError = error;
-      // If JSON parsing fails, keep the raw text
-      data = await response.text().catch(() => null);
-    }
 
-    const result = {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-      data,
-      responseTime,
-      url: response.url
-    };
+        const result = {
+          status: response.statusCode,
+          statusText: response.statusMessage,
+          headers,
+          data,
+          responseTime,
+          url
+        };
 
-    // Add parse error info if present
-    if (parseError) {
-      result.parseError = parseError.message;
-    }
+        // Add parse error info if present
+        if (parseError) {
+          result.parseError = parseError.message;
+        }
 
-    return result;
+        resolve(result);
+      });
+
+      response.on('error', (error) => {
+        reject(new SpecJetError(
+          `Response processing failed: ${error.message}`,
+          'RESPONSE_PROCESSING_FAILED',
+          error
+        ));
+      });
+    });
   }
 
   buildURL(path, query = {}) {
@@ -299,6 +338,15 @@ class HttpClient {
       defaultTimeout: this.defaultTimeout,
       maxRetries: this.maxRetries
     };
+  }
+
+  cleanup() {
+    if (this.httpAgent && this.httpAgent.destroy) {
+      this.httpAgent.destroy();
+    }
+    if (this.httpsAgent && this.httpsAgent.destroy) {
+      this.httpsAgent.destroy();
+    }
   }
 }
 

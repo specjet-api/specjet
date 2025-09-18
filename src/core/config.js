@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import { resolve } from 'path';
 import { pathToFileURL, URL } from 'url';
 import { SpecJetError } from './errors.js';
+import SecureConfigValidator from './secure-config-validator.js';
 
 /**
  * Configuration loader and validator for SpecJet CLI
@@ -64,7 +65,12 @@ class ConfigLoader {
       const mergedConfig = this.mergeConfigs(defaultConfig, userConfig);
 
       // Apply environment variable substitution
-      return this.applyEnvironmentVariables(mergedConfig);
+      const configWithEnvVars = this.applyEnvironmentVariables(mergedConfig);
+
+      // Perform security validation
+      SecureConfigValidator.validateConfigSecurity(configWithEnvVars);
+
+      return configWithEnvVars;
     } catch (error) {
       throw new SpecJetError(
         `Failed to load configuration from ${configPath}`,

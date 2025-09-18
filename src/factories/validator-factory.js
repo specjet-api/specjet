@@ -135,10 +135,9 @@ class ValidatorFactory {
   /**
    * Create HTTP client for environment
    * @param {object} environment - Environment configuration
-   * @param {object} options - HTTP client options
    * @returns {HttpClient} Configured HTTP client
    */
-  createHttpClient(environment, _options = {}) {
+  createHttpClient(environment) {
     const isCI = process.env.CI || !process.stdin.isTTY;
 
     if (isCI) {

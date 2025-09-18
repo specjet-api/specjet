@@ -57,7 +57,6 @@ describe('Complete Validation Workflow Integration', () => {
       // Mock environment variable
       process.env.API_TOKEN = 'test-token-123';
 
-
       // Mock all the dependencies
       const mockConfigLoader = {
         loadConfig: vi.fn().mockResolvedValue(mockConfig),
@@ -77,15 +76,52 @@ describe('Complete Validation Workflow Integration', () => {
         validateEnvironment: vi.fn().mockResolvedValue()
       };
 
+      // Mock successful validation results
+      const mockSuccessfulResults = [
+        {
+          endpoint: '/users',
+          method: 'GET',
+          success: true,
+          issues: [],
+          statusCode: 200,
+          responseTime: 150
+        },
+        {
+          endpoint: '/users/{id}',
+          method: 'GET',
+          success: true,
+          issues: [],
+          statusCode: 200,
+          responseTime: 100
+        }
+      ];
 
-      // Instead of mocking imports, we rely on dependency injection
+      // Mock validation system that returns successful results
+      const mockValidationSystem = {
+        validator: { endpoints: ['GET /users', 'GET /users/{id}'] },
+        initialize: vi.fn().mockResolvedValue(),
+        validateAllEndpoints: vi.fn().mockResolvedValue(mockSuccessfulResults),
+        getStatistics: vi.fn().mockReturnValue({
+          total: 2,
+          passed: 2,
+          failed: 0,
+          successRate: 100
+        }),
+        generateReport: vi.fn().mockReturnValue('Test summary'),
+        cleanup: vi.fn().mockResolvedValue()
+      };
+
+      // Mock validator factory that returns our mock validation system
+      const mockValidatorFactory = {
+        createValidationSystem: vi.fn().mockReturnValue(mockValidationSystem)
+      };
 
       // Create validation service with mocked dependencies
       const validationServiceWithMocks = new ValidationService({
         configLoader: mockConfigLoader,
         contractFinder: mockContractFinder,
         envValidator: mockEnvValidator,
-        validatorFactory: validatorFactory,
+        validatorFactory: mockValidatorFactory,
         serviceContainer: serviceContainer,
         logger: mockLogger
       });
@@ -96,7 +132,7 @@ describe('Complete Validation Workflow Integration', () => {
         output: 'console'
       });
 
-      // Verify workflow execution - only check the mocks that are actually used
+      // Verify workflow execution
       expect(mockConfigLoader.loadConfig).toHaveBeenCalled();
       expect(mockConfigLoader.validateConfig).toHaveBeenCalledWith(mockConfig);
       expect(mockEnvValidator.validateEnvironment).toHaveBeenCalledWith(
@@ -104,20 +140,18 @@ describe('Complete Validation Workflow Integration', () => {
         'staging'
       );
       expect(mockContractFinder.findContract).toHaveBeenCalledWith(mockConfig, undefined);
-
-      // Note: contractParser and httpClient are not mocked because the validator uses real instances
+      expect(mockValidatorFactory.createValidationSystem).toHaveBeenCalled();
+      expect(mockValidationSystem.initialize).toHaveBeenCalledWith('./tests/fixtures/sample-contract.yaml');
+      expect(mockValidationSystem.validateAllEndpoints).toHaveBeenCalled();
 
       // Verify result structure - the workflow should complete successfully
-      // even if individual endpoints fail due to network issues
       expect(result.environment).toBe('staging');
       expect(result.results).toBeDefined();
       expect(result.statistics).toBeDefined();
-
-      // The workflow completed successfully (found contract, parsed it, attempted validation)
       expect(result.success).toBe(true);
       expect(result.exitCode).toBe(0);
 
-      // We should have 2 endpoint results (even if they failed due to network)
+      // We should have 2 endpoint results
       expect(result.results).toHaveLength(2);
 
       // Check that we attempted to validate the expected endpoints
@@ -125,11 +159,11 @@ describe('Complete Validation Workflow Integration', () => {
       expect(endpointPaths).toContain('/users');
       expect(endpointPaths).toContain('/users/{id}');
 
-      // All requests should fail due to network issues in test environment
+      // All requests should succeed with our mocked responses
       result.results.forEach(result => {
-        expect(result.success).toBe(false);
+        expect(result.success).toBe(true);
         expect(result.issues).toBeDefined();
-        expect(result.issues.length).toBeGreaterThan(0);
+        expect(result.issues.length).toBe(0);
       });
 
       // Cleanup
@@ -143,34 +177,32 @@ describe('Complete Validation Workflow Integration', () => {
         }
       };
 
-      const mockContract = {
-        info: { title: 'Test API', version: '1.0.0' },
-        endpoints: [
-          {
-            path: '/users',
-            method: 'GET',
-            responses: {
-              '200': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    users: { type: 'array' }
-                  },
-                  required: ['users']
-                }
-              }
-            }
-          }
-        ]
-      };
-
       // Mock API response that doesn't match schema
       const invalidApiResponse = {
         status: 200,
         data: { items: [] }, // Wrong property name, should be 'users'
-        headers: {},
+        headers: { 'content-type': 'application/json' },
         responseTime: 100
       };
+
+      // Mock HTTP client that returns schema-invalid responses
+      const mockHttpClient = {
+        makeRequest: vi.fn().mockResolvedValue(invalidApiResponse),
+        testConnection: vi.fn().mockResolvedValue(true)
+      };
+
+      // Mock HTTP client factory to return our mocked client
+      const mockHttpClientFactory = {
+        createDefaultClient: vi.fn().mockReturnValue(mockHttpClient),
+        createCIClient: vi.fn().mockReturnValue(mockHttpClient),
+        getStats: vi.fn().mockReturnValue({ totalClients: 1, activeConnections: 0 })
+      };
+
+      // Create validator factory with mocked HTTP client factory
+      const validatorFactoryWithMocks = new ValidatorFactory({
+        httpClientFactory: mockHttpClientFactory,
+        serviceContainer: serviceContainer
+      });
 
       const mockConfigLoader = {
         loadConfig: vi.fn().mockResolvedValue(mockConfig),
@@ -188,27 +220,11 @@ describe('Complete Validation Workflow Integration', () => {
         validateEnvironment: vi.fn().mockResolvedValue()
       };
 
-      const mockHttpClient = {
-        makeRequest: vi.fn().mockResolvedValue(invalidApiResponse),
-        testConnection: vi.fn().mockResolvedValue(true)
-      };
-
-      const mockContractParser = {
-        parseContract: vi.fn().mockResolvedValue(mockContract)
-      };
-
-      vi.doMock('#src/core/http-client.js', () => ({ default: class MockHttpClient {
-        constructor() { return mockHttpClient; }
-      }}));
-      vi.doMock('#src/core/parser.js', () => ({ default: class MockContractParser {
-        parseContract = mockContractParser.parseContract;
-      }}));
-
       const validationServiceWithMocks = new ValidationService({
         configLoader: mockConfigLoader,
         contractFinder: mockContractFinder,
         envValidator: mockEnvValidator,
-        validatorFactory: validatorFactory,
+        validatorFactory: validatorFactoryWithMocks,
         serviceContainer: serviceContainer,
         logger: mockLogger
       });
@@ -216,8 +232,8 @@ describe('Complete Validation Workflow Integration', () => {
       const result = await validationServiceWithMocks.validateEnvironment('staging');
 
       // Verify workflow completion and endpoint failure handling
-      expect(result.success).toBe(true); // Workflow completed successfully
-      expect(result.exitCode).toBe(0);   // Even though endpoints failed due to network
+      expect(result.success).toBe(false); // Workflow failed due to validation errors
+      expect(result.exitCode).toBe(1);    // Exit code should be 1 for validation failures
       expect(result.results).toHaveLength(2);
       expect(result.results[0].success).toBe(false); // Individual endpoints failed
       expect(result.results[0].issues.length).toBeGreaterThan(0);
@@ -228,19 +244,6 @@ describe('Complete Validation Workflow Integration', () => {
         environments: {
           staging: { url: 'https://staging.api.example.com' }
         }
-      };
-
-      const mockContract = {
-        info: { title: 'Test API', version: '1.0.0' },
-        endpoints: [
-          {
-            path: '/users',
-            method: 'GET',
-            responses: {
-              '200': { schema: { type: 'object' } }
-            }
-          }
-        ]
       };
 
       const mockConfigLoader = {
@@ -262,27 +265,30 @@ describe('Complete Validation Workflow Integration', () => {
       const networkError = new Error('Connection refused');
       networkError.code = 'ECONNREFUSED';
 
+      // Mock HTTP client that throws network errors
       const mockHttpClient = {
         makeRequest: vi.fn().mockRejectedValue(networkError),
         testConnection: vi.fn().mockResolvedValue(true)
       };
 
-      const mockContractParser = {
-        parseContract: vi.fn().mockResolvedValue(mockContract)
+      // Mock HTTP client factory to return our mocked client
+      const mockHttpClientFactory = {
+        createDefaultClient: vi.fn().mockReturnValue(mockHttpClient),
+        createCIClient: vi.fn().mockReturnValue(mockHttpClient),
+        getStats: vi.fn().mockReturnValue({ totalClients: 1, activeConnections: 0 })
       };
 
-      vi.doMock('#src/core/http-client.js', () => ({ default: class MockHttpClient {
-        constructor() { return mockHttpClient; }
-      }}));
-      vi.doMock('#src/core/parser.js', () => ({ default: class MockContractParser {
-        parseContract = mockContractParser.parseContract;
-      }}));
+      // Create validator factory with mocked HTTP client factory
+      const validatorFactoryWithMocks = new ValidatorFactory({
+        httpClientFactory: mockHttpClientFactory,
+        serviceContainer: serviceContainer
+      });
 
       const validationServiceWithMocks = new ValidationService({
         configLoader: mockConfigLoader,
         contractFinder: mockContractFinder,
         envValidator: mockEnvValidator,
-        validatorFactory: validatorFactory,
+        validatorFactory: validatorFactoryWithMocks,
         serviceContainer: serviceContainer,
         logger: mockLogger
       });
@@ -290,8 +296,8 @@ describe('Complete Validation Workflow Integration', () => {
       const result = await validationServiceWithMocks.validateEnvironment('staging');
 
       // Verify network error is handled correctly
-      expect(result.success).toBe(true); // Workflow completed successfully
-      expect(result.exitCode).toBe(0);   // Even though endpoints failed due to network
+      expect(result.success).toBe(false); // Workflow failed due to network errors
+      expect(result.exitCode).toBe(1);    // Exit code should be 1 for endpoint failures
       expect(result.results).toHaveLength(2);
       expect(result.results[0].success).toBe(false); // Individual endpoints failed
       expect(result.results[0].issues.length).toBeGreaterThan(0);

@@ -260,47 +260,54 @@ class ValidationResults {
   }
 
   static getResultsStats(results) {
-    const stats = {
-      total: results.length,
+    // Single pass through results to calculate all statistics
+    const stats = results.reduce((acc, result) => {
+      acc.total++;
+
+      if (result.success) {
+        acc.passed++;
+      } else {
+        acc.failed++;
+      }
+
+      acc.totalIssues += result.issues.length;
+
+      // Count issues by type and severity in the same loop
+      for (const issue of result.issues) {
+        acc.issuesByType[issue.type] = (acc.issuesByType[issue.type] || 0) + 1;
+        acc.issuesBySeverity[issue.severity] = (acc.issuesBySeverity[issue.severity] || 0) + 1;
+      }
+
+      // Calculate response time totals
+      if (result.metadata && result.metadata.responseTime) {
+        acc.totalResponseTime += result.metadata.responseTime;
+        acc.responseTimeCount++;
+      }
+
+      return acc;
+    }, {
+      total: 0,
       passed: 0,
       failed: 0,
       totalIssues: 0,
       issuesByType: {},
       issuesBySeverity: { error: 0, warning: 0, info: 0 },
-      avgResponseTime: 0,
-      successRate: 0
-    };
+      totalResponseTime: 0,
+      responseTimeCount: 0
+    });
 
-    let totalResponseTime = 0;
-    let responseTimeCount = 0;
+    // Calculate derived stats
+    stats.avgResponseTime = stats.responseTimeCount > 0
+      ? Math.round(stats.totalResponseTime / stats.responseTimeCount)
+      : 0;
 
-    for (const result of results) {
-      if (result.success) {
-        stats.passed++;
-      } else {
-        stats.failed++;
-      }
+    stats.successRate = stats.total > 0
+      ? Math.round((stats.passed / stats.total) * 100)
+      : 0;
 
-      stats.totalIssues += result.issues.length;
-
-      // Count issues by type and severity
-      for (const issue of result.issues) {
-        stats.issuesByType[issue.type] = (stats.issuesByType[issue.type] || 0) + 1;
-        stats.issuesBySeverity[issue.severity] = (stats.issuesBySeverity[issue.severity] || 0) + 1;
-      }
-
-      // Calculate average response time
-      if (result.metadata && result.metadata.responseTime) {
-        totalResponseTime += result.metadata.responseTime;
-        responseTimeCount++;
-      }
-    }
-
-    if (responseTimeCount > 0) {
-      stats.avgResponseTime = Math.round(totalResponseTime / responseTimeCount);
-    }
-
-    stats.successRate = stats.total > 0 ? Math.round((stats.passed / stats.total) * 100) : 0;
+    // Clean up temporary fields
+    delete stats.totalResponseTime;
+    delete stats.responseTimeCount;
 
     return stats;
   }
@@ -417,4 +424,43 @@ class ValidationResults {
   }
 }
 
+class ValidationResultsAggregator {
+  constructor() {
+    this.results = [];
+    this._cachedStats = null;
+    this._statsDirty = true;
+  }
+
+  addResult(result) {
+    this.results.push(result);
+    this._statsDirty = true;
+  }
+
+  addResults(results) {
+    this.results.push(...results);
+    this._statsDirty = true;
+  }
+
+  getResults() {
+    return this.results;
+  }
+
+  getStatistics() {
+    if (!this._statsDirty && this._cachedStats) {
+      return this._cachedStats;
+    }
+
+    this._cachedStats = ValidationResults.getResultsStats(this.results);
+    this._statsDirty = false;
+    return this._cachedStats;
+  }
+
+  clear() {
+    this.results = [];
+    this._cachedStats = null;
+    this._statsDirty = true;
+  }
+}
+
 export default ValidationResults;
+export { ValidationResultsAggregator };

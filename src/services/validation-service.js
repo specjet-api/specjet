@@ -4,6 +4,7 @@ import EnvValidator from '../core/env-validator.js';
 import ValidationResults from '../core/validation-results.js';
 import ValidatorFactory from '../factories/validator-factory.js';
 import ServiceContainer from '../core/service-container.js';
+import ResourceManager from '../core/resource-manager.js';
 import { SpecJetError, ErrorHandler } from '../core/errors.js';
 
 /**
@@ -20,6 +21,7 @@ class ValidationService {
     this.resultsFormatter = dependencies.resultsFormatter || ValidationResults;
     this.serviceContainer = dependencies.serviceContainer || new ServiceContainer();
     this.logger = dependencies.logger || console;
+    this.resourceManager = dependencies.resourceManager || new ResourceManager();
   }
 
   /**
@@ -34,6 +36,9 @@ class ValidationService {
       contract: contractOverride,
       config: configPath
     } = options;
+
+    // Create a scoped resource manager for this validation
+    const scope = this.resourceManager.createScope();
 
     try {
       // Step 1: Load and validate configuration
@@ -65,6 +70,13 @@ class ValidationService {
       this.logger.log('🔍 Initializing validation system...');
       const validationSystem = this.createValidationSystem(envConfig, options);
 
+      // Register validation system for cleanup
+      scope.register(validationSystem, async (system) => {
+        if (system.cleanup) {
+          await system.cleanup();
+        }
+      }, 'validation-system');
+
       await validationSystem.initialize(contractPath);
 
       // Step 6: Execute validation
@@ -75,6 +87,9 @@ class ValidationService {
 
     } catch (error) {
       return this.handleValidationError(error, { verbose });
+    } finally {
+      // Always cleanup scoped resources
+      await scope.dispose();
     }
   }
 
@@ -157,7 +172,7 @@ class ValidationService {
     const isCI = process.env.CI || !process.stdin.isTTY;
 
     const validationOptions = {
-      timeout: options.timeout || 30000,
+      timeout: parseInt(options.timeout, 10) || 30000,
       concurrency: isCI ? 1 : (options.concurrency || 3),
       delay: isCI ? 500 : (options.delay || 100),
       progressCallback: this.createProgressCallback(options)
@@ -387,8 +402,24 @@ class ValidationService {
     return {
       hasServiceContainer: !!this.serviceContainer,
       validatorFactoryConfig: this.validatorFactory.getConfig(),
-      serviceNames: this.serviceContainer.getServiceNames()
+      serviceNames: this.serviceContainer.getServiceNames(),
+      resourceManager: this.resourceManager.getStatus()
     };
+  }
+
+  /**
+   * Cleanup all resources managed by this service
+   * @returns {Promise<void>}
+   */
+  async cleanup() {
+    await this.resourceManager.cleanup();
+  }
+
+  /**
+   * Force cleanup (emergency cleanup)
+   */
+  forceCleanup() {
+    this.resourceManager.forceCleanup();
   }
 }
 
