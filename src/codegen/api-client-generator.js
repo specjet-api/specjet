@@ -3,9 +3,6 @@ import TypeMapper from './type-mapper.js';
 import AuthGenerator from './auth-generator.js';
 import ErrorGenerator from './error-generator.js';
 
-/**
- * ApiClientGenerator - Generates TypeScript API client from OpenAPI endpoints
- */
 class ApiClientGenerator {
   constructor() {
     this.typeMapper = new TypeMapper();
@@ -13,13 +10,6 @@ class ApiClientGenerator {
     this.errorGenerator = new ErrorGenerator();
   }
   
-  /**
-   * Generate complete API client code
-   * @param {Array} endpoints - Array of endpoint definitions
-   * @param {Object} schemas - Schema definitions
-   * @param {Object} config - Generation configuration
-   * @returns {string} Generated API client code
-   */
   generateApiClient(endpoints, schemas, config = {}) {
     const clientName = config.clientName || 'ApiClient';
     const methods = [];
@@ -89,12 +79,6 @@ ${this.errorGenerator.generateErrorHandlingMethod()}
     return this.wrapInFileTemplate(importSection + clientCode);
   }
   
-  /**
-   * Convert endpoint definition to TypeScript method
-   * @param {Object} endpoint - Endpoint definition
-   * @param {Object} schemas - Schema definitions
-   * @returns {Object} Method code and imports
-   */
   endpointToMethod(endpoint, schemas) {
     const methodName = this.pathToMethodName(endpoint.path, endpoint.method, endpoint.operationId);
     const imports = new Set();
@@ -148,24 +132,13 @@ ${this.errorGenerator.generateErrorHandlingMethod()}
     const pathWithParams = this.generatePathWithParams(endpoint.path, pathParams);
     const methodBody = this.generateMethodBody(endpoint, pathParams, queryParams, headerParams, pathWithParams);
     
-    const code = `  /**
-   * ${endpoint.summary || `${endpoint.method} ${endpoint.path}`}
-   ${endpoint.description ? `   * ${endpoint.description}` : ''}
-   */
-  async ${methodName}(${methodParams.join(', ')}): Promise<${returnType}> {
+    const code = `  async ${methodName}(${methodParams.join(', ')}): Promise<${returnType}> {
 ${methodBody}
   }`;
 
     return { code, imports };
   }
   
-  /**
-   * Generate method name from path and HTTP method
-   * @param {string} path - API path
-   * @param {string} method - HTTP method
-   * @param {string} operationId - OpenAPI operationId
-   * @returns {string} TypeScript method name
-   */
   pathToMethodName(path, method, operationId) {
     // Use operationId if available, otherwise generate from path and method
     if (operationId) {
@@ -188,12 +161,6 @@ ${methodBody}
     return methodMap[method] || `${method.toLowerCase()}${this.capitalize(resource)}`;
   }
   
-  /**
-   * Generate TypeScript type for query parameters
-   * @param {Array} queryParams - Query parameter definitions
-   * @param {Object} schemas - Schema definitions
-   * @returns {string} TypeScript type string
-   */
   generateQueryParamsType(queryParams, schemas) {
     const properties = queryParams.map(param => {
       const paramType = this.typeMapper.mapOpenApiTypeToTypeScript(param.schema, schemas);
@@ -204,12 +171,6 @@ ${methodBody}
     return `{ ${properties.join('; ')} }`;
   }
   
-  /**
-   * Generate TypeScript type for header parameters
-   * @param {Array} headerParams - Header parameter definitions
-   * @param {Object} schemas - Schema definitions
-   * @returns {string} TypeScript type string
-   */
   generateHeaderParamsType(headerParams, schemas) {
     const properties = headerParams.map(param => {
       const paramType = this.typeMapper.mapOpenApiTypeToTypeScript(param.schema, schemas);
@@ -220,13 +181,6 @@ ${methodBody}
     return `{ ${properties.join('; ')} }`;
   }
   
-  /**
-   * Get return type for endpoint method
-   * @param {Object} endpoint - Endpoint definition
-   * @param {Object} schemas - Schema definitions
-   * @param {Set<string>} imports - Set to track imports
-   * @returns {string} TypeScript return type
-   */
   getReturnType(endpoint, schemas, imports) {
     // Look for successful response (200, 201, etc.)
     const successResponse = endpoint.responses['200'] || 
@@ -254,12 +208,6 @@ ${methodBody}
     return 'void';
   }
   
-  /**
-   * Generate path string with parameter placeholders
-   * @param {string} path - API path
-   * @param {Array} pathParams - Path parameter definitions
-   * @returns {string} Path with TypeScript template literal syntax
-   */
   generatePathWithParams(path, pathParams) {
     let pathWithParams = path;
     
@@ -270,15 +218,6 @@ ${methodBody}
     return pathWithParams;
   }
   
-  /**
-   * Generate method body implementation
-   * @param {Object} endpoint - Endpoint definition
-   * @param {Array} _pathParams - Path parameters (unused but kept for signature)
-   * @param {Array} queryParams - Query parameters
-   * @param {Array} headerParams - Header parameters
-   * @param {string} pathWithParams - Path with parameters
-   * @returns {string} Method body code
-   */
   generateMethodBody(endpoint, _pathParams, queryParams, headerParams, pathWithParams) {
     const lines = [];
     
@@ -334,11 +273,6 @@ ${methodBody}
     return lines.join('\n');
   }
   
-  /**
-   * Get return type for the internal request method call
-   * @param {Object} endpoint - Endpoint definition
-   * @returns {string} TypeScript return type
-   */
   getReturnTypeForRequest(endpoint) {
     const successResponse = endpoint.responses['200'] || 
                            endpoint.responses['201'] || 
@@ -352,20 +286,10 @@ ${methodBody}
     return this.typeMapper.mapOpenApiTypeToTypeScript(successResponse.schema, {});
   }
   
-  /**
-   * Capitalize first letter of string
-   * @param {string} str - String to capitalize
-   * @returns {string} Capitalized string
-   */
   capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  /**
-   * Calculate relative import path from client to types directory
-   * @param {Object} config - Generation configuration
-   * @returns {string} Relative import path
-   */
   calculateRelativeImportPath(config) {
     const typesPath = config?.output?.types || './src/types';
     const clientPath = config?.output?.client || './src/api';
@@ -380,11 +304,6 @@ ${methodBody}
     return relativePath.replace(/\.ts$/, '.js').replace(/\\/g, '/');
   }
   
-  /**
-   * Wrap generated code in file template with header
-   * @param {string} content - Generated code content
-   * @returns {string} Complete file content with header
-   */
   wrapInFileTemplate(content) {
     const timestamp = new Date().toLocaleString();
     const header = `// ‼️ DO NOT EDIT ‼️ This file is automatically generated

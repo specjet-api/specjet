@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import ApiClientGenerator from '../../src/codegen/api-client-generator.js';
+import ApiClientGenerator from '#src/codegen/api-client-generator.js';
 
 describe('ApiClientGenerator', () => {
   let generator;

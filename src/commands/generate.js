@@ -1,15 +1,14 @@
-import ContractParser from '../core/parser.js';
-import TypeScriptGenerator from '../codegen/typescript.js';
-import ConfigLoader from '../core/config.js';
-import FileGenerator from '../codegen/files.js';
-import { ErrorHandler, SpecJetError } from '../core/errors.js';
-import FileWatcher from '../core/watcher.js';
+import ContractParser from '#src/core/parser.js';
+import TypeScriptGenerator from '#src/codegen/typescript.js';
+import ConfigLoader from '#src/core/config.js';
+import FileGenerator from '#src/codegen/files.js';
+import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
+import FileWatcher from '#src/core/watcher.js';
 
 // Constants for progress feedback
 const LARGE_SCHEMA_THRESHOLD = 50;
 const VERY_LARGE_SCHEMA_THRESHOLD = 100;
 
-// Extract the generation logic into a separate function for reuse in watch mode
 async function performGeneration(config, options) {
   const contractPath = ConfigLoader.resolveContractPath(config);
   const outputPaths = ConfigLoader.resolveOutputPaths(config);
@@ -145,6 +144,9 @@ async function performGeneration(config, options) {
   return { config, contractPath, report };
 }
 
+/**
+ * Generate TypeScript types and API client from OpenAPI contract
+ */
 async function generateCommand(options = {}) {
   return ErrorHandler.withErrorHandling(async () => {
     console.log('🚀 Starting TypeScript generation...\n');

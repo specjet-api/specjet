@@ -8,7 +8,20 @@ const MAX_ITEMS_VERY_COMPLEX_OBJECTS = 50;
 const MAX_ITEMS_MODERATELY_COMPLEX_OBJECTS = 100;
 const MAX_ITEMS_SIMPLE_OBJECTS = 200;
 
+/**
+ * Mock server with realistic data generation based on OpenAPI contracts
+ * Provides persistent data across requests and supports multiple scenarios
+ * @class MockServer
+ */
 class MockServer {
+  /**
+   * Create a new mock server instance
+   * @param {Object} contract - Parsed OpenAPI contract
+   * @param {string} [scenario='demo'] - Data scenario (demo, realistic, large, errors)
+   * @param {Object} [options={}] - Server configuration options
+   * @param {Object} [options.entityPatterns] - Custom patterns for entity detection
+   * @param {Object} [options.domainMappings] - Custom domain mappings for data generation
+   */
   constructor(contract, scenario = 'demo', options = {}) {
     this.app = express();
     this.contract = contract;
@@ -50,11 +63,19 @@ class MockServer {
     this.setupRoutes();
   }
   
+  /**
+   * Setup Express middleware for CORS and JSON parsing
+   * @private
+   */
   setupMiddleware() {
     this.app.use(cors());
     this.app.use(express.json());
   }
   
+  /**
+   * Setup routes from OpenAPI contract endpoints
+   * @private
+   */
   setupRoutes() {
     if (!this.contract?.endpoints) return;
     
@@ -64,6 +85,11 @@ class MockServer {
   }
   
   
+  /**
+   * Add a single route to Express app with mock data handling
+   * @private
+   * @param {Object} endpoint - OpenAPI endpoint definition
+   */
   addRoute(endpoint) {
     const method = endpoint.method.toLowerCase();
     const path = this.convertOpenApiPath(endpoint.path);
@@ -198,11 +224,28 @@ class MockServer {
     });
   }
   
+  /**
+   * Convert OpenAPI path parameters to Express route format
+   * @private
+   * @param {string} openApiPath - OpenAPI path with {param} syntax
+   * @returns {string} Express path with :param syntax
+   * @example
+   * convertOpenApiPath('/users/{id}') // returns '/users/:id'
+   */
   convertOpenApiPath(openApiPath) {
     // Convert /users/{id} to /users/:id
     return openApiPath.replace(/{([^}]+)}/g, ':$1');
   }
   
+  /**
+   * Generate mock response data for an endpoint
+   * @param {Object} endpoint - OpenAPI endpoint definition
+   * @param {Object} [params={}] - URL parameters for response generation
+   * @param {Object} [requestContext={}] - Additional request context
+   * @returns {any} Generated mock data matching endpoint schema
+   * @example
+   * const mockData = server.generateMockResponse(endpoint, { id: '123' });
+   */
   generateMockResponse(endpoint, params = {}, requestContext = {}) {
     const responses = endpoint.responses || endpoint.spec?.responses || {};
     const successResponse = responses['200'] || responses['201'] || responses['202'] || Object.values(responses)[0];
@@ -1017,6 +1060,16 @@ class MockServer {
    * @example
    * const serverUrl = await mockServer.start(3001);
    * console.log(`Server running at ${serverUrl}`);
+   */
+  /**
+   * Start the mock server on specified port
+   * @param {number} [port=3001] - Port number to listen on
+   * @returns {Promise<string>} Server URL when successfully started
+   * @throws {Error} When server fails to start (e.g., port in use)
+   * @example
+   * const server = new MockServer(contract);
+   * const url = await server.start(3001);
+   * console.log(`Server running at ${url}`);
    */
   start(port = 3001) {
     return new Promise((resolve, reject) => {

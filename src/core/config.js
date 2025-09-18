@@ -1,7 +1,8 @@
-import { existsSync } from 'fs';
+import fs from 'fs-extra';
 import { resolve } from 'path';
-import { pathToFileURL } from 'url';
+import { pathToFileURL, URL } from 'url';
 import { SpecJetError } from './errors.js';
+import SecureConfigValidator from './secure-config-validator.js';
 
 /**
  * Configuration loader and validator for SpecJet CLI
@@ -9,15 +10,6 @@ import { SpecJetError } from './errors.js';
  * @class ConfigLoader
  */
 class ConfigLoader {
-  /**
-   * Loads configuration from file or returns defaults
-   * @param {string|null} configPath - Path to configuration file (optional)
-   * @returns {Promise<Object>} Merged configuration object
-   * @throws {SpecJetError} When configuration file cannot be loaded or parsed
-   * @example
-   * const config = await ConfigLoader.loadConfig('./specjet.config.js');
-   * console.log(config.contract); // './api-contract.yaml'
-   */
   static async loadConfig(configPath = null) {
     const defaultConfig = {
       contract: './api-contract.yaml',
@@ -37,7 +29,8 @@ class ConfigLoader {
       },
       docs: {
         port: 3002
-      }
+      },
+      environments: {}
     };
 
     // If no config path specified, try to find specjet.config.js
@@ -50,7 +43,7 @@ class ConfigLoader {
       ];
 
       for (const path of possiblePaths) {
-        if (existsSync(path)) {
+        if (fs.existsSync(path)) {
           configPath = path;
           break;
         }
@@ -58,7 +51,7 @@ class ConfigLoader {
     }
 
     // If still no config found, return defaults
-    if (!configPath || !existsSync(configPath)) {
+    if (!configPath || !fs.existsSync(configPath)) {
       return defaultConfig;
     }
 
@@ -69,7 +62,15 @@ class ConfigLoader {
       const userConfig = configModule.default || configModule;
 
       // Merge user config with defaults
-      return this.mergeConfigs(defaultConfig, userConfig);
+      const mergedConfig = this.mergeConfigs(defaultConfig, userConfig);
+
+      // Apply environment variable substitution
+      const configWithEnvVars = this.applyEnvironmentVariables(mergedConfig);
+
+      // Perform security validation
+      SecureConfigValidator.validateConfigSecurity(configWithEnvVars);
+
+      return configWithEnvVars;
     } catch (error) {
       throw new SpecJetError(
         `Failed to load configuration from ${configPath}`,
@@ -98,19 +99,6 @@ class ConfigLoader {
     return merged;
   }
 
-  /**
-   * Validates configuration object against schema requirements
-   * Provides detailed error messages and helpful suggestions for fixes
-   * @param {Object} config - Configuration object to validate
-   * @returns {Object} Validated configuration object
-   * @throws {SpecJetError} When configuration is invalid with detailed error info
-   * @example
-   * try {
-   *   const validConfig = ConfigLoader.validateConfig(config);
-   * } catch (error) {
-   *   console.error(error.suggestions); // Helpful fix suggestions
-   * }
-   */
   static validateConfig(config) {
     const errors = [];
     const warnings = [];
@@ -248,6 +236,21 @@ class ConfigLoader {
       });
     }
 
+    // Validate environments configuration
+    try {
+      this.validateEnvironmentConfigs(config);
+    } catch (error) {
+      if (error.code === 'CONFIG_ENVIRONMENT_INVALID') {
+        errors.push({
+          field: 'environments',
+          message: error.message,
+          suggestion: error.suggestions ? error.suggestions.join(' ') : 'Fix environment configuration'
+        });
+      } else {
+        throw error; // Re-throw if it's a different type of error
+      }
+    }
+
     // Display warnings if any
     if (warnings.length > 0) {
       console.log('\n⚠️  Configuration warnings:');
@@ -267,29 +270,201 @@ class ConfigLoader {
     return config;
   }
 
-  /**
-   * Resolves contract file path to absolute path
-   * @param {Object} config - Configuration object
-   * @returns {string} Absolute path to contract file
-   */
   static resolveContractPath(config) {
     return resolve(config.contract);
   }
 
-  /**
-   * Resolves output directory paths to absolute paths
-   * @param {Object} config - Configuration object
-   * @returns {Object} Object with absolute paths for types and client output
-   * @example
-   * const paths = ConfigLoader.resolveOutputPaths(config);
-   * console.log(paths.types); // '/absolute/path/to/src/types'
-   * console.log(paths.client); // '/absolute/path/to/src/api'
-   */
   static resolveOutputPaths(config) {
     return {
       types: resolve(config.output.types),
       client: resolve(config.output.client)
     };
+  }
+
+  static applyEnvironmentVariables(config) {
+    return this.substituteVariables(config);
+  }
+
+  static substituteVariables(value) {
+    if (typeof value === 'string') {
+      return value.replace(/\$\{([^}]+)\}/g, (match, varName) => {
+        const envValue = process.env[varName];
+        if (envValue === undefined) {
+          // For CI/CD environments, we want to fail fast
+          if (process.env.CI || !process.stdin.isTTY) {
+            throw new SpecJetError(
+              `Environment variable ${varName} is not set`,
+              'ENV_VAR_MISSING',
+              null,
+              [
+                `Set your environment variable: export ${varName}=your_value_here`,
+                'Or add it to your CI/CD secrets configuration',
+                'Check your environment configuration for typos'
+              ]
+            );
+          }
+          console.warn(`⚠️  Environment variable ${varName} is not defined, using empty string`);
+          return '';
+        }
+        return envValue;
+      });
+    } else if (Array.isArray(value)) {
+      return value.map(item => this.substituteVariables(item));
+    } else if (value && typeof value === 'object') {
+      const result = {};
+      for (const [key, val] of Object.entries(value)) {
+        result[key] = this.substituteVariables(val);
+      }
+      return result;
+    }
+    return value;
+  }
+
+  static getAvailableEnvironments(config) {
+    if (!config.environments || typeof config.environments !== 'object') {
+      return [];
+    }
+    return Object.keys(config.environments);
+  }
+
+  static getEnvironmentConfig(config, environmentName) {
+    if (!config.environments || typeof config.environments !== 'object') {
+      throw new SpecJetError(
+        'No environments section found in configuration',
+        'CONFIG_ENVIRONMENT_ERROR',
+        null,
+        [
+          'Add an "environments" section to your specjet.config.js',
+          'Example: environments: { staging: { url: "https://api-staging.example.com" } }'
+        ]
+      );
+    }
+
+    const envConfig = config.environments[environmentName];
+    if (!envConfig) {
+      const available = this.getAvailableEnvironments(config);
+      throw new SpecJetError(
+        `Environment '${environmentName}' not found in specjet.config.js`,
+        'CONFIG_ENVIRONMENT_NOT_FOUND',
+        null,
+        [
+          available.length > 0
+            ? `Available environments: ${available.join(', ')}`
+            : 'No environments configured in specjet.config.js',
+          'Add the environment to your config or check for typos'
+        ]
+      );
+    }
+
+    return envConfig;
+  }
+
+  static validateEnvironmentExists(config, environmentName) {
+    const available = this.getAvailableEnvironments(config);
+    return available.includes(environmentName);
+  }
+
+  static listEnvironments(config) {
+    const environments = this.getAvailableEnvironments(config);
+
+    if (environments.length === 0) {
+      return 'No environments configured in specjet.config.js\n\nAdd an environments section to your config:\nenvironments: {\n  staging: {\n    url: "https://api-staging.example.com",\n    headers: { "Authorization": "Bearer ${STAGING_TOKEN}" }\n  }\n}';
+    }
+
+    let output = 'Available environments:\n';
+
+    for (const envName of environments) {
+      try {
+        const envConfig = config.environments[envName];
+        const url = envConfig.url || 'No URL configured';
+        const padding = ' '.repeat(Math.max(2, 10 - envName.length));
+        output += `  ${envName}${padding}- ${url}\n`;
+      } catch {
+        output += `  ${envName} - Configuration error\n`;
+      }
+    }
+
+    return output.trim();
+  }
+
+  static validateEnvironmentConfigs(config) {
+    if (!config.environments) {
+      return; // Environments are optional
+    }
+
+    if (typeof config.environments !== 'object' || Array.isArray(config.environments)) {
+      throw new SpecJetError(
+        'Environments configuration must be an object',
+        'CONFIG_ENVIRONMENT_INVALID',
+        null,
+        [
+          'Use an object with environment names as keys',
+          'Example: environments: { staging: { url: "..." }, dev: { url: "..." } }'
+        ]
+      );
+    }
+
+    const errors = [];
+
+    for (const [envName, envConfig] of Object.entries(config.environments)) {
+      if (!envConfig || typeof envConfig !== 'object') {
+        errors.push({
+          field: `environments.${envName}`,
+          message: 'Environment configuration must be an object',
+          suggestion: `Set environments.${envName} to an object with url and headers`
+        });
+        continue;
+      }
+
+      // Validate URL if present
+      if (envConfig.url) {
+        if (typeof envConfig.url !== 'string') {
+          errors.push({
+            field: `environments.${envName}.url`,
+            message: `URL must be a string, got ${typeof envConfig.url}`,
+            suggestion: 'Use a string URL like "https://api.example.com"'
+          });
+        } else {
+          try {
+            new URL(envConfig.url.includes('${') ? 'https://example.com' : envConfig.url);
+          } catch {
+            errors.push({
+              field: `environments.${envName}.url`,
+              message: 'URL format is invalid',
+              suggestion: 'Use a valid URL format like "https://api.example.com"'
+            });
+          }
+        }
+      }
+
+      // Validate headers if present
+      if (envConfig.headers) {
+        if (typeof envConfig.headers !== 'object' || Array.isArray(envConfig.headers)) {
+          errors.push({
+            field: `environments.${envName}.headers`,
+            message: 'Headers must be an object',
+            suggestion: 'Use an object like { "Authorization": "Bearer token" }'
+          });
+        } else {
+          for (const [headerName, headerValue] of Object.entries(envConfig.headers)) {
+            if (typeof headerValue !== 'string') {
+              errors.push({
+                field: `environments.${envName}.headers.${headerName}`,
+                message: `Header value must be a string, got ${typeof headerValue}`,
+                suggestion: 'Use a string value for the header'
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      const errorMessages = errors.map(error => {
+        return `${error.field}: ${error.message}\n   💡 ${error.suggestion}`;
+      });
+      throw SpecJetError.configInvalid('specjet.config.js (environments)', errorMessages);
+    }
   }
 }
 

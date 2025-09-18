@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import TypeScriptInterfaceGenerator from '../../src/codegen/interface-generator.js';
+import TypeScriptInterfaceGenerator from '#src/codegen/interface-generator.js';
 
 describe('TypeScriptInterfaceGenerator', () => {
   let generator;

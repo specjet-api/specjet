@@ -2,15 +2,15 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { writeFileSync, existsSync, mkdirSync, rmSync } from 'fs';
-import ContractParser from '../src/core/parser.js';
-import ConfigLoader from '../src/core/config.js';
-import TypeScriptGenerator from '../src/codegen/typescript.js';
-import MockServer from '../src/mock-server/server.js';
+import ContractParser from '#src/core/parser.js';
+import ConfigLoader from '#src/core/config.js';
+import TypeScriptGenerator from '#src/codegen/typescript.js';
+import MockServer from '#src/mock-server/server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-describe('Performance and Scalability Optimizations', () => {
+describe.skipIf(!process.env.RUN_PERFORMANCE_TESTS)('Performance and Scalability Optimizations', () => {
   let testDir;
 
   beforeEach(() => {

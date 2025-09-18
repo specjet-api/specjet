@@ -153,32 +153,63 @@ Documentation Features:
 `)
   .action(commands.docs);
 
-// Future Phase 2 features - commented out for MVP
-// 
-// // specjet validate <api-url>
-// program
-//   .command('validate')
-//   .description('🔍 Validate a real API implementation against your contract (coming soon)')
-//   .argument('<api-url>', 'Base URL of the API to validate (e.g., https://api.example.com)')
-//   .option('-H, --header <header>', 'HTTP header to include (can be used multiple times)')
-//   .option('--timeout <ms>', 'Request timeout in milliseconds (default: 5000)', '5000')
-//   .addHelpText('after', `
-// Examples:
-//   $ specjet validate http://localhost:8000
-//   $ specjet validate https://api.example.com
-//   $ specjet validate https://api.example.com --header "Authorization: Bearer token123"
-//   $ specjet validate https://api.example.com --header "X-API-Key: secret" --timeout 10000
-// 
-// What this validates:
-//   • Endpoint availability (all paths return expected status codes)
-//   • Response schema compliance (responses match OpenAPI schemas)  
-//   • Required fields presence (all required fields are present)
-//   • Data type correctness (field types match schema definitions)
-//   • HTTP method support (endpoints support specified methods)
-// 
-// Note: This feature is planned for a future release.
-// `)
-//   .action(commands.validate);
+// specjet validate <environment>
+program
+  .command('validate')
+  .description('🔍 Validate API implementation against OpenAPI contract')
+  .argument('<environment>', 'Environment to validate (staging, dev, local, etc.)')
+  .option('--verbose', 'Show detailed validation output and request/response data')
+  .option('--timeout <ms>', 'Request timeout in milliseconds (default: 30000)', '30000')
+  .option('--output <format>', 'Output format: console, json, markdown (default: console)', 'console')
+  .option('--contract <path>', 'Path to OpenAPI contract file (overrides config)')
+  .option('-c, --config <path>', 'Path to configuration file')
+  .addHelpText('after', `
+Examples:
+  $ specjet validate staging              Validate against staging environment
+  $ specjet validate dev --verbose       Detailed validation output
+  $ specjet validate local --timeout 10000  Custom timeout
+  $ specjet validate staging --output json   JSON output for CI/CD
+  $ specjet validate dev --contract ./api.yaml  Custom contract file
+
+Environment Setup:
+  Add environments to your specjet.config.js:
+
+  environments: {
+    staging: {
+      url: "https://api-staging.example.com",
+      headers: {
+        "Authorization": "Bearer \${STAGING_TOKEN}",
+        "X-API-Version": "2.0"
+      }
+    },
+    dev: {
+      url: "https://api-dev.example.com",
+      headers: { "X-Debug-Mode": "true" }
+    },
+    local: {
+      url: "http://localhost:8080"
+    }
+  }
+
+What this validates:
+  • All endpoints are accessible and return expected status codes
+  • Response schemas match OpenAPI contract specifications
+  • Required fields are present in responses
+  • Data types match schema definitions
+  • Headers conform to contract requirements
+
+Environment Variables:
+  Use \${VARIABLE_NAME} in config for dynamic values:
+  - Authorization tokens from CI/CD secrets
+  - Environment-specific URLs and settings
+  - API keys and client IDs
+
+Exit Codes:
+  • 0: All validations passed
+  • 1: Validation failures found
+  • 2: Configuration or setup errors
+`)
+  .action(commands.validate);
 // 
 // // specjet sync (Future)
 // program

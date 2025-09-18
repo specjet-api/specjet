@@ -1,8 +1,11 @@
-# SpecJet CLI
+# [SpecJet CLI](https://specjet.dev)
 
 > **Design APIs together, build separately, integrate seamlessly**
 
 SpecJet is an API contract collaboration tool that enables frontend and backend developers to design APIs together, then provides automatic TypeScript generation and realistic mock servers for immediate development.
+
+[![npm](https://img.shields.io/npm/v/specjet.svg)](https://www.npmjs.com/package/specjet)
+[![npm](https://img.shields.io/npm/l/specjet.svg)](https://www.npmjs.com/package/specjet)
 
 ## Why SpecJet?
 
@@ -54,6 +57,7 @@ Or add scripts to your `package.json`:
     "api:generate": "specjet generate",
     "api:mock": "specjet mock",
     "api:docs": "specjet docs",
+    "api:validate": "specjet validate http://localhost:8000",
     "api:watch": "specjet generate --watch"
   }
 }
@@ -150,6 +154,7 @@ Add convenient scripts to your `package.json`:
     "dev": "next dev",
     "api:generate": "specjet generate",
     "api:mock": "specjet mock --port 3001",
+    "api:validate": "specjet validate http://localhost:8000",
     "api:dev": "concurrently \"npm run dev\" \"npm run api:mock\""
   }
 }
@@ -552,11 +557,24 @@ specjet docs --output ./public/     # Custom output location
 
 ### `specjet validate <api-url>`
 
-Validate a real API against your contract:
+Validate a real API against your contract to ensure compliance:
 
 ```bash
+# Validate local development API
 specjet validate http://localhost:8000
-specjet validate https://api.example.com --header "Authorization: Bearer token"
+
+# Validate staging/production API
+specjet validate https://api.staging.com
+
+# Validate with authentication
+specjet validate https://api.example.com \
+  --header "Authorization: Bearer token"
+
+# Validate specific endpoints only
+specjet validate https://api.example.com --paths "/users/*,/products/*"
+
+# Output results in JSON format for CI/CD
+specjet validate https://api.example.com --format json
 ```
 
 ## Configuration
@@ -595,7 +613,7 @@ export default {
 ### For Frontend Developers:
 1. **Design Phase**: Collaborate with backend team on API contract
 2. **Development Phase**: Generate types and work with mock server
-3. **Integration Phase**: Switch to real API when backend is ready
+3. **Integration Phase**: Switch to real API when backend is ready and validate compliance
 4. **Maintenance**: Contract changes automatically update your types
 
 ### For Backend Developers:
@@ -690,10 +708,10 @@ specjet generate
 
 ### TypeScript errors?
 
-Verify your contract is valid:
+Verify your contract is valid by running generate:
 
 ```bash
-specjet validate ./api-contract.yaml
+specjet generate
 ```
 
 ### Mock server not responding?

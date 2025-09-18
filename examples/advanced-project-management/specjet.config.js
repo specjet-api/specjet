@@ -73,5 +73,39 @@ export default {
   // Documentation server settings
   docs: {
     port: 3002
+  },
+
+  // Environment configurations for API validation
+  // Used by `specjet validate <environment>` command to test API endpoints
+  // against real or staging environments
+  environments: {
+
+    // Staging environment for pre-production testing
+    staging: {
+      url: 'https://api-staging.projectmanager.com',
+      headers: {
+        'Authorization': 'Bearer ${STAGING_API_TOKEN}',
+        'X-API-Version': '2.0',
+        'X-Debug-Mode': 'true'
+      }
+    },
+
+    // Development environment
+    dev: {
+      url: 'https://api-dev.projectmanager.com',
+      headers: {
+        'Authorization': 'Bearer ${DEV_API_TOKEN}',
+        'X-API-Version': '2.0-beta'
+      }
+    },
+
+    // Local development environment
+    local: {
+      url: 'http://localhost:8080',
+      headers: {
+        'X-Debug-Mode': 'true'
+      }
+      // No authentication required for local development
+    },
   }
 };

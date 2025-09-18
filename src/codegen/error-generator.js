@@ -1,11 +1,4 @@
-/**
- * ErrorGenerator - Generates API error handling classes and methods
- */
 class ErrorGenerator {
-  /**
-   * Generate TypeScript error class definitions
-   * @returns {string} Error class definitions
-   */
   generateErrorInterface() {
     return `// API Error classes
 export class ApiError extends Error {
@@ -76,10 +69,6 @@ export class ServiceUnavailableError extends ApiError {
 }`;
   }
   
-  /**
-   * Generate the error handling method for API client
-   * @returns {string} Error handling method code
-   */
   generateErrorHandlingMethod() {
     return `  private async handleErrorResponse(response: Response): Promise<never> {
     const status = response.status;

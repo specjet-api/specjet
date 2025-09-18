@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { ErrorHandler, SpecJetError } from '../core/errors.js';
+import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
 
 const DEFAULT_CONFIG_ESM = `export default {
   // Contract file location
@@ -367,6 +367,9 @@ async function detectProjectModuleSystem(targetDir) {
   return 'commonjs';
 }
 
+/**
+ * Initialize a new SpecJet project with configuration and sample contract
+ */
 async function initCommand(projectName, options = {}) {
   try {
     // Determine target directory

@@ -1,12 +1,15 @@
-import MockServer from '../mock-server/server.js';
-import ContractParser from '../core/parser.js';
-import ConfigLoader from '../core/config.js';
-import { ErrorHandler, SpecJetError } from '../core/errors.js';
+import MockServer from '#src/mock-server/server.js';
+import ContractParser from '#src/core/parser.js';
+import ConfigLoader from '#src/core/config.js';
+import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
 
 // Constants for progress feedback
 const LARGE_SCHEMA_THRESHOLD = 50;
 const VERY_LARGE_SCHEMA_THRESHOLD = 100;
 
+/**
+ * Start a mock server with realistic data based on OpenAPI contract
+ */
 async function mockCommand(options = {}) {
   return ErrorHandler.withErrorHandling(async () => {
     console.log('🎭 Starting mock server...\n');
