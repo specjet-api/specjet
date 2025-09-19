@@ -1,4 +1,5 @@
 import ContractParser from './parser.js';
+import ParameterDiscovery from './parameter-discovery.js';
 import { SpecJetError } from './errors.js';
 
 /**
@@ -15,6 +16,12 @@ class APIValidator {
     this.contract = null;
     this.endpoints = null;
     this.contractPath = null;
+
+    // Parameter discovery service
+    this.parameterDiscovery = new ParameterDiscovery({
+      httpClient: this.httpClient,
+      logger: this.logger
+    });
 
     // Validate required dependencies
     if (!this.httpClient) {
@@ -84,8 +91,15 @@ class APIValidator {
     }
 
     try {
+      // Smart parameter discovery for unresolved parameters
+      const discoveredParams = await this.discoverPathParameters(
+        path,
+        options.pathParams || {},
+        options.enableParameterDiscovery !== false // Default to enabled
+      );
+
       // Resolve path parameters in the URL
-      const resolvedPath = this.resolvePath(path, options.pathParams || {});
+      const resolvedPath = this.resolvePath(path, discoveredParams);
 
       // Generate request body for POST/PUT operations
       const requestBody = await this.generateRequestBody(endpoint, options.requestBody);
@@ -130,6 +144,48 @@ class APIValidator {
     return this.endpoints.find(ep =>
       ep.path === path && ep.method.toUpperCase() === method.toUpperCase()
     );
+  }
+
+  /**
+   * Discover missing path parameters using smart discovery
+   * @param {string} pathTemplate - Path template with {param} placeholders
+   * @param {object} providedParams - User-provided parameters
+   * @param {boolean} enableDiscovery - Whether to enable automatic discovery
+   * @returns {Promise<object>} Complete parameter set
+   */
+  async discoverPathParameters(pathTemplate, providedParams, enableDiscovery = true) {
+    if (!enableDiscovery) {
+      return providedParams;
+    }
+
+    try {
+      const discoveredParams = await this.parameterDiscovery.discoverParameters(
+        pathTemplate,
+        this.endpoints || [],
+        providedParams
+      );
+
+      // Log discovered parameters for transparency
+      const newParams = {};
+      for (const [key, value] of Object.entries(discoveredParams)) {
+        if (!Object.prototype.hasOwnProperty.call(providedParams, key)) {
+          newParams[key] = value;
+        }
+      }
+
+      if (Object.keys(newParams).length > 0) {
+        this.logger.log(
+          `🔍 Auto-discovered parameters: ${Object.entries(newParams)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(', ')}`
+        );
+      }
+
+      return discoveredParams;
+    } catch (error) {
+      this.logger.warn(`⚠️  Parameter discovery failed: ${error.message}`);
+      return providedParams; // Fall back to provided parameters only
+    }
   }
 
   /**
@@ -184,8 +240,23 @@ class APIValidator {
     const issues = [];
     const statusCode = response.status.toString();
 
-    // Check if status code is defined in contract
-    const responseSpec = endpoint.responses[statusCode] || endpoint.responses['default'];
+    // Check if status code is defined in contract with intelligent fallback
+    let responseSpec = endpoint.responses[statusCode];
+
+    if (!responseSpec) {
+      // Smart fallback for common success status codes
+      if (statusCode === '201' && endpoint.responses['200']) {
+        responseSpec = endpoint.responses['200'];
+        this.logger.log(`🔄 Using 200 response spec for 201 status code (${endpoint.method} ${endpoint.path})`);
+      } else if (statusCode === '200' && endpoint.responses['201']) {
+        responseSpec = endpoint.responses['201'];
+        this.logger.log(`🔄 Using 201 response spec for 200 status code (${endpoint.method} ${endpoint.path})`);
+      } else {
+        // Fall back to default response
+        responseSpec = endpoint.responses['default'];
+      }
+    }
+
     if (!responseSpec) {
       issues.push(this.createIssue(
         'unexpected_status_code',

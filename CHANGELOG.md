@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2025-09-19
+
+### Added
+- **Smart Path Parameter Resolution** - Automatic discovery of path parameters for API validation
+  - Intelligent parameter discovery from list endpoints (e.g., `/pets` for `/pet/{petId}`)
+  - Smart fallback patterns for common REST parameter types (IDs, usernames, emails, etc.)
+  - Caching system for discovered parameters to improve performance
+  - Support for nested data structures in API responses
+  - Graceful handling of network errors during parameter discovery
+  - Option to disable parameter discovery via `--no-parameter-discovery` flag
+
+### Fixed
+- Linting configuration now properly checks all JavaScript files (not just `src/` directory)
+
 ## [0.2.1] - 2025-09-18
 
 ### Changed

@@ -15,7 +15,7 @@ SpecJet is an API contract collaboration tool that enables frontend and backend 
 - 🎯 No waiting for backend APIs to be ready
 - ⚡ Changes to API contracts instantly update your types
 
-**For Teams:**
+**For Teams:** 
 - 🤝 Collaborate on API design before writing code  
 - 📄 Single source of truth for your API contract
 - 🔄 Keep frontend and backend in sync automatically
@@ -66,7 +66,8 @@ Or add scripts to your `package.json`:
 ```json
 {
   "scripts": {
-    "api:validate": "specjet validate http://localhost:8000"
+    "api:validate:local": "specjet validate local",
+    "api:validate:staging": "specjet validate staging"
   }
 }
 ```
@@ -174,7 +175,8 @@ Add convenient scripts to your `package.json`:
 ```json
 {
   "scripts": {
-    "api:validate": "specjet validate http://localhost:8000"
+    "api:validate:local": "specjet validate local",
+    "api:validate:staging": "specjet validate staging"
   }
 }
 ```
@@ -577,33 +579,6 @@ specjet docs --port 3003            # Start documentation server
 specjet docs --open                 # Generate and open in browser
 specjet docs --output ./public/     # Custom output location
 ```
-
-### Advanced Commands
-
-> ⚠️ **Advanced Feature**: This is an advanced feature. Most users should focus on the core workflow of init → generate → mock → docs
-
-### `specjet validate <api-url>`
-
-Validate a real API against your contract to ensure compliance:
-
-```bash
-# Validate local development API
-specjet validate http://localhost:8000
-
-# Validate staging/production API
-specjet validate https://api.staging.com
-
-# Validate with authentication
-specjet validate https://api.example.com \
-  --header "Authorization: Bearer token"
-
-# Validate specific endpoints only
-specjet validate https://api.example.com --paths "/users/*,/products/*"
-
-# Output results in JSON format for CI/CD
-specjet validate https://api.example.com --format json
-```
-
 ## Configuration
 
 Customize SpecJet with a `specjet.config.js` file in your project root:
@@ -631,6 +606,62 @@ export default {
     strictMode: true,
     exportType: 'named',
     clientName: 'ApiClient'
+  }
+};
+```
+
+### Advanced Commands
+
+> ⚠️ **Advanced Feature**: This is an advanced feature. Most users should focus on the core workflow of init → generate → mock → docs
+
+### `specjet validate <environment>`
+
+Validate a real API against your contract using configured environments:
+
+```bash
+# Validate environments defined in your config - works automatically!
+specjet validate staging
+
+# Validate local development
+specjet validate local
+
+# Validate production environment
+specjet validate production
+
+# Verbose output with detailed results
+specjet validate staging --verbose
+
+# Output results in JSON format for CI/CD
+specjet validate staging --output json
+```
+
+**Smart Path Parameter Resolution**: SpecJet automatically discovers path parameters (like `/pet/{petId}`, `/user/{username}`) by querying list endpoints and using intelligent fallbacks. No manual configuration needed!
+
+#### Environment Configuration
+
+Configure environments in your `specjet.config.js`:
+
+```javascript
+export default {
+  // ... other configuration
+
+  // Environment configurations for validation
+  environments: {
+    staging: {
+      url: 'https://api-staging.example.com',
+      headers: {
+        'Authorization': 'Bearer ${STAGING_TOKEN}'
+      }
+    },
+    production: {
+      url: 'https://api.example.com',
+      headers: {
+        'Authorization': 'Bearer ${PROD_TOKEN}'
+      }
+    },
+    local: {
+      url: 'http://localhost:8000'
+    }
   }
 };
 ```

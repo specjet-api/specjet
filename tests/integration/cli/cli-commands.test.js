@@ -76,7 +76,7 @@ describe('SpecJet CLI Integration Tests', () => {
     test('should show help', async () => {
       const result = await runCLI(['--help']);
       expect(result.success).toBe(true);
-      expect(result.stdout).toContain('SpecJet - API contract collaboration tool');
+      expect(result.stdout).toContain('🚀 SpecJet - Build frontend features immediately, no waiting for backend APIs');
       expect(result.stdout).toContain('init');
       expect(result.stdout).toContain('generate');
       expect(result.stdout).toContain('mock');

@@ -232,7 +232,8 @@ class ValidationService {
       timeout: options.timeout,
       pathParams: options.pathParams,
       queryParams: options.queryParams,
-      requestBody: options.requestBody
+      requestBody: options.requestBody,
+      enableParameterDiscovery: options.enableParameterDiscovery !== false // Default to enabled
     };
 
     return await validationSystem.validateAllEndpoints(validationOptions);

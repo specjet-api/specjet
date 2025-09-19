@@ -256,7 +256,9 @@ describe('APIValidator', () => {
     });
 
     test('should handle unresolved path parameters', async () => {
-      const result = await validator.validateEndpoint('/users/{id}', 'GET');
+      const result = await validator.validateEndpoint('/users/{id}', 'GET', {
+        enableParameterDiscovery: false
+      });
 
       expect(result.success).toBe(false);
       expect(result.issues).toHaveLength(1);
@@ -639,6 +641,263 @@ describe('APIValidator', () => {
         'network_error': 1,
         'validation_failed': 1
       });
+    });
+  });
+
+  describe('Parameter Discovery Integration', () => {
+    let mockParameterDiscovery;
+
+    beforeEach(() => {
+      // Mock the parameter discovery service
+      mockParameterDiscovery = {
+        discoverParameters: vi.fn()
+      };
+
+      // Replace the parameter discovery instance
+      validator.parameterDiscovery = mockParameterDiscovery;
+
+      // Set up basic endpoints for testing
+      validator.endpoints = [
+        {
+          path: '/pet/{petId}',
+          method: 'GET',
+          responses: {
+            '200': {
+              description: 'successful operation',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'integer' },
+                      name: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        { path: '/pet/findByStatus', method: 'GET' },
+        { path: '/user/{username}', method: 'GET' },
+        {
+          path: '/user/{userId}/pet/{petId}',
+          method: 'GET',
+          responses: {
+            '200': {
+              description: 'successful operation',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'integer' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ];
+      // Initialize contract
+      validator.contract = { info: { title: 'Test', version: '1.0' } };
+    });
+
+    test('should call parameter discovery when enabled', async () => {
+      const discoveredParams = { petId: '123' };
+
+      mockParameterDiscovery.discoverParameters.mockResolvedValue(discoveredParams);
+      mockHttpClient.makeRequest.mockResolvedValue({
+        status: 200,
+        data: { id: 123, name: 'Fluffy' }
+      });
+      mockSchemaValidator.validateResponse.mockResolvedValue([]);
+
+      // Endpoint already exists in beforeEach setup
+
+      const result = await validator.validateEndpoint('/pet/{petId}', 'GET', {
+        enableParameterDiscovery: true
+      });
+
+      expect(mockParameterDiscovery.discoverParameters).toHaveBeenCalledWith(
+        '/pet/{petId}',
+        validator.endpoints,
+        {}
+      );
+      expect(mockHttpClient.makeRequest).toHaveBeenCalledWith(
+        '/pet/123',
+        'GET',
+        expect.any(Object)
+      );
+      expect(result.success).toBe(true);
+    });
+
+    test('should skip parameter discovery when disabled', async () => {
+      const endpoint = { path: '/pet/{petId}', method: 'GET' };
+      validator.endpoints = [endpoint];
+      validator.contract = { info: { title: 'Test', version: '1.0' } };
+
+      await validator.validateEndpoint('/pet/{petId}', 'GET', {
+        enableParameterDiscovery: false,
+        pathParams: { petId: '456' }
+      });
+
+      expect(mockParameterDiscovery.discoverParameters).not.toHaveBeenCalled();
+      expect(mockHttpClient.makeRequest).toHaveBeenCalledWith(
+        '/pet/456',
+        'GET',
+        expect.any(Object)
+      );
+    });
+
+    test('should merge discovered parameters with provided parameters', async () => {
+      const providedParams = { userId: '999' };
+      const discoveredParams = { userId: '999', petId: '123' }; // userId preserved, petId discovered
+
+      mockParameterDiscovery.discoverParameters.mockResolvedValue(discoveredParams);
+      mockHttpClient.makeRequest.mockResolvedValue({
+        status: 200,
+        data: { id: 123 }
+      });
+      mockSchemaValidator.validateResponse.mockResolvedValue([]);
+
+      // Endpoint and contract already set up in beforeEach
+
+      const result = await validator.validateEndpoint('/user/{userId}/pet/{petId}', 'GET', {
+        enableParameterDiscovery: true,
+        pathParams: providedParams
+      });
+
+      expect(mockParameterDiscovery.discoverParameters).toHaveBeenCalledWith(
+        '/user/{userId}/pet/{petId}',
+        validator.endpoints,
+        providedParams
+      );
+      expect(mockHttpClient.makeRequest).toHaveBeenCalledWith(
+        '/user/999/pet/123',
+        'GET',
+        expect.any(Object)
+      );
+      expect(result.success).toBe(true);
+    });
+
+    test('should handle parameter discovery errors gracefully', async () => {
+      const endpoint = { path: '/pet/{petId}', method: 'GET' };
+      const providedParams = {};
+
+      mockParameterDiscovery.discoverParameters.mockRejectedValue(new Error('Discovery failed'));
+      validator.endpoints = [endpoint];
+      validator.contract = { info: { title: 'Test', version: '1.0' } };
+
+      const result = await validator.validateEndpoint('/pet/{petId}', 'GET', {
+        enableParameterDiscovery: true,
+        pathParams: providedParams
+      });
+
+      expect(mockParameterDiscovery.discoverParameters).toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalledWith('⚠️  Parameter discovery failed: Discovery failed');
+
+      // Should fall back to provided parameters (empty in this case)
+      // This should result in an error due to unresolved parameters
+      expect(result.success).toBe(false);
+      expect(result.issues[0].type).toBe('network_error');
+      expect(result.issues[0].message).toContain('Unresolved path parameters');
+    });
+
+    test('should log discovered parameters for transparency', async () => {
+      const endpoint = { path: '/pet/{petId}', method: 'GET' };
+      const providedParams = { existingParam: 'existing' };
+      const discoveredParams = { existingParam: 'existing', petId: '123' };
+
+      mockParameterDiscovery.discoverParameters.mockResolvedValue(discoveredParams);
+      mockHttpClient.makeRequest.mockResolvedValue({
+        status: 200,
+        data: { id: 123 }
+      });
+      mockSchemaValidator.validateResponse.mockResolvedValue([]);
+
+      validator.endpoints = [endpoint];
+
+      await validator.validateEndpoint('/pet/{petId}', 'GET', {
+        enableParameterDiscovery: true,
+        pathParams: providedParams
+      });
+
+      expect(mockLogger.log).toHaveBeenCalledWith(
+        '🔍 Auto-discovered parameters: petId=123'
+      );
+    });
+
+    test('should not log when no new parameters are discovered', async () => {
+      const endpoint = { path: '/pet/{petId}', method: 'GET' };
+      const providedParams = { petId: '999' };
+      const discoveredParams = { petId: '999' }; // Same as provided
+
+      mockParameterDiscovery.discoverParameters.mockResolvedValue(discoveredParams);
+      mockHttpClient.makeRequest.mockResolvedValue({
+        status: 200,
+        data: { id: 999 }
+      });
+      mockSchemaValidator.validateResponse.mockResolvedValue([]);
+
+      validator.endpoints = [endpoint];
+
+      await validator.validateEndpoint('/pet/{petId}', 'GET', {
+        enableParameterDiscovery: true,
+        pathParams: providedParams
+      });
+
+      // Should not log auto-discovered parameters since none were new
+      expect(mockLogger.log).not.toHaveBeenCalledWith(
+        expect.stringContaining('Auto-discovered parameters')
+      );
+    });
+
+    test('should default enableParameterDiscovery to true', async () => {
+      const endpoint = { path: '/pet/{petId}', method: 'GET' };
+      const discoveredParams = { petId: '123' };
+
+      mockParameterDiscovery.discoverParameters.mockResolvedValue(discoveredParams);
+      mockHttpClient.makeRequest.mockResolvedValue({
+        status: 200,
+        data: { id: 123 }
+      });
+      mockSchemaValidator.validateResponse.mockResolvedValue([]);
+
+      validator.endpoints = [endpoint];
+
+      // Don't specify enableParameterDiscovery - should default to true
+      await validator.validateEndpoint('/pet/{petId}', 'GET', {});
+
+      expect(mockParameterDiscovery.discoverParameters).toHaveBeenCalled();
+    });
+
+    test('should pass all endpoints to parameter discovery for context', async () => {
+      const allEndpoints = [
+        { path: '/pet/findByStatus', method: 'GET' },
+        { path: '/pet/{petId}', method: 'GET' },
+        { path: '/user/{username}', method: 'GET' }
+      ];
+
+      mockParameterDiscovery.discoverParameters.mockResolvedValue({ petId: '123' });
+      mockHttpClient.makeRequest.mockResolvedValue({
+        status: 200,
+        data: { id: 123 }
+      });
+      mockSchemaValidator.validateResponse.mockResolvedValue([]);
+
+      validator.endpoints = allEndpoints;
+
+      await validator.validateEndpoint('/pet/{petId}', 'GET', {
+        enableParameterDiscovery: true
+      });
+
+      expect(mockParameterDiscovery.discoverParameters).toHaveBeenCalledWith(
+        '/pet/{petId}',
+        allEndpoints, // Should pass all endpoints for discovery context
+        {}
+      );
     });
   });
 });

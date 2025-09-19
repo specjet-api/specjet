@@ -17,56 +17,152 @@ The `validate` command validates a real API against your OpenAPI contract to ens
 ## Basic Usage
 
 ```bash
-specjet validate <api-url> [options]
+specjet validate <environment> [options]
+```
+
+## Environment Configuration
+
+First, configure your environments in `specjet.config.js`:
+
+```javascript
+export default {
+  environments: {
+    local: {
+      url: 'http://localhost:8000'
+    },
+    staging: {
+      url: 'https://api-staging.myapp.com',
+      headers: {
+        'Authorization': 'Bearer ${STAGING_TOKEN}',
+        'X-API-Version': '2.0'
+      }
+    },
+    production: {
+      url: 'https://api.myapp.com',
+      headers: {
+        'Authorization': 'Bearer ${PROD_TOKEN}',
+        'X-Client-ID': 'myapp-prod'
+      }
+    }
+  }
+};
 ```
 
 ## Examples
 
-### Validate Local Development API
+### Validate Configured Environments
 ```bash
-# Test your backend API
-specjet validate http://localhost:8000
+# Validate local development API - works automatically!
+specjet validate local
 
-# Validates all endpoints defined in your contract
+# Validate staging environment
+specjet validate staging
+
+# Validate production (be careful!)
+specjet validate production
+
+# Verbose output with detailed results
+specjet validate staging --verbose
 ```
 
-### Validate Staging/Production API
+### Advanced Options
 ```bash
-# Test staging environment
-specjet validate https://api-staging.myapp.com
+# Custom timeout for slow APIs
+specjet validate staging --timeout 60000
 
-# Test production (be careful!)
-specjet validate https://api.myapp.com
+# JSON output for CI/CD integration
+specjet validate staging --output json
+
+# Manual path parameter override (rarely needed)
+specjet validate staging --path-params "specialId=999"
 ```
 
-### Validate with Authentication
+### Multiple Environment Validation
 ```bash
-# Bearer token authentication
-specjet validate https://api.myapp.com \
-  --header "Authorization: Bearer eyJhbGciOiJIUzI1..."
-
-# API key authentication
-specjet validate https://api.myapp.com \
-  --header "X-API-Key: abc123def456"
-
-# Multiple headers
-specjet validate https://api.myapp.com \
-  --header "Authorization: Bearer token" \
-  --header "X-Client-ID: my-app"
+# Validate all environments (if supported)
+for env in local staging production; do
+  echo "Validating $env..."
+  specjet validate $env
+done
 ```
 
-### Validate Specific Endpoints
+## Smart Path Parameter Resolution
+
+> ✨ **Zero-Configuration Feature** - SpecJet automatically resolves path parameters without manual setup!
+
+### How It Works
+
+SpecJet automatically discovers values for path parameters like `/pet/{petId}`, `/user/{username}`, and `/order/{orderId}` using a two-step intelligent process:
+
+**1. Discovery First**: Automatically queries list endpoints to find real parameter values
 ```bash
-# Only validate user-related endpoints
-specjet validate https://api.myapp.com --paths "/users/*"
-
-# Multiple path patterns
-specjet validate https://api.myapp.com \
-  --paths "/users/*,/products/*"
-
-# Exclude certain paths
-specjet validate https://api.myapp.com --exclude "/admin/*"
+# Testing /pet/{petId}:
+# 1. Tries GET /pets → finds pet with id=123 → tests GET /pet/123 ✅
+# 2. If /pets fails → uses petId=1 → tests GET /pet/1 ✅
 ```
+
+**2. Smart Fallbacks**: Uses sensible defaults when discovery fails
+```bash
+# Common patterns that work automatically:
+# petId, userId, orderId → "1"
+# username → "testuser"
+# email → "test@example.com"
+# status → "active"
+# And many more...
+```
+
+### Examples
+
+#### Automatic Parameter Discovery
+```bash
+# This just works - no configuration needed!
+specjet validate staging
+
+# SpecJet automatically handles:
+# GET /pets/{petId}     → Discovers petId=123 from GET /pets
+# GET /users/{username} → Discovers username="alice" from GET /users
+# PUT /orders/{orderId} → Uses fallback orderId=1
+```
+
+#### Manual Override (When Needed)
+```bash
+# Override specific parameters for edge cases
+specjet validate staging --path-params "specialId=999,customParam=test"
+
+# Still uses automatic discovery for other parameters
+```
+
+### Discovery Process
+
+When SpecJet encounters a path parameter, it follows this process:
+
+1. **Find List Endpoints**: Looks for `GET /pets`, `GET /users`, etc.
+2. **Query for Data**: Makes a quick request to get real IDs
+3. **Extract Parameters**: Pulls `id`, `petId`, `username` from responses
+4. **Smart Fallbacks**: Uses intelligent defaults if discovery fails
+5. **Cache Results**: Remembers discovered values for efficiency
+
+### Supported Patterns
+
+SpecJet recognizes these common REST patterns:
+
+| Path Pattern | Discovery Endpoint | Fallback Value |
+|--------------|-------------------|----------------|
+| `/pet/{petId}` | `GET /pets` | `petId=1` |
+| `/user/{username}` | `GET /users` | `username="testuser"` |
+| `/order/{orderId}` | `GET /orders` | `orderId=1` |
+| `/product/{productId}` | `GET /products` | `productId=1` |
+| `/category/{categoryId}` | `GET /categories` | `categoryId=1` |
+
+**And many more!** SpecJet handles irregular plurals, nested paths, and custom naming conventions.
+
+### Benefits
+
+- **Zero Configuration**: Works immediately without setup
+- **Real Data**: Uses actual IDs from your API when possible
+- **Intelligent Fallbacks**: Handles edge cases gracefully
+- **Fast Discovery**: Caches results and uses quick timeouts
+- **Override Ready**: Manual parameters still work when needed
 
 ## Command Options
 
@@ -75,6 +171,7 @@ specjet validate https://api.myapp.com --exclude "/admin/*"
 | `--header <header>` | Add HTTP header (can be used multiple times) | None |
 | `--paths <patterns>` | Comma-separated path patterns to validate | All paths |
 | `--exclude <patterns>` | Comma-separated path patterns to exclude | None |
+| `--path-params <params>` | Manual path parameter overrides (key=value pairs) | Auto-discovery |
 | `--timeout <ms>` | Request timeout in milliseconds | `5000` |
 | `--verbose` | Show detailed validation results | `false` |
 | `--format <type>` | Output format: `text`, `json`, `junit` | `text` |
@@ -108,34 +205,39 @@ specjet validate https://api.myapp.com --exclude "/admin/*"
 ### Example Validation Output
 
 ```bash
-specjet validate http://localhost:8000
+specjet validate staging
 
+# 🌍 Validating against environment: staging
 # 🔍 Validating API against contract...
-# 
+#
+# 🔍 Discovered petId=123 from list endpoint
+# 🎯 Using fallback username=testuser (smart default)
+# 🔍 Discovered orderId=456 from list endpoint
+#
 # 📋 Found 12 endpoints to validate
-# 
+#
 # ✅ GET /users - 200 OK
 #    ✅ Response schema valid
 #    ✅ Required fields present: id, name, email
 #    ✅ Content-Type: application/json
-# 
-# ✅ POST /users - 201 Created  
+#
+# ✅ POST /users - 201 Created
 #    ✅ Response schema valid
 #    ✅ Location header present
-# 
-# ❌ GET /users/123 - Failed
-#    ❌ Expected 200, got 404
-#    💡 Endpoint may not exist or user ID is invalid
-# 
-# ⚠️  PUT /users/123 - Warning
+#
+# ✅ GET /users/testuser - 200 OK (auto-discovered parameter)
+#    ✅ Response schema valid
+#    ✅ Parameter resolved automatically
+#
+# ✅ PUT /pets/123 - 200 OK (discovered petId from /pets)
 #    ✅ Status code correct (200)
-#    ⚠️  Extra field in response: 'lastLoginAt'
-#    💡 Consider adding to schema or marking as additionalProperties
-# 
+#    ✅ Parameter discovered from list endpoint
+#
 # 📊 Results:
-#    ✅ Passed: 8/12 endpoints (67%)
-#    ❌ Failed: 2/12 endpoints (17%)
-#    ⚠️  Warnings: 2/12 endpoints (17%)
+#    ✅ Passed: 10/12 endpoints (83%)
+#    ❌ Failed: 1/12 endpoints (8%)
+#    ⚠️  Warnings: 1/12 endpoints (8%)
+#    🎯 Auto-resolved: 8 path parameters
 ```
 
 ## Validation Types

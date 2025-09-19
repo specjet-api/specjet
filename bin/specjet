@@ -160,6 +160,8 @@ program
   .option('--timeout <ms>', 'Request timeout in milliseconds (default: 30000)', '30000')
   .option('--output <format>', 'Output format: console, json, markdown (default: console)', 'console')
   .option('--contract <path>', 'Path to OpenAPI contract file (overrides config)')
+  .option('--no-parameter-discovery', 'Disable automatic path parameter discovery')
+  .option('--path-params <params>', 'Manual path parameters in key=value format (e.g., "petId=1,userId=2")')
   .option('-c, --config <path>', 'Path to configuration file')
   .addHelpText('after', `
 Examples:
@@ -168,6 +170,16 @@ Examples:
   $ specjet validate local --timeout 10000  Custom timeout
   $ specjet validate staging --output json   JSON output for CI/CD
   $ specjet validate dev --contract ./api.yaml  Custom contract file
+  $ specjet validate staging --no-parameter-discovery  Disable auto-discovery
+  $ specjet validate dev --path-params "petId=123,userId=456"  Manual parameters
+
+Smart Parameter Discovery:
+  By default, SpecJet automatically discovers path parameter values by:
+  • Querying list endpoints (e.g., GET /pets finds IDs for /pet/{petId})
+  • Using smart fallbacks for common patterns (petId=1, username=testuser)
+  • Works immediately without configuration for most REST APIs
+
+  Use --no-parameter-discovery to disable and require manual --path-params
 
 Environment Setup:
   Add environments to your specjet.config.js:

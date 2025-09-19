@@ -132,17 +132,15 @@ class MockServer {
           statusCode = 200;
           
         } else if (httpMethod === 'GET') {
-          // GET all - return stored records or generate list
-          const allRecords = this.getAllRecords(entityType);
-          if (allRecords.length > 0) {
-            mockData = allRecords;
-          } else {
-            // Generate list and store each item
-            const { params, context } = this.extractRequestParams(req, endpoint);
-            mockData = this.generateMockResponse(endpoint, params, context);
-            if (Array.isArray(mockData)) {
-              mockData.forEach(item => this.storeRecord(entityType, item));
-            }
+          // GET all - check if response should be array or single object based on schema
+          const { params, context } = this.extractRequestParams(req, endpoint);
+          mockData = this.generateMockResponse(endpoint, params, context);
+
+          // Store generated data for persistence
+          if (Array.isArray(mockData)) {
+            mockData.forEach(item => this.storeRecord(entityType, item));
+          } else if (mockData && typeof mockData === 'object') {
+            this.storeRecord(entityType, mockData);
           }
           statusCode = 200;
           
@@ -153,15 +151,34 @@ class MockServer {
             const errorResponse = this.generateValidationErrorResponse(validation.errors);
             return res.status(400).json(errorResponse);
           }
-          
-          // POST - create new record with actual request data
-          const requestData = req.body;
-          const serverFields = {
-            id: this.nextId++,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          mockData = { ...requestData, ...serverFields };
+
+          // POST - generate response according to endpoint schema
+          const { params, context } = this.extractRequestParams(req, endpoint);
+          const correlationContext = { ...context, correlationId: this.nextId++ };
+
+          // Check if this endpoint should return ApiResponse (like file uploads)
+          const shouldReturnApiResponse = this.shouldReturnApiResponse(endpoint);
+
+          if (shouldReturnApiResponse) {
+            // Generate ApiResponse for endpoints like file upload
+            mockData = {
+              code: 200,
+              type: 'success',
+              message: 'Operation completed successfully'
+            };
+          } else {
+            // Generate response matching the endpoint's response schema
+            mockData = this.generateMockResponse(endpoint, params, correlationContext);
+
+            // If it's an object, merge with request data and add server-generated ID
+            if (mockData && typeof mockData === 'object' && !Array.isArray(mockData)) {
+              mockData = { ...req.body, ...mockData };
+              if (!mockData.id) {
+                mockData.id = this.nextId++;
+              }
+            }
+          }
+
           this.storeRecord(entityType, mockData);
           statusCode = 201;
           
@@ -1004,28 +1021,48 @@ class MockServer {
     return Array.from(entityStore.values());
   }
   
+  shouldReturnApiResponse(endpoint) {
+    // Check if the endpoint response schema is ApiResponse
+    const responses = endpoint.responses || endpoint.spec?.responses || {};
+    const successResponse = responses['200'] || responses['201'] || responses['202'];
+
+    if (!successResponse) return false;
+
+    // Get schema from either direct schema or content schema
+    const schema = successResponse.schema || successResponse.content?.['application/json']?.schema;
+
+    if (!schema) return false;
+
+    // Check if it's a reference to ApiResponse schema
+    if (schema.$ref && schema.$ref.includes('ApiResponse')) {
+      return true;
+    }
+
+    return false;
+  }
+
   extractEntityType(endpoint) {
     // Extract entity type from endpoint path for dataStore management
     const path = endpoint.path || endpoint.url || '';
-    
+
     // Remove path parameters like {id}, {userId} etc
     const cleanPath = path.replace(/\{[^}]+\}/g, '');
-    
+
     // Split path into segments and get the base resource name
     const segments = cleanPath.split('/').filter(segment => segment.length > 0);
-    
+
     if (segments.length === 0) return 'item';
-    
+
     // Take the first segment as the entity type (e.g., /users/123 -> users)
     const baseEntity = segments[0];
-    
+
     // Check against configured entity patterns
     for (const [entityType, pattern] of Object.entries(this.entityPatterns)) {
       if (pattern.test(baseEntity)) {
         return entityType;
       }
     }
-    
+
     // Return the base entity in singular form as fallback
     return baseEntity.endsWith('s') ? baseEntity.slice(0, -1) : baseEntity;
   }

@@ -19,12 +19,50 @@ async function validateCore(environmentName, options = {}) {
 }
 
 /**
+ * Parse path parameters from CLI string format
+ * @param {string} pathParamsString - String like "petId=1,userId=2"
+ * @returns {object} Parsed parameters object
+ */
+function parsePathParams(pathParamsString) {
+  if (!pathParamsString) {
+    return {};
+  }
+
+  const params = {};
+  const pairs = pathParamsString.split(',');
+
+  for (const pair of pairs) {
+    const splitIndex = pair.indexOf('=');
+    if (splitIndex > 0 && splitIndex < pair.length - 1) {
+      const key = pair.substring(0, splitIndex).trim();
+      const value = pair.substring(splitIndex + 1).trim();
+      if (key && value) {
+        params[key] = value;
+      }
+    }
+  }
+
+  return params;
+}
+
+/**
  * CLI wrapper for validate command
  * Maintains backward compatibility by calling process.exit()
  * This maintains the same interface as the original validateCommand function
  */
 async function validateCommand(environmentName, options = {}) {
-  const result = await validateCore(environmentName, options);
+  // Parse CLI-specific options
+  const processedOptions = {
+    ...options,
+    // Handle parameter discovery flag (Commander.js uses negated flag names)
+    // When --no-parameter-discovery is used, parameterDiscovery becomes false
+    // When not specified, parameterDiscovery is undefined, so we default to true
+    enableParameterDiscovery: options.parameterDiscovery !== false,
+    // Parse path parameters from string format
+    pathParams: parsePathParams(options.pathParams)
+  };
+
+  const result = await validateCore(environmentName, processedOptions);
   process.exit(result.exitCode);
 }
 
