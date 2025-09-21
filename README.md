@@ -574,10 +574,10 @@ specjet mock --scenario realistic   # Use realistic data
 Generate beautiful documentation for your API:
 
 ```bash
-specjet docs                        # Generate static HTML documentation
-specjet docs --port 3003            # Start documentation server
-specjet docs --open                 # Generate and open in browser
-specjet docs --output ./public/     # Custom output location
+specjet docs                        # Start documentation server on port 3002
+specjet docs --output docs.html     # Generate static HTML documentation
+specjet docs --open                 # Start server and open in browser
+specjet docs --port 3003            # Start server on custom port
 ```
 ## Configuration
 
