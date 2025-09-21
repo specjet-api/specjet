@@ -152,10 +152,6 @@ class MockServer {
             return res.status(400).json(errorResponse);
           }
 
-          // POST - generate response according to endpoint schema
-          const { params, context } = this.extractRequestParams(req, endpoint);
-          const correlationContext = { ...context, correlationId: this.nextId++ };
-
           // Check if this endpoint should return ApiResponse (like file uploads)
           const shouldReturnApiResponse = this.shouldReturnApiResponse(endpoint);
 
@@ -167,15 +163,21 @@ class MockServer {
               message: 'Operation completed successfully'
             };
           } else {
-            // Generate response matching the endpoint's response schema
-            mockData = this.generateMockResponse(endpoint, params, correlationContext);
+            // POST - use request body as base, only add server-generated fields
+            mockData = { ...req.body };
 
-            // If it's an object, merge with request data and add server-generated ID
-            if (mockData && typeof mockData === 'object' && !Array.isArray(mockData)) {
-              mockData = { ...req.body, ...mockData };
-              if (!mockData.id) {
-                mockData.id = this.nextId++;
-              }
+            // Add server-generated ID if not present
+            if (!mockData.id) {
+              mockData.id = this.nextId++;
+            }
+
+            // Add timestamps if they exist in the response schema
+            const responseSchema = this.getResponseSchema(endpoint);
+            if (this.schemaHasProperty(responseSchema, 'createdAt') && !mockData.createdAt) {
+              mockData.createdAt = new Date().toISOString();
+            }
+            if (this.schemaHasProperty(responseSchema, 'updatedAt') && !mockData.updatedAt) {
+              mockData.updatedAt = new Date().toISOString();
             }
           }
 
@@ -1098,6 +1100,32 @@ class MockServer {
    * const serverUrl = await mockServer.start(3001);
    * console.log(`Server running at ${serverUrl}`);
    */
+  /**
+   * Get the response schema for an endpoint
+   * @param {Object} endpoint - OpenAPI endpoint definition
+   * @returns {Object|null} Response schema or null if not found
+   */
+  getResponseSchema(endpoint) {
+    const responses = endpoint.responses || endpoint.spec?.responses || {};
+    const successResponse = responses['200'] || responses['201'] || responses['202'];
+    return successResponse?.schema || successResponse?.content?.['application/json']?.schema;
+  }
+
+  /**
+   * Check if a schema has a specific property
+   * @param {Object} schema - Schema to check
+   * @param {string} propertyName - Property name to look for
+   * @returns {boolean} True if property exists in schema
+   */
+  schemaHasProperty(schema, propertyName) {
+    if (!schema) return false;
+    if (schema.$ref) {
+      const resolvedSchema = this.resolveSchemaRef(schema.$ref);
+      return resolvedSchema?.properties?.[propertyName] !== undefined;
+    }
+    return schema?.properties?.[propertyName] !== undefined;
+  }
+
   /**
    * Start the mock server on specified port
    * @param {number} [port=3001] - Port number to listen on

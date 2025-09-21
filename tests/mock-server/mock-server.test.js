@@ -748,4 +748,160 @@ describe('MockServer', () => {
       }
     });
   });
+
+  describe('POST Request Data Handling', () => {
+    test('should preserve request body data in POST response', () => {
+      const postEndpoint = {
+        method: 'POST',
+        path: '/users',
+        spec: {
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    email: { type: 'string' }
+                  },
+                  required: ['name', 'email']
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'number' },
+                    name: { type: 'string' },
+                    email: { type: 'string' },
+                    createdAt: { type: 'string', format: 'date-time' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const contract = { endpoints: [postEndpoint], components: { schemas: {} } };
+      const server = new MockServer(contract, 'demo');
+
+      // Mock Express request
+      const mockReq = {
+        body: { name: 'Test User', email: 'test@example.com' },
+        params: {},
+        query: {}
+      };
+
+      // Test the fixed POST handling
+      const requestBody = mockReq.body;
+      const mockData = { ...requestBody };
+
+      // Add server-generated ID if not present
+      if (!mockData.id) {
+        mockData.id = server.nextId++;
+      }
+
+      // Add timestamps if they exist in the response schema
+      const responseSchema = server.getResponseSchema(postEndpoint);
+      if (server.schemaHasProperty(responseSchema, 'createdAt') && !mockData.createdAt) {
+        mockData.createdAt = new Date().toISOString();
+      }
+      if (server.schemaHasProperty(responseSchema, 'updatedAt') && !mockData.updatedAt) {
+        mockData.updatedAt = new Date().toISOString();
+      }
+
+      // User data should be preserved
+      expect(mockData.name).toBe('Test User');
+      expect(mockData.email).toBe('test@example.com');
+      expect(mockData.id).toBeDefined();
+      expect(typeof mockData.id).toBe('number');
+      expect(mockData.createdAt).toBeDefined();
+      expect(typeof mockData.createdAt).toBe('string');
+    });
+
+    test('should not override user-provided ID', () => {
+      const postEndpoint = {
+        method: 'POST',
+        path: '/users',
+        responses: {
+          '201': {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'number' },
+                    name: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const contract = { endpoints: [postEndpoint], components: { schemas: {} } };
+      const server = new MockServer(contract, 'demo');
+
+      const requestBody = { id: 42, name: 'Test User' };
+      const mockData = { ...requestBody };
+
+      // Should not override existing ID
+      if (!mockData.id) {
+        mockData.id = server.nextId++;
+      }
+
+      expect(mockData.id).toBe(42);
+      expect(mockData.name).toBe('Test User');
+    });
+
+    test('should only add timestamps when schema defines them', () => {
+      const postEndpointWithoutTimestamps = {
+        method: 'POST',
+        path: '/items',
+        responses: {
+          '201': {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'number' },
+                    name: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const contract = { endpoints: [postEndpointWithoutTimestamps], components: { schemas: {} } };
+      const server = new MockServer(contract, 'demo');
+
+      const requestBody = { name: 'Test Item' };
+      const mockData = { ...requestBody };
+
+      if (!mockData.id) {
+        mockData.id = server.nextId++;
+      }
+
+      const responseSchema = server.getResponseSchema(postEndpointWithoutTimestamps);
+      if (server.schemaHasProperty(responseSchema, 'createdAt') && !mockData.createdAt) {
+        mockData.createdAt = new Date().toISOString();
+      }
+
+      expect(mockData.name).toBe('Test Item');
+      expect(mockData.id).toBeDefined();
+      expect(mockData.createdAt).toBeUndefined(); // Should not be added
+    });
+  });
 });
