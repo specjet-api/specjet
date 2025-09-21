@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-09-21
+
+### Fixed
+- **Mock Server POST Request Handling** - Fixed critical bug where POST requests generated synthetic data instead of preserving user input
+  - POST requests now correctly preserve request body data while only adding server-generated fields (ID, timestamps) when missing
+  - Added comprehensive test coverage for POST request data preservation
+  - Improved MockServer class with helper methods for schema-aware field generation
+- **Documentation Accuracy** - Corrected README documentation for `specjet docs` command default behavior
+  - Fixed incorrect description showing static file generation as default instead of documentation server
+  - CLI behavior and documentation now properly aligned
+
 ## [0.2.2] - 2025-09-19
 
 ### Added
