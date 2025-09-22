@@ -37,7 +37,12 @@ For each function/class/method, ask these questions **in order**:
 - ✅ **YES** → Add JSDoc (generated interfaces, API clients, config types)
 - ❌ **NO** → Continue to next question
 
-#### 4. **Final Check: Skip JSDoc**
+#### 4. **Code Generation Test**
+❓ "Does this generate code that developers will use or extend?"
+- ✅ **YES** → Add JSDoc (method name generators, type mappers, template builders)
+- ❌ **NO** → Continue to next question
+
+#### 5. **Final Check: Skip JSDoc**
 If none of the above apply, **don't add JSDoc**
 
 ### Examples: When to ADD JSDoc
@@ -71,6 +76,14 @@ function generateRealisticMockData(schema, constraints) { ... }
  * Uses jitter to prevent thundering herd problems
  */
 async withRetry(operation, context) { ... }
+
+// ✅ Code generation algorithm - developers need to understand output
+/**
+ * Converts OpenAPI path and method into TypeScript method name
+ * Uses operationId if available, otherwise generates semantic names
+ * Examples: GET /users/{id} → getUserById, POST /users → createUser
+ */
+pathToMethodName(path, method, operationId) { ... }
 ```
 
 ### Examples: When to SKIP JSDoc
@@ -91,6 +104,13 @@ function toCamelCase(str) {
 getConfig() {
   return { timeout: this.timeout, retries: this.retries };
 }
+
+// ❌ Simple utility methods in generators
+addPathParameters(methodParams, pathParams, schemas) { ... }
+
+// ❌ Basic logging methods
+debug(message, context = {}) { ... }
+info(message, context = {}) { ... }
 ```
 
 ### Quality Standards
@@ -286,6 +306,14 @@ const service = new ValidationService({
 3. Add comprehensive tests for complex logic
 4. Update relevant service classes to use new functionality
 
+### Functional Programming Considerations
+
+When refactoring classes into functional approaches:
+- **Remove JSDoc** from simple pure functions that are self-documenting
+- **Keep JSDoc** for complex algorithms regardless of functional vs OOP style
+- **Add JSDoc** to higher-order functions that transform or compose behavior
+- **Document** the overall functional workflow, not individual utility functions
+
 ## Testing Approach
 
 ### Testing Philosophy
@@ -369,12 +397,13 @@ expect(result.exitCode).toBe(0);
 
 Before submitting code, verify:
 
-- [ ] **JSDoc:** Added only where it provides real value (external APIs, complex logic)
+- [ ] **JSDoc:** Added only where it provides real value (external APIs, complex logic, code generation)
 - [ ] **Tests:** Core functionality is tested, exit codes work correctly
 - [ ] **Imports:** Organized and use path mapping where appropriate
 - [ ] **Errors:** Use SpecJetError with helpful suggestions
 - [ ] **CLI:** Commands are thin wrappers around testable services
 - [ ] **Naming:** Classes, functions, and files follow established conventions
+- [ ] **Documentation Balance:** Not over-documented (utility methods) or under-documented (complex workflows)
 
 ## Contributing
 

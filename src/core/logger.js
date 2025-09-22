@@ -40,11 +40,6 @@ class Logger {
     reset: '\x1b[0m'     // Reset
   };
 
-  /**
-   * Check if a log level should be output
-   * @param {string} level - Log level to check
-   * @returns {boolean}
-   */
   shouldLog(level) {
     if (this.silent) return false;
     return Logger.LEVELS[level] >= Logger.LEVELS[this.level];
@@ -116,11 +111,6 @@ class Logger {
     return sanitized;
   }
 
-  /**
-   * Debug level logging
-   * @param {string} message - Log message
-   * @param {object} context - Additional context
-   */
   debug(message, context = {}) {
     if (this.shouldLog('debug')) {
       const formatted = this.formatMessage('debug', message, context);
@@ -128,11 +118,6 @@ class Logger {
     }
   }
 
-  /**
-   * Info level logging
-   * @param {string} message - Log message
-   * @param {object} context - Additional context
-   */
   info(message, context = {}) {
     if (this.shouldLog('info')) {
       const formatted = this.formatMessage('info', message, context);
@@ -140,11 +125,6 @@ class Logger {
     }
   }
 
-  /**
-   * Warning level logging
-   * @param {string} message - Log message
-   * @param {object} context - Additional context
-   */
   warn(message, context = {}) {
     if (this.shouldLog('warn')) {
       const formatted = this.formatMessage('warn', message, context);
@@ -302,10 +282,6 @@ class Logger {
     });
   }
 
-  /**
-   * Set log level
-   * @param {string} level - New log level
-   */
   setLevel(level) {
     if (Object.prototype.hasOwnProperty.call(Logger.LEVELS, level)) {
       this.level = level;
@@ -314,18 +290,10 @@ class Logger {
     }
   }
 
-  /**
-   * Enable or disable silent mode
-   * @param {boolean} silent - Whether to enable silent mode
-   */
   setSilent(silent) {
     this.silent = silent;
   }
 
-  /**
-   * Get current logger configuration
-   * @returns {object} Logger configuration
-   */
   getConfig() {
     return {
       level: this.level,

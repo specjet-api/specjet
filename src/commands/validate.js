@@ -1,9 +1,5 @@
 import ValidationService from '../services/validation-service.js';
 
-/**
- * Create a validation service instance with default configuration
- * @returns {ValidationService} Configured validation service
- */
 function createValidationService() {
   return new ValidationService();
 }
@@ -18,11 +14,6 @@ async function validateCore(environmentName, options = {}) {
   return await validationService.validateEnvironment(environmentName, options);
 }
 
-/**
- * Parse path parameters from CLI string format
- * @param {string} pathParamsString - String like "petId=1,userId=2"
- * @returns {object} Parsed parameters object
- */
 function parsePathParams(pathParamsString) {
   if (!pathParamsString) {
     return {};

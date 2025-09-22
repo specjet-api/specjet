@@ -208,10 +208,6 @@ export function validateOptions(options = {}) {
   };
 }
 
-/**
- * Get default parameter values
- * @returns {object} Object with default parameter values
- */
 export function getDefaults() {
   return { ...DEFAULT_VALUES };
 }

@@ -94,11 +94,6 @@ ${methodBody}
     return { code, imports };
   }
 
-  /**
-   * Categorize endpoint parameters by type
-   * @param {object} endpoint - Endpoint definition
-   * @returns {object} Categorized parameters
-   */
   categorizeEndpointParameters(endpoint) {
     return {
       path: endpoint.parameters.filter(p => p.in === 'path'),
@@ -107,14 +102,6 @@ ${methodBody}
     };
   }
 
-  /**
-   * Build method signature parameters
-   * @param {object} endpoint - Endpoint definition
-   * @param {object} parameters - Categorized parameters
-   * @param {object} schemas - OpenAPI schemas
-   * @param {Set} imports - Import tracker
-   * @returns {Array} Method parameter strings
-   */
   buildMethodSignature(endpoint, parameters, schemas, imports) {
     const methodParams = [];
 
@@ -128,12 +115,6 @@ ${methodBody}
     return methodParams;
   }
 
-  /**
-   * Add path parameters to method signature
-   * @param {Array} methodParams - Method parameters array
-   * @param {Array} pathParams - Path parameters
-   * @param {object} schemas - OpenAPI schemas
-   */
   addPathParameters(methodParams, pathParams, schemas) {
     pathParams.forEach(param => {
       const paramType = this.typeMapper.mapOpenApiTypeToTypeScript(param.schema, schemas);
@@ -141,13 +122,6 @@ ${methodBody}
     });
   }
 
-  /**
-   * Add request body parameter to method signature
-   * @param {Array} methodParams - Method parameters array
-   * @param {object} requestBody - Request body definition
-   * @param {object} schemas - OpenAPI schemas
-   * @param {Set} imports - Import tracker
-   */
   addRequestBodyParameter(methodParams, requestBody, schemas, imports) {
     if (!requestBody) return;
 
@@ -160,12 +134,6 @@ ${methodBody}
     }
   }
 
-  /**
-   * Add query parameters to method signature
-   * @param {Array} methodParams - Method parameters array
-   * @param {Array} queryParams - Query parameters
-   * @param {object} schemas - OpenAPI schemas
-   */
   addQueryParameters(methodParams, queryParams, schemas) {
     if (queryParams.length > 0) {
       const queryParamType = this.generateQueryParamsType(queryParams, schemas);
@@ -173,12 +141,6 @@ ${methodBody}
     }
   }
 
-  /**
-   * Add header parameters to method signature
-   * @param {Array} methodParams - Method parameters array
-   * @param {Array} headerParams - Header parameters
-   * @param {object} schemas - OpenAPI schemas
-   */
   addHeaderParameters(methodParams, headerParams, schemas) {
     if (headerParams.length > 0) {
       const headerParamType = this.generateHeaderParamsType(headerParams, schemas);
@@ -186,17 +148,22 @@ ${methodBody}
     }
   }
   
+  /**
+   * Converts OpenAPI path and method into TypeScript method name
+   * Uses operationId if available, otherwise generates semantic names
+   * Examples: GET /users/{id} → getUserById, POST /users → createUser
+   */
   pathToMethodName(path, method, operationId) {
     // Use operationId if available, otherwise generate from path and method
     if (operationId) {
       return operationId;
     }
-    
+
     // Convert /users/{id} GET to getUserById
     const pathParts = path.split('/').filter(p => p && !p.startsWith('{'));
     const resource = pathParts[pathParts.length - 1];
     const hasId = path.includes('{id}') || path.includes('{');
-    
+
     const methodMap = {
       'GET': hasId ? `get${this.capitalize(resource)}ById` : `get${this.capitalize(resource)}`,
       'POST': `create${this.capitalize(resource)}`,
@@ -204,7 +171,7 @@ ${methodBody}
       'PATCH': `update${this.capitalize(resource)}`,
       'DELETE': `delete${this.capitalize(resource)}`
     };
-    
+
     return methodMap[method] || `${method.toLowerCase()}${this.capitalize(resource)}`;
   }
   
@@ -265,6 +232,11 @@ ${methodBody}
     return pathWithParams;
   }
   
+  /**
+   * Generates the complete method body for an API endpoint method
+   * Handles path templating, query parameters, headers, and request execution
+   * Produces TypeScript code that calls the generic request method
+   */
   generateMethodBody(endpoint, _pathParams, queryParams, headerParams, pathWithParams) {
     const lines = [];
 
@@ -279,20 +251,10 @@ ${methodBody}
     return lines.join('\n');
   }
 
-  /**
-   * Add path generation to method body
-   * @param {Array} lines - Method body lines
-   * @param {string} pathWithParams - Path template with parameters
-   */
   addPathGeneration(lines, pathWithParams) {
     lines.push(`    const path = \`${pathWithParams}\`;`);
   }
 
-  /**
-   * Add query parameter handling to method body
-   * @param {Array} lines - Method body lines
-   * @param {Array} queryParams - Query parameters
-   */
   addQueryParameterHandling(lines, queryParams) {
     if (queryParams.length > 0) {
       lines.push('    const url = new URL(path, this.baseUrl);');
@@ -306,12 +268,6 @@ ${methodBody}
     }
   }
 
-  /**
-   * Build request options configuration
-   * @param {object} endpoint - Endpoint definition
-   * @param {Array} headerParams - Header parameters
-   * @returns {Array} Request options array
-   */
   buildRequestOptions(endpoint, headerParams) {
     const requestOptions = [];
 
@@ -328,12 +284,6 @@ ${methodBody}
     return requestOptions;
   }
 
-  /**
-   * Add request options generation to method body
-   * @param {Array} lines - Method body lines
-   * @param {Array} requestOptions - Request options
-   * @param {Array} headerParams - Header parameters
-   */
   addRequestOptionsGeneration(lines, requestOptions, headerParams) {
     if (headerParams.length > 0) {
       lines.push('    const requestHeaders: Record<string, string> = {};');
@@ -354,13 +304,6 @@ ${methodBody}
     }
   }
 
-  /**
-   * Add request execution to method body
-   * @param {Array} lines - Method body lines
-   * @param {object} endpoint - Endpoint definition
-   * @param {Array} queryParams - Query parameters
-   * @param {Array} requestOptions - Request options
-   */
   addRequestExecution(lines, endpoint, queryParams, requestOptions) {
     const pathVar = queryParams.length > 0 ? 'url.pathname + url.search' : 'path';
     const optionsVar = requestOptions.length > 0 ? 'requestOptions' : 'options';
@@ -385,16 +328,21 @@ ${methodBody}
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
+  /**
+   * Calculates relative import path from client to types directory
+   * Handles different output configurations and ensures ES module compatibility
+   * Converts TypeScript extensions to JavaScript for runtime imports
+   */
   calculateRelativeImportPath(config) {
     const typesPath = config?.output?.types || './src/types';
     const clientPath = config?.output?.client || './src/api';
-    
+
     // Use path.relative for accurate path calculation
     const relativePath = relative(
       dirname(resolve(clientPath, 'client.ts')),
       resolve(typesPath, 'api.ts')
     );
-    
+
     // Ensure .js extension for ES modules and normalize path separators
     return relativePath.replace(/\.ts$/, '.js').replace(/\\/g, '/');
   }

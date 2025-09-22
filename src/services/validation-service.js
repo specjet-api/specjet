@@ -212,10 +212,12 @@ class ValidationService {
   }
 
   /**
-   * Create validation system with appropriate configuration
-   * @param {object} envConfig - Environment configuration
-   * @param {object} options - Validation options
-   * @returns {object} Validation system
+   * Creates validation system optimized for CI/local environments
+   * Adjusts concurrency, delays, and progress reporting based on execution context
+   * CI environments use conservative settings to avoid overwhelming servers
+   * @param {object} envConfig - Environment configuration with URL and headers
+   * @param {object} options - User-provided validation options
+   * @returns {object} Configured validation system with factory-created components
    */
   createValidationSystem(envConfig, options) {
     const isCI = process.env.CI || !process.stdin.isTTY;
@@ -260,10 +262,12 @@ class ValidationService {
   }
 
   /**
-   * Execute the validation process
-   * @param {object} validationSystem - Validation system
-   * @param {object} options - Validation options
-   * @returns {Promise<Array>} Validation results
+   * Executes validation workflow with progress tracking and parameter discovery
+   * Handles concurrent endpoint testing with rate limiting and error collection
+   * Supports parameter discovery for paths, queries, and request bodies
+   * @param {object} validationSystem - Initialized validation system
+   * @param {object} options - Runtime options including timeout and parameter overrides
+   * @returns {Promise<Array>} Array of validation results with success/failure status
    */
   async executeValidation(validationSystem, options) {
     const isCI = process.env.CI || !process.stdin.isTTY;
@@ -286,12 +290,14 @@ class ValidationService {
   }
 
   /**
-   * Generate final validation response
-   * @param {Array} results - Validation results
-   * @param {object} validationSystem - Validation system
-   * @param {string} environmentName - Environment name
-   * @param {object} options - Validation options
-   * @returns {object} Final response
+   * Transforms validation results into formatted output with statistics
+   * Handles multiple output formats (JSON, Markdown, Console) and CI-specific reporting
+   * Calculates success rates, generates summaries, and determines exit codes
+   * @param {Array} results - Raw validation results from endpoint testing
+   * @param {object} validationSystem - System containing statistics and configuration
+   * @param {string} environmentName - Target environment name for reporting
+   * @param {object} options - Output formatting and verbosity options
+   * @returns {object} Complete response with exit code, formatted output, and statistics
    */
   generateValidationResponse(results, validationSystem, environmentName, options) {
     const stats = validationSystem.getStatistics();
