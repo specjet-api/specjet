@@ -1,6 +1,11 @@
 import { SpecJetError } from './errors.js';
 import { URL } from 'url';
 
+const TIMEOUT_LIMITS = {
+  MIN: 1000,     // 1 second
+  MAX: 300000    // 5 minutes
+};
+
 /**
  * Secure configuration validator for SpecJet
  * Provides comprehensive security validation for all configuration inputs
@@ -222,8 +227,8 @@ class SecureConfigValidator {
 
     // Validate timeout settings
     if (envConfig.timeout !== undefined) {
-      if (typeof envConfig.timeout !== 'number' || envConfig.timeout < 1000 || envConfig.timeout > 300000) {
-        errors.push(`Environment '${envName}' timeout must be between 1000ms and 300000ms (5 minutes)`);
+      if (typeof envConfig.timeout !== 'number' || envConfig.timeout < TIMEOUT_LIMITS.MIN || envConfig.timeout > TIMEOUT_LIMITS.MAX) {
+        errors.push(`Environment '${envName}' timeout must be between ${TIMEOUT_LIMITS.MIN}ms and ${TIMEOUT_LIMITS.MAX}ms (5 minutes)`);
       }
     }
 
