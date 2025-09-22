@@ -17,7 +17,7 @@ describe('ValidationService', () => {
     delete process.env.CI;
     process.stdin.isTTY = true;
 
-    // Mock ConfigLoader
+    // Mock config functions
     mockConfigLoader = {
       loadConfig: vi.fn(),
       validateConfig: vi.fn(),
@@ -67,7 +67,11 @@ describe('ValidationService', () => {
 
     // Create service with all mocked dependencies
     validationService = new ValidationService({
-      configLoader: mockConfigLoader,
+      loadConfig: mockConfigLoader.loadConfig,
+      validateConfig: mockConfigLoader.validateConfig,
+      getEnvironmentConfig: mockConfigLoader.getEnvironmentConfig,
+      getAvailableEnvironments: mockConfigLoader.getAvailableEnvironments,
+      listEnvironments: mockConfigLoader.listEnvironments,
       contractFinder: mockContractFinder,
       envValidator: mockEnvValidator,
       validatorFactory: mockValidatorFactory,
@@ -83,7 +87,11 @@ describe('ValidationService', () => {
 
   describe('Constructor and Dependency Injection', () => {
     test('should create service with all provided dependencies', () => {
-      expect(validationService.configLoader).toBe(mockConfigLoader);
+      expect(validationService.loadConfig).toBe(mockConfigLoader.loadConfig);
+      expect(validationService.validateConfig).toBe(mockConfigLoader.validateConfig);
+      expect(validationService.getEnvConfig).toBe(mockConfigLoader.getEnvironmentConfig);
+      expect(validationService.getAvailableEnvironments).toBe(mockConfigLoader.getAvailableEnvironments);
+      expect(validationService.listEnvironments).toBe(mockConfigLoader.listEnvironments);
       expect(validationService.contractFinder).toBe(mockContractFinder);
       expect(validationService.envValidator).toBe(mockEnvValidator);
       expect(validationService.validatorFactory).toBe(mockValidatorFactory);
@@ -95,7 +103,11 @@ describe('ValidationService', () => {
     test('should use default dependencies when not provided', () => {
       const serviceWithDefaults = new ValidationService();
 
-      expect(serviceWithDefaults.configLoader).toBeDefined();
+      expect(serviceWithDefaults.loadConfig).toBeDefined();
+      expect(serviceWithDefaults.validateConfig).toBeDefined();
+      expect(serviceWithDefaults.getEnvConfig).toBeDefined();
+      expect(serviceWithDefaults.getAvailableEnvironments).toBeDefined();
+      expect(serviceWithDefaults.listEnvironments).toBeDefined();
       expect(serviceWithDefaults.contractFinder).toBeDefined();
       expect(serviceWithDefaults.envValidator).toBeDefined();
       expect(serviceWithDefaults.validatorFactory).toBeDefined();

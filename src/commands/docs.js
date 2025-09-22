@@ -3,7 +3,7 @@ import fs from 'fs-extra';
 import { resolve } from 'path';
 import { exec } from 'child_process';
 import ContractParser from '#src/core/parser.js';
-import ConfigLoader from '#src/core/config.js';
+import { loadConfig, validateConfig, resolveContractPath } from '#src/core/config.js';
 import HtmlDocumentationGenerator from '#src/codegen/html-docs.js';
 import MockServer from '#src/mock-server/server.js';
 import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
@@ -17,10 +17,10 @@ async function docsCommand(options = {}) {
 
     // 1. Load configuration
     console.log('📋 Loading configuration...');
-    const config = await ConfigLoader.loadConfig(options.config);
-    ConfigLoader.validateConfig(config);
+    const config = await loadConfig(options.config);
+    validateConfig(config);
     
-    const contractPath = ConfigLoader.resolveContractPath(config);
+    const contractPath = resolveContractPath(config);
     ErrorHandler.validateContractFile(contractPath);
     console.log(`   Contract: ${contractPath}`);
 

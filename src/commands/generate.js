@@ -1,7 +1,7 @@
 import ContractParser from '#src/core/parser.js';
 import TypeScriptGenerator from '#src/codegen/typescript.js';
-import ConfigLoader from '#src/core/config.js';
-import FileGenerator from '#src/codegen/files.js';
+import { loadConfig, validateConfig, resolveContractPath, resolveOutputPaths } from '#src/core/config.js';
+import { writeTypeDefinitions, writeApiClient, generateSummaryReport, printGenerationReport } from '#src/codegen/files.js';
 import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
 import FileWatcher from '#src/core/watcher.js';
 
@@ -10,8 +10,8 @@ const LARGE_SCHEMA_THRESHOLD = 50;
 const VERY_LARGE_SCHEMA_THRESHOLD = 100;
 
 async function performGeneration(config, options) {
-  const contractPath = ConfigLoader.resolveContractPath(config);
-  const outputPaths = ConfigLoader.resolveOutputPaths(config);
+  const contractPath = resolveContractPath(config);
+  const outputPaths = resolveOutputPaths(config);
   
   // Validate contract file exists before proceeding
   ErrorHandler.validateContractFile(contractPath);
@@ -104,7 +104,7 @@ async function performGeneration(config, options) {
 
   // Write type definitions
   try {
-    const typesResult = await FileGenerator.writeTypeDefinitions(
+    const typesResult = await writeTypeDefinitions(
       outputPaths.types, 
       interfacesContent, 
       config.typescript
@@ -116,7 +116,7 @@ async function performGeneration(config, options) {
 
   // Write API client
   try {
-    const clientResult = await FileGenerator.writeApiClient(
+    const clientResult = await writeApiClient(
       outputPaths.client, 
       clientContent, 
       config.typescript
@@ -129,9 +129,9 @@ async function performGeneration(config, options) {
   // Documentation generation is now handled by the 'docs' command only
 
   // Generate summary report
-  const report = FileGenerator.generateSummaryReport(writeResults);
+  const report = generateSummaryReport(writeResults);
   if (!options.watch) {
-    FileGenerator.printGenerationReport(report, options.verbose);
+    printGenerationReport(report, options.verbose);
   } else {
     // Abbreviated output for watch mode
     console.log(`✨ Regenerated ${report.successful} files at ${new Date().toLocaleTimeString()}`);
@@ -153,8 +153,8 @@ async function generateCommand(options = {}) {
 
     // 1. Load configuration
     console.log('📋 Loading configuration...');
-    const config = await ConfigLoader.loadConfig(options.config);
-    ConfigLoader.validateConfig(config);
+    const config = await loadConfig(options.config);
+    validateConfig(config);
 
     // 2. Perform initial generation
     const { contractPath } = await performGeneration(config, options);

@@ -1,4 +1,4 @@
-import ConfigLoader from '#src/core/config.js';
+import { loadConfig, validateConfig, getEnvironmentConfig, getAvailableEnvironments, listEnvironments } from '#src/core/config.js';
 import ContractFinder from '#src/core/contract-finder.js';
 import APIValidator from '#src/core/validator.js';
 import ValidationResults from '#src/core/validation-results.js';
@@ -15,12 +15,12 @@ async function validateCore(environmentName, options = {}) {
   try {
     // Step 1: Load configuration
     console.log('🔧 Loading configuration...');
-    const config = await ConfigLoader.loadConfig(options.config);
-    ConfigLoader.validateConfig(config);
+    const config = await loadConfig(options.config);
+    validateConfig(config);
 
     // Step 2: Validate environment argument
     if (!environmentName) {
-      const availableEnvs = ConfigLoader.getAvailableEnvironments(config);
+      const availableEnvs = getAvailableEnvironments(config);
       if (availableEnvs.length === 0) {
         throw new SpecJetError(
           'No environments configured and no environment specified',
@@ -35,7 +35,7 @@ async function validateCore(environmentName, options = {}) {
       }
 
       console.log('❌ Environment required. Available environments:');
-      console.log(ConfigLoader.listEnvironments(config));
+      console.log(listEnvironments(config));
       return { exitCode: 1, success: false, error: 'Environment required' };
     }
 
@@ -43,11 +43,11 @@ async function validateCore(environmentName, options = {}) {
     console.log(`🌍 Validating against environment: ${environmentName}`);
     let envConfig;
     try {
-      envConfig = ConfigLoader.getEnvironmentConfig(config, environmentName);
+      envConfig = getEnvironmentConfig(config, environmentName);
     } catch (error) {
       if (error.code === 'CONFIG_ENVIRONMENT_NOT_FOUND') {
         console.log(`❌ Environment '${environmentName}' not found. Available environments:`);
-        console.log(ConfigLoader.listEnvironments(config));
+        console.log(listEnvironments(config));
         return { exitCode: 1, success: false, error: `Environment '${environmentName}' not found` };
       }
       throw error;

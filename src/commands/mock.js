@@ -1,6 +1,6 @@
 import MockServer from '#src/mock-server/server.js';
 import ContractParser from '#src/core/parser.js';
-import ConfigLoader from '#src/core/config.js';
+import { loadConfig, validateConfig, resolveContractPath } from '#src/core/config.js';
 import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
 
 // Constants for progress feedback
@@ -16,10 +16,10 @@ async function mockCommand(options = {}) {
 
     // 1. Load configuration
     console.log('📋 Loading configuration...');
-    const config = await ConfigLoader.loadConfig(options.config);
-    ConfigLoader.validateConfig(config);
+    const config = await loadConfig(options.config);
+    validateConfig(config);
     
-    const contractPath = ConfigLoader.resolveContractPath(config);
+    const contractPath = resolveContractPath(config);
     ErrorHandler.validateContractFile(contractPath);
     console.log(`   Contract: ${contractPath}`);
 

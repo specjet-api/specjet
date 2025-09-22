@@ -5,7 +5,7 @@ import http from 'http';
 
 // Internal modules
 import { SpecJetError } from './errors.js';
-import ParameterValidator from './parameter-validator.js';
+import { validateTimeout, validateMaxRetries } from './parameter-validator.js';
 
 class HttpClient {
   constructor(baseURL, defaultHeaders = {}, options = {}) {
@@ -16,10 +16,11 @@ class HttpClient {
       ...defaultHeaders
     };
 
-    // Use parameter validator for type safety
-    this.parameterValidator = options.parameterValidator || new ParameterValidator();
-    this.defaultTimeout = this.parameterValidator.validateTimeout(options.timeout, 10000);
-    this.maxRetries = this.parameterValidator.validateMaxRetries(options.maxRetries, 2);
+    // Use parameter validator functions for type safety
+    this.validateTimeout = options.validateTimeout || validateTimeout;
+    this.validateMaxRetries = options.validateMaxRetries || validateMaxRetries;
+    this.defaultTimeout = this.validateTimeout(options.timeout, 10000);
+    this.maxRetries = this.validateMaxRetries(options.maxRetries, 2);
     this.agent = this.createAgent(options);
   }
 
@@ -29,7 +30,7 @@ class HttpClient {
       keepAliveMsecs: 1000,
       maxSockets: 10,
       maxFreeSockets: 5,
-      timeout: this.parameterValidator.validateTimeout(options.timeout, 10000),
+      timeout: this.validateTimeout(options.timeout, 10000),
       freeSocketTimeout: 30000, // Free socket timeout
       ...options.agentOptions
     };
@@ -78,7 +79,7 @@ class HttpClient {
       }
     }
 
-    const validatedTimeout = this.parameterValidator.validateTimeout(timeout, 30000);
+    const validatedTimeout = this.validateTimeout(timeout, 30000);
 
     const requestOptions = {
       hostname: parsedUrl.hostname,

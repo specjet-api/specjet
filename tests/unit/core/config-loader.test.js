@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { writeFileSync, existsSync, mkdirSync, rmSync } from 'fs';
-import ConfigLoader from '#src/core/config.js';
+import { loadConfig, getAvailableEnvironments, getEnvironmentConfig, validateConfig } from '#src/core/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,7 +22,7 @@ describe('ConfigLoader', () => {
   });
 
   test('should load default config when no file exists', async () => {
-    const config = await ConfigLoader.loadConfig();
+    const config = await loadConfig();
 
     expect(config).toHaveProperty('contract');
     expect(config).toHaveProperty('output');
@@ -50,7 +50,7 @@ export default {
 };
     `.trim());
 
-    const config = await ConfigLoader.loadConfig(configPath);
+    const config = await loadConfig(configPath);
 
     expect(config.contract).toBe('./my-contract.yaml');
     expect(config.output.types).toBe('./custom/types');
@@ -69,7 +69,7 @@ export default {
       }
     };
 
-    expect(() => ConfigLoader.validateConfig(invalidConfig)).toThrow();
+    expect(() => validateConfig(invalidConfig)).toThrow();
   });
 
   test('should load config with environments section', async () => {
@@ -102,7 +102,7 @@ export default {
 };
     `.trim());
 
-    const config = await ConfigLoader.loadConfig(configPath);
+    const config = await loadConfig(configPath);
 
     expect(config).toHaveProperty('environments');
     expect(config.environments).toHaveProperty('staging');
@@ -137,7 +137,7 @@ export default {
 };
     `.trim());
 
-    const config = await ConfigLoader.loadConfig(configPath);
+    const config = await loadConfig(configPath);
 
     expect(config.environments.staging.url).toBe('https://api-staging.example.com');
     expect(config.environments.staging.headers['Authorization']).toBe('Bearer test-token-123');
@@ -176,7 +176,7 @@ export default {
 };
       `.trim());
 
-      const config = await ConfigLoader.loadConfig(configPath);
+      const config = await loadConfig(configPath);
 
       expect(config.environments.staging.url).toBe('https://api-.example.com');
       expect(config.environments.staging.headers['Authorization']).toBe('Bearer ');
@@ -200,7 +200,7 @@ export default {
       }
     };
 
-    const environments = ConfigLoader.getAvailableEnvironments(config);
+    const environments = getAvailableEnvironments(config);
     expect(environments).toEqual(['staging', 'dev', 'local']);
   });
 
@@ -210,7 +210,7 @@ export default {
       output: { types: './src/types', client: './src/api' }
     };
 
-    const environments = ConfigLoader.getAvailableEnvironments(config);
+    const environments = getAvailableEnvironments(config);
     expect(environments).toEqual([]);
   });
 
@@ -227,11 +227,11 @@ export default {
       }
     };
 
-    const stagingEnv = ConfigLoader.getEnvironmentConfig(config, 'staging');
+    const stagingEnv = getEnvironmentConfig(config, 'staging');
     expect(stagingEnv.url).toBe('https://staging.example.com');
     expect(stagingEnv.headers['Authorization']).toBe('Bearer staging-token');
 
-    const devEnv = ConfigLoader.getEnvironmentConfig(config, 'dev');
+    const devEnv = getEnvironmentConfig(config, 'dev');
     expect(devEnv.url).toBe('https://dev.example.com');
   });
 
@@ -244,7 +244,7 @@ export default {
       }
     };
 
-    expect(() => ConfigLoader.getEnvironmentConfig(config, 'production'))
+    expect(() => getEnvironmentConfig(config, 'production'))
       .toThrow();
   });
 });

@@ -1,27 +1,23 @@
 import { SpecJetError } from './errors.js';
 
 /**
- * Validates and converts CLI parameters with proper type coercion and error handling
- *
- * This class provides centralized parameter validation to prevent type coercion bugs
- * and ensure consistent parameter handling across the application.
+ * Default parameter values for validation functions
  */
-class ParameterValidator {
-  constructor(options = {}) {
-    this.defaultTimeout = options.defaultTimeout || 30000;
-    this.defaultConcurrency = options.defaultConcurrency || 3;
-    this.defaultDelay = options.defaultDelay || 100;
-    this.defaultMaxRetries = options.defaultMaxRetries || 2;
-  }
+const DEFAULT_VALUES = {
+  timeout: 30000,
+  concurrency: 3,
+  delay: 100,
+  maxRetries: 2
+};
 
-  /**
-   * Validates and converts timeout parameter to number
-   * @param {string|number} timeout - Timeout value from CLI or config
-   * @param {number} [defaultValue] - Default timeout if validation fails
-   * @returns {number} Valid timeout in milliseconds
-   * @throws {SpecJetError} When timeout is invalid and no default provided
-   */
-  validateTimeout(timeout, defaultValue = this.defaultTimeout) {
+/**
+ * Validates and converts timeout parameter to number
+ * @param {string|number} timeout - Timeout value from CLI or config
+ * @param {number} defaultValue - Default timeout if validation fails
+ * @returns {number} Valid timeout in milliseconds
+ * @throws {SpecJetError} When timeout is invalid and no default provided
+ */
+export function validateTimeout(timeout, defaultValue = DEFAULT_VALUES.timeout) {
     if (timeout === undefined || timeout === null) {
       return defaultValue;
     }
@@ -60,14 +56,14 @@ class ParameterValidator {
     return numericTimeout;
   }
 
-  /**
-   * Validates and converts concurrency parameter to number
-   * @param {string|number} concurrency - Concurrency value from CLI or config
-   * @param {number} [defaultValue] - Default concurrency if validation fails
-   * @returns {number} Valid concurrency level
-   * @throws {SpecJetError} When concurrency is invalid and no default provided
-   */
-  validateConcurrency(concurrency, defaultValue = this.defaultConcurrency) {
+/**
+ * Validates and converts concurrency parameter to number
+ * @param {string|number} concurrency - Concurrency value from CLI or config
+ * @param {number} defaultValue - Default concurrency if validation fails
+ * @returns {number} Valid concurrency level
+ * @throws {SpecJetError} When concurrency is invalid and no default provided
+ */
+export function validateConcurrency(concurrency, defaultValue = DEFAULT_VALUES.concurrency) {
     if (concurrency === undefined || concurrency === null) {
       return defaultValue;
     }
@@ -106,14 +102,14 @@ class ParameterValidator {
     return numericConcurrency;
   }
 
-  /**
-   * Validates and converts delay parameter to number
-   * @param {string|number} delay - Delay value from CLI or config
-   * @param {number} [defaultValue] - Default delay if validation fails
-   * @returns {number} Valid delay in milliseconds
-   * @throws {SpecJetError} When delay is invalid and no default provided
-   */
-  validateDelay(delay, defaultValue = this.defaultDelay) {
+/**
+ * Validates and converts delay parameter to number
+ * @param {string|number} delay - Delay value from CLI or config
+ * @param {number} defaultValue - Default delay if validation fails
+ * @returns {number} Valid delay in milliseconds
+ * @throws {SpecJetError} When delay is invalid and no default provided
+ */
+export function validateDelay(delay, defaultValue = DEFAULT_VALUES.delay) {
     if (delay === undefined || delay === null) {
       return defaultValue;
     }
@@ -148,14 +144,14 @@ class ParameterValidator {
     return numericDelay;
   }
 
-  /**
-   * Validates and converts max retries parameter to number
-   * @param {string|number} maxRetries - Max retries value from CLI or config
-   * @param {number} [defaultValue] - Default max retries if validation fails
-   * @returns {number} Valid max retries count
-   * @throws {SpecJetError} When maxRetries is invalid and no default provided
-   */
-  validateMaxRetries(maxRetries, defaultValue = this.defaultMaxRetries) {
+/**
+ * Validates and converts max retries parameter to number
+ * @param {string|number} maxRetries - Max retries value from CLI or config
+ * @param {number} defaultValue - Default max retries if validation fails
+ * @returns {number} Valid max retries count
+ * @throws {SpecJetError} When maxRetries is invalid and no default provided
+ */
+export function validateMaxRetries(maxRetries, defaultValue = DEFAULT_VALUES.maxRetries) {
     if (maxRetries === undefined || maxRetries === null) {
       return defaultValue;
     }
@@ -194,36 +190,28 @@ class ParameterValidator {
     return numericMaxRetries;
   }
 
-  /**
-   * Validates all common CLI parameters in one call
-   * @param {object} options - Object containing parameter values
-   * @param {string|number} [options.timeout] - Request timeout in milliseconds
-   * @param {string|number} [options.concurrency] - Number of concurrent requests
-   * @param {string|number} [options.delay] - Delay between requests in milliseconds
-   * @param {string|number} [options.maxRetries] - Maximum number of retries
-   * @returns {object} Object with validated numeric parameters
-   */
-  validateOptions(options = {}) {
-    return {
-      timeout: this.validateTimeout(options.timeout),
-      concurrency: this.validateConcurrency(options.concurrency),
-      delay: this.validateDelay(options.delay),
-      maxRetries: this.validateMaxRetries(options.maxRetries)
-    };
-  }
-
-  /**
-   * Get default parameter values
-   * @returns {object} Object with default parameter values
-   */
-  getDefaults() {
-    return {
-      timeout: this.defaultTimeout,
-      concurrency: this.defaultConcurrency,
-      delay: this.defaultDelay,
-      maxRetries: this.defaultMaxRetries
-    };
-  }
+/**
+ * Validates all common CLI parameters in one call
+ * @param {object} options - Object containing parameter values
+ * @param {string|number} [options.timeout] - Request timeout in milliseconds
+ * @param {string|number} [options.concurrency] - Number of concurrent requests
+ * @param {string|number} [options.delay] - Delay between requests in milliseconds
+ * @param {string|number} [options.maxRetries] - Maximum number of retries
+ * @returns {object} Object with validated numeric parameters
+ */
+export function validateOptions(options = {}) {
+  return {
+    timeout: validateTimeout(options.timeout),
+    concurrency: validateConcurrency(options.concurrency),
+    delay: validateDelay(options.delay),
+    maxRetries: validateMaxRetries(options.maxRetries)
+  };
 }
 
-export default ParameterValidator;
+/**
+ * Get default parameter values
+ * @returns {object} Object with default parameter values
+ */
+export function getDefaults() {
+  return { ...DEFAULT_VALUES };
+}

@@ -118,7 +118,9 @@ describe('Complete Validation Workflow Integration', () => {
 
       // Create validation service with mocked dependencies
       const validationServiceWithMocks = new ValidationService({
-        configLoader: mockConfigLoader,
+        loadConfig: mockConfigLoader.loadConfig,
+        validateConfig: mockConfigLoader.validateConfig,
+        getEnvironmentConfig: mockConfigLoader.getEnvironmentConfig,
         contractFinder: mockContractFinder,
         envValidator: mockEnvValidator,
         validatorFactory: mockValidatorFactory,
@@ -221,7 +223,9 @@ describe('Complete Validation Workflow Integration', () => {
       };
 
       const validationServiceWithMocks = new ValidationService({
-        configLoader: mockConfigLoader,
+        loadConfig: mockConfigLoader.loadConfig,
+        validateConfig: mockConfigLoader.validateConfig,
+        getEnvironmentConfig: mockConfigLoader.getEnvironmentConfig,
         contractFinder: mockContractFinder,
         envValidator: mockEnvValidator,
         validatorFactory: validatorFactoryWithMocks,
@@ -285,7 +289,9 @@ describe('Complete Validation Workflow Integration', () => {
       });
 
       const validationServiceWithMocks = new ValidationService({
-        configLoader: mockConfigLoader,
+        loadConfig: mockConfigLoader.loadConfig,
+        validateConfig: mockConfigLoader.validateConfig,
+        getEnvironmentConfig: mockConfigLoader.getEnvironmentConfig,
         contractFinder: mockContractFinder,
         envValidator: mockEnvValidator,
         validatorFactory: validatorFactoryWithMocks,
@@ -469,7 +475,9 @@ describe('Complete Validation Workflow Integration', () => {
       };
 
       const serviceWithMockConfig = new ValidationService({
-        configLoader: mockConfigLoader,
+        loadConfig: mockConfigLoader.loadConfig,
+        validateConfig: mockConfigLoader.validateConfig,
+        getEnvironmentConfig: mockConfigLoader.getEnvironmentConfig,
         validatorFactory: validatorFactory,
         serviceContainer: serviceContainer,
         logger: mockLogger

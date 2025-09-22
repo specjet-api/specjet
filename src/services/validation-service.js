@@ -1,8 +1,8 @@
 // Internal modules
-import ConfigLoader from '../core/config.js';
+import { loadConfig, validateConfig, getEnvironmentConfig, getAvailableEnvironments, listEnvironments } from '../core/config.js';
 import ContractFinder from '../core/contract-finder.js';
 import EnvValidator from '../core/env-validator.js';
-import ParameterValidator from '../core/parameter-validator.js';
+import { validateOptions, validateTimeout, validateConcurrency, validateDelay } from '../core/parameter-validator.js';
 import ValidationResults from '../core/validation-results.js';
 import ServiceContainer from '../core/service-container.js';
 import ResourceManager from '../core/resource-manager.js';
@@ -16,10 +16,17 @@ import ValidatorFactory from '../factories/validator-factory.js';
  */
 class ValidationService {
   constructor(dependencies = {}) {
-    this.configLoader = dependencies.configLoader || ConfigLoader;
+    this.loadConfig = dependencies.loadConfig || loadConfig;
+    this.validateConfig = dependencies.validateConfig || validateConfig;
+    this.getEnvConfig = dependencies.getEnvironmentConfig || getEnvironmentConfig;
+    this.getAvailableEnvironments = dependencies.getAvailableEnvironments || getAvailableEnvironments;
+    this.listEnvironments = dependencies.listEnvironments || listEnvironments;
     this.contractFinder = dependencies.contractFinder || ContractFinder;
     this.envValidator = dependencies.envValidator || EnvValidator;
-    this.parameterValidator = dependencies.parameterValidator || new ParameterValidator();
+    this.validateOptions = dependencies.validateOptions || validateOptions;
+    this.validateTimeout = dependencies.validateTimeout || validateTimeout;
+    this.validateConcurrency = dependencies.validateConcurrency || validateConcurrency;
+    this.validateDelay = dependencies.validateDelay || validateDelay;
     this.validatorFactory = dependencies.validatorFactory || new ValidatorFactory();
     this.resultsFormatter = dependencies.resultsFormatter || ValidationResults;
     this.serviceContainer = dependencies.serviceContainer || new ServiceContainer();
@@ -34,66 +41,105 @@ class ValidationService {
    * @returns {Promise<object>} Validation results
    */
   async validateEnvironment(environmentName, options = {}) {
-    const {
-      verbose = false,
-      contract: contractOverride,
-      config: configPath
-    } = options;
-
-    // Create a scoped resource manager for this validation
+    const { verbose = false } = options;
     const scope = this.resourceManager.createScope();
 
     try {
-      // Step 1: Load and validate configuration
-      this.logger.log('🔧 Loading configuration...');
-      const config = await this.configLoader.loadConfig(configPath);
-      this.configLoader.validateConfig(config);
+      const config = await this.loadAndValidateConfig(options.config);
 
-      // Step 2: Validate environment argument and get config
       if (!environmentName) {
         return this.handleMissingEnvironment(config);
       }
 
-      this.logger.log(`🌍 Validating against environment: ${environmentName}`);
-      const envConfig = await this.getEnvironmentConfig(config, environmentName);
+      const envConfig = await this.validateEnvironmentAccess(config, environmentName);
+      const contractPath = await this.findAndValidateContract(config, options.contract);
+      const validationSystem = await this.setupValidationSystem(envConfig, contractPath, options, scope);
+      const results = await this.executeValidationWorkflow(validationSystem, options);
 
-      // Step 3: Validate environment connectivity
-      await this.envValidator.validateEnvironment(envConfig, environmentName);
-      this.logger.log(`✅ Environment config: ${environmentName} (${envConfig.url})`);
-
-      // Step 4: Find and validate contract
-      this.logger.log('📄 Finding OpenAPI contract...');
-      const contractPath = await this.contractFinder.findContract(config, contractOverride);
-      await this.contractFinder.validateContractFile(contractPath);
-
-      const relativePath = this.contractFinder.getRelativePath(contractPath);
-      this.logger.log(`✅ Found contract: ${relativePath}`);
-
-      // Step 5: Create validation system
-      this.logger.log('🔍 Initializing validation system...');
-      const validationSystem = this.createValidationSystem(envConfig, options);
-
-      // Register validation system for cleanup
-      scope.register(validationSystem, async (system) => {
-        if (system.cleanup) {
-          await system.cleanup();
-        }
-      }, 'validation-system');
-
-      await validationSystem.initialize(contractPath);
-
-      // Step 6: Execute validation
-      const results = await this.executeValidation(validationSystem, options);
-
-      // Step 7: Generate response
       return this.generateValidationResponse(results, validationSystem, environmentName, options);
 
     } catch (error) {
       return this.handleValidationError(error, { verbose });
     } finally {
-      // Always cleanup scoped resources
       await scope.dispose();
     }
+  }
+
+  /**
+   * Load and validate configuration
+   * @param {string} configPath - Path to configuration file
+   * @returns {Promise<object>} Validated configuration
+   */
+  async loadAndValidateConfig(configPath) {
+    this.logger.log('🔧 Loading configuration...');
+    const config = await this.loadConfig(configPath);
+    this.validateConfig(config);
+    return config;
+  }
+
+  /**
+   * Validate environment access and return environment configuration
+   * @param {object} config - Full configuration
+   * @param {string} environmentName - Environment name
+   * @returns {Promise<object>} Environment configuration
+   */
+  async validateEnvironmentAccess(config, environmentName) {
+    this.logger.log(`🌍 Validating against environment: ${environmentName}`);
+    const envConfig = await this.getEnvironmentConfig(config, environmentName);
+
+    await this.envValidator.validateEnvironment(envConfig, environmentName);
+    this.logger.log(`✅ Environment config: ${environmentName} (${envConfig.url})`);
+
+    return envConfig;
+  }
+
+  /**
+   * Find and validate OpenAPI contract
+   * @param {object} config - Configuration object
+   * @param {string} contractOverride - Contract path override
+   * @returns {Promise<string>} Contract path
+   */
+  async findAndValidateContract(config, contractOverride) {
+    this.logger.log('📄 Finding OpenAPI contract...');
+    const contractPath = await this.contractFinder.findContract(config, contractOverride);
+    await this.contractFinder.validateContractFile(contractPath);
+
+    const relativePath = this.contractFinder.getRelativePath(contractPath);
+    this.logger.log(`✅ Found contract: ${relativePath}`);
+
+    return contractPath;
+  }
+
+  /**
+   * Setup validation system with proper resource management
+   * @param {object} envConfig - Environment configuration
+   * @param {string} contractPath - Contract file path
+   * @param {object} options - Validation options
+   * @param {object} scope - Resource management scope
+   * @returns {Promise<object>} Initialized validation system
+   */
+  async setupValidationSystem(envConfig, contractPath, options, scope) {
+    this.logger.log('🔍 Initializing validation system...');
+    const validationSystem = this.createValidationSystem(envConfig, options);
+
+    scope.register(validationSystem, async (system) => {
+      if (system.cleanup) {
+        await system.cleanup();
+      }
+    }, 'validation-system');
+
+    await validationSystem.initialize(contractPath);
+    return validationSystem;
+  }
+
+  /**
+   * Execute the complete validation workflow
+   * @param {object} validationSystem - Validation system
+   * @param {object} options - Validation options
+   * @returns {Promise<Array>} Validation results
+   */
+  async executeValidationWorkflow(validationSystem, options) {
+    return await this.executeValidation(validationSystem, options);
   }
 
   /**
@@ -104,7 +150,7 @@ class ValidationService {
    */
   async getEnvironmentConfig(config, environmentName) {
     try {
-      const envConfig = this.configLoader.getEnvironmentConfig(config, environmentName);
+      const envConfig = this.getEnvConfig(config, environmentName);
 
       if (!envConfig.url) {
         throw new SpecJetError(
@@ -122,7 +168,7 @@ class ValidationService {
     } catch (error) {
       if (error.code === 'CONFIG_ENVIRONMENT_NOT_FOUND') {
         this.logger.log(`❌ Environment '${environmentName}' not found. Available environments:`);
-        this.logger.log(this.configLoader.listEnvironments(config));
+        this.logger.log(this.listEnvironments(config));
         throw new SpecJetError(
           `Environment '${environmentName}' not found`,
           'ENVIRONMENT_NOT_FOUND',
@@ -139,7 +185,7 @@ class ValidationService {
    * @returns {object} Error response
    */
   handleMissingEnvironment(config) {
-    const availableEnvs = this.configLoader.getAvailableEnvironments(config);
+    const availableEnvs = this.getAvailableEnvironments(config);
 
     if (availableEnvs.length === 0) {
       throw new SpecJetError(
@@ -155,7 +201,7 @@ class ValidationService {
     }
 
     this.logger.log('❌ Environment required. Available environments:');
-    this.logger.log(this.configLoader.listEnvironments(config));
+    this.logger.log(this.listEnvironments(config));
 
     return {
       exitCode: 1,
@@ -175,9 +221,9 @@ class ValidationService {
     const isCI = process.env.CI || !process.stdin.isTTY;
 
     const validationOptions = {
-      timeout: this.parameterValidator.validateTimeout(options.timeout, 30000),
-      concurrency: isCI ? 1 : this.parameterValidator.validateConcurrency(options.concurrency, 3),
-      delay: isCI ? 500 : this.parameterValidator.validateDelay(options.delay, 100),
+      timeout: this.validateTimeout(options.timeout, 30000),
+      concurrency: isCI ? 1 : this.validateConcurrency(options.concurrency, 3),
+      delay: isCI ? 500 : this.validateDelay(options.delay, 100),
       progressCallback: this.createProgressCallback(options)
     };
 

@@ -1,16 +1,10 @@
-import { describe, test, expect, beforeEach } from 'vitest';
-import ErrorGenerator from '#src/codegen/error-generator.js';
+import { describe, test, expect } from 'vitest';
+import { generateErrorInterface, generateErrorHandlingMethod } from '#src/codegen/error-generator.js';
 
 describe('ErrorGenerator', () => {
-  let errorGenerator;
-
-  beforeEach(() => {
-    errorGenerator = new ErrorGenerator();
-  });
-
   describe('Error Interface Generation', () => {
     test('should generate all error class definitions', () => {
-      const result = errorGenerator.generateErrorInterface();
+      const result = generateErrorInterface();
       
       const expectedClasses = [
         'ApiError',
@@ -31,7 +25,7 @@ describe('ErrorGenerator', () => {
     });
 
     test('should have proper inheritance hierarchy', () => {
-      const result = errorGenerator.generateErrorInterface();
+      const result = generateErrorInterface();
       
       // Base ApiError should extend Error
       expect(result).toContain('export class ApiError extends Error');
@@ -49,7 +43,7 @@ describe('ErrorGenerator', () => {
     });
 
     test('should include consistent constructor parameters', () => {
-      const result = errorGenerator.generateErrorInterface();
+      const result = generateErrorInterface();
       
       // All error classes should have same constructor signature
       const constructorPattern = /constructor\(\s*status: number,\s*statusText: string,\s*body: any = null\s*\)/g;
@@ -60,7 +54,7 @@ describe('ErrorGenerator', () => {
     });
 
     test('should generate proper error messages', () => {
-      const result = errorGenerator.generateErrorInterface();
+      const result = generateErrorInterface();
       
       // Base ApiError should have template literal for error message
       expect(result).toContain('super(`HTTP error! status: ${status} ${statusText}`)');
@@ -72,7 +66,7 @@ describe('ErrorGenerator', () => {
 
   describe('Error Handling Method Generation', () => {
     test('should generate complete error handling method', () => {
-      const result = errorGenerator.generateErrorHandlingMethod();
+      const result = generateErrorHandlingMethod();
       
       expect(result).toContain('private async handleErrorResponse(response: Response): Promise<never>');
       expect(result).toContain('const status = response.status');
@@ -80,7 +74,7 @@ describe('ErrorGenerator', () => {
     });
 
     test('should handle different content types for error parsing', () => {
-      const result = errorGenerator.generateErrorHandlingMethod();
+      const result = generateErrorHandlingMethod();
       
       expect(result).toContain("response.headers.get('content-type')");
       expect(result).toContain("contentType.includes('application/json')");
@@ -89,7 +83,7 @@ describe('ErrorGenerator', () => {
     });
 
     test('should have proper error parsing with fallbacks', () => {
-      const result = errorGenerator.generateErrorHandlingMethod();
+      const result = generateErrorHandlingMethod();
       
       expect(result).toContain('try {');
       expect(result).toContain('} catch {');
@@ -97,7 +91,7 @@ describe('ErrorGenerator', () => {
     });
 
     test('should map all HTTP status codes to specific errors', () => {
-      const result = errorGenerator.generateErrorHandlingMethod();
+      const result = generateErrorHandlingMethod();
       
       const statusMappings = [
         { status: '400', error: 'BadRequestError' },
@@ -119,14 +113,14 @@ describe('ErrorGenerator', () => {
     });
 
     test('should have default case for unmapped status codes', () => {
-      const result = errorGenerator.generateErrorHandlingMethod();
+      const result = generateErrorHandlingMethod();
       
       expect(result).toContain('default:');
       expect(result).toContain('throw new ApiError(status, statusText, errorBody);');
     });
 
     test('should handle multiple 5xx status codes for service unavailable', () => {
-      const result = errorGenerator.generateErrorHandlingMethod();
+      const result = generateErrorHandlingMethod();
       
       // Should handle 502, 503, 504 all as ServiceUnavailableError
       expect(result).toContain('case 502:');
@@ -138,7 +132,7 @@ describe('ErrorGenerator', () => {
 
   describe('Error Type Safety', () => {
     test('should use proper TypeScript types', () => {
-      const interfaceResult = errorGenerator.generateErrorInterface();
+      const interfaceResult = generateErrorInterface();
       
       expect(interfaceResult).toContain('public status: number');
       expect(interfaceResult).toContain('public statusText: string');
@@ -146,7 +140,7 @@ describe('ErrorGenerator', () => {
     });
 
     test('should use consistent parameter naming', () => {
-      const methodResult = errorGenerator.generateErrorHandlingMethod();
+      const methodResult = generateErrorHandlingMethod();
       
       expect(methodResult).toContain('response: Response');
       expect(methodResult).toContain('Promise<never>');
@@ -156,14 +150,14 @@ describe('ErrorGenerator', () => {
 
   describe('Error Message Generation', () => {
     test('should generate descriptive error messages', () => {
-      const result = errorGenerator.generateErrorInterface();
+      const result = generateErrorInterface();
       
       // Base error should include status and statusText in message
       expect(result).toContain('HTTP error! status: ${status} ${statusText}');
     });
 
     test('should set proper error names for debugging', () => {
-      const result = errorGenerator.generateErrorInterface();
+      const result = generateErrorInterface();
       
       const errorNames = [
         'ApiError', 'BadRequestError', 'UnauthorizedError', 'ForbiddenError',
@@ -179,8 +173,8 @@ describe('ErrorGenerator', () => {
 
   describe('Code Generation Consistency', () => {
     test('should maintain consistent indentation', () => {
-      const interfaceResult = errorGenerator.generateErrorInterface();
-      const methodResult = errorGenerator.generateErrorHandlingMethod();
+      const interfaceResult = generateErrorInterface();
+      const methodResult = generateErrorHandlingMethod();
       
       // Check that both methods generate properly indented code
       const interfaceLines = interfaceResult.split('\n');
@@ -202,8 +196,8 @@ describe('ErrorGenerator', () => {
     });
 
     test('should generate valid TypeScript syntax', () => {
-      const interfaceResult = errorGenerator.generateErrorInterface();
-      const methodResult = errorGenerator.generateErrorHandlingMethod();
+      const interfaceResult = generateErrorInterface();
+      const methodResult = generateErrorHandlingMethod();
       
       // Check for common TypeScript syntax elements
       expect(interfaceResult).toContain('export class');
@@ -219,14 +213,14 @@ describe('ErrorGenerator', () => {
 
   describe('Error Handling', () => {
     test('should handle content-type parsing gracefully', () => {
-      const result = errorGenerator.generateErrorHandlingMethod();
+      const result = generateErrorHandlingMethod();
       
       expect(result).toContain('const contentType = response.headers.get(\'content-type\')');
       expect(result).toContain('if (contentType && contentType.includes(\'application/json\'))');
     });
 
     test('should ignore JSON parsing errors silently', () => {
-      const result = errorGenerator.generateErrorHandlingMethod();
+      const result = generateErrorHandlingMethod();
       
       expect(result).toContain('} catch {');
       expect(result).toContain('// Ignore parsing errors');
@@ -235,7 +229,7 @@ describe('ErrorGenerator', () => {
     });
 
     test('should preserve original response data', () => {
-      const result = errorGenerator.generateErrorHandlingMethod();
+      const result = generateErrorHandlingMethod();
       
       // Should pass status, statusText, and body to error constructors
       const throwStatements = result.match(/throw new \w+Error\(status, statusText, errorBody\);/g);

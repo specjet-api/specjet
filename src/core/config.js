@@ -5,12 +5,13 @@ import { SpecJetError } from './errors.js';
 import SecureConfigValidator from './secure-config-validator.js';
 
 /**
- * Configuration loader and validator for SpecJet CLI
- * Handles loading, merging, and validation of user configuration files
- * @class ConfigLoader
+ * Loads and validates SpecJet CLI configuration from file or defaults
+ * Handles ES module loading, environment variable substitution, and security validation
+ * @param {string|null} configPath - Path to config file (searches for specjet.config.js if null)
+ * @returns {Promise<object>} Merged and validated configuration object
+ * @throws {SpecJetError} When configuration file is invalid or cannot be loaded
  */
-class ConfigLoader {
-  static async loadConfig(configPath = null) {
+export async function loadConfig(configPath = null) {
     const defaultConfig = {
       contract: './api-contract.yaml',
       output: {
@@ -62,10 +63,10 @@ class ConfigLoader {
       const userConfig = configModule.default || configModule;
 
       // Merge user config with defaults
-      const mergedConfig = this.mergeConfigs(defaultConfig, userConfig);
+      const mergedConfig = mergeConfigs(defaultConfig, userConfig);
 
       // Apply environment variable substitution
-      const configWithEnvVars = this.applyEnvironmentVariables(mergedConfig);
+      const configWithEnvVars = applyEnvironmentVariables(mergedConfig);
 
       // Perform security validation
       SecureConfigValidator.validateConfigSecurity(configWithEnvVars);
@@ -85,7 +86,13 @@ class ConfigLoader {
     }
   }
 
-  static mergeConfigs(defaultConfig, userConfig) {
+/**
+ * Merges user configuration with default values recursively
+ * @param {object} defaultConfig - Default configuration object
+ * @param {object} userConfig - User-provided configuration object
+ * @returns {object} Merged configuration with user values taking precedence
+ */
+export function mergeConfigs(defaultConfig, userConfig) {
     const merged = { ...defaultConfig };
 
     for (const [key, value] of Object.entries(userConfig)) {
@@ -99,7 +106,14 @@ class ConfigLoader {
     return merged;
   }
 
-  static validateConfig(config) {
+/**
+ * Validates configuration object against SpecJet CLI requirements
+ * Performs comprehensive validation including ports, paths, TypeScript options, and environment configs
+ * @param {object} config - Configuration object to validate
+ * @returns {object} Validated configuration object
+ * @throws {SpecJetError} When configuration contains errors or invalid values
+ */
+export function validateConfig(config) {
     const errors = [];
     const warnings = [];
 
@@ -238,7 +252,7 @@ class ConfigLoader {
 
     // Validate environments configuration
     try {
-      this.validateEnvironmentConfigs(config);
+      validateEnvironmentConfigs(config);
     } catch (error) {
       if (error.code === 'CONFIG_ENVIRONMENT_INVALID') {
         errors.push({
@@ -270,22 +284,22 @@ class ConfigLoader {
     return config;
   }
 
-  static resolveContractPath(config) {
+export function resolveContractPath(config) {
     return resolve(config.contract);
   }
 
-  static resolveOutputPaths(config) {
+export function resolveOutputPaths(config) {
     return {
       types: resolve(config.output.types),
       client: resolve(config.output.client)
     };
   }
 
-  static applyEnvironmentVariables(config) {
-    return this.substituteVariables(config);
-  }
+export function applyEnvironmentVariables(config) {
+  return substituteVariables(config);
+}
 
-  static substituteVariables(value) {
+export function substituteVariables(value) {
     if (typeof value === 'string') {
       return value.replace(/\$\{([^}]+)\}/g, (match, varName) => {
         const envValue = process.env[varName];
@@ -309,25 +323,32 @@ class ConfigLoader {
         return envValue;
       });
     } else if (Array.isArray(value)) {
-      return value.map(item => this.substituteVariables(item));
+      return value.map(item => substituteVariables(item));
     } else if (value && typeof value === 'object') {
       const result = {};
       for (const [key, val] of Object.entries(value)) {
-        result[key] = this.substituteVariables(val);
+        result[key] = substituteVariables(val);
       }
       return result;
     }
     return value;
   }
 
-  static getAvailableEnvironments(config) {
+export function getAvailableEnvironments(config) {
     if (!config.environments || typeof config.environments !== 'object') {
       return [];
     }
     return Object.keys(config.environments);
   }
 
-  static getEnvironmentConfig(config, environmentName) {
+/**
+ * Retrieves configuration for a specific environment
+ * @param {object} config - Main configuration object
+ * @param {string} environmentName - Name of environment to retrieve
+ * @returns {object} Environment-specific configuration
+ * @throws {SpecJetError} When environment is not found or environments section is missing
+ */
+export function getEnvironmentConfig(config, environmentName) {
     if (!config.environments || typeof config.environments !== 'object') {
       throw new SpecJetError(
         'No environments section found in configuration',
@@ -342,7 +363,7 @@ class ConfigLoader {
 
     const envConfig = config.environments[environmentName];
     if (!envConfig) {
-      const available = this.getAvailableEnvironments(config);
+      const available = getAvailableEnvironments(config);
       throw new SpecJetError(
         `Environment '${environmentName}' not found in specjet.config.js`,
         'CONFIG_ENVIRONMENT_NOT_FOUND',
@@ -359,13 +380,13 @@ class ConfigLoader {
     return envConfig;
   }
 
-  static validateEnvironmentExists(config, environmentName) {
-    const available = this.getAvailableEnvironments(config);
-    return available.includes(environmentName);
-  }
+export function validateEnvironmentExists(config, environmentName) {
+  const available = getAvailableEnvironments(config);
+  return available.includes(environmentName);
+}
 
-  static listEnvironments(config) {
-    const environments = this.getAvailableEnvironments(config);
+export function listEnvironments(config) {
+  const environments = getAvailableEnvironments(config);
 
     if (environments.length === 0) {
       return 'No environments configured in specjet.config.js\n\nAdd an environments section to your config:\nenvironments: {\n  staging: {\n    url: "https://api-staging.example.com",\n    headers: { "Authorization": "Bearer ${STAGING_TOKEN}" }\n  }\n}';
@@ -387,7 +408,7 @@ class ConfigLoader {
     return output.trim();
   }
 
-  static validateEnvironmentConfigs(config) {
+export function validateEnvironmentConfigs(config) {
     if (!config.environments) {
       return; // Environments are optional
     }
@@ -466,6 +487,3 @@ class ConfigLoader {
       throw SpecJetError.configInvalid('specjet.config.js (environments)', errorMessages);
     }
   }
-}
-
-export default ConfigLoader;

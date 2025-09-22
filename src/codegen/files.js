@@ -1,14 +1,24 @@
 import fs from 'fs-extra';
 import { dirname, join, resolve } from 'path';
 
-class FileGenerator {
-  static async ensureDirectory(dirPath) {
+/**
+ * Ensures directory exists, creating it recursively if needed
+ * @param {string} dirPath - Directory path to create
+ */
+export async function ensureDirectory(dirPath) {
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
     }
   }
 
-  static async writeFile(filePath, content, options = {}) {
+/**
+ * Writes content to file with directory creation and security validation
+ * @param {string} filePath - Target file path
+ * @param {string} content - Content to write
+ * @param {object} options - Write options (format: boolean)
+ * @returns {Promise<object>} Result object with success status and metadata
+ */
+export async function writeFile(filePath, content, options = {}) {
     try {
       // Validate file path to prevent directory traversal
       const resolvedPath = resolve(filePath);
@@ -20,11 +30,11 @@ class FileGenerator {
 
       // Ensure the directory exists
       const dir = dirname(resolvedPath);
-      await this.ensureDirectory(dir);
+      await ensureDirectory(dir);
 
       // Format the content if needed
-      const formattedContent = options.format !== false ? 
-        await this.formatTypeScript(content) : content;
+      const formattedContent = options.format !== false ?
+        await formatTypeScript(content) : content;
 
       // Write the file
       fs.writeFileSync(resolvedPath, formattedContent, 'utf8');
@@ -43,28 +53,54 @@ class FileGenerator {
     }
   }
 
-  static async writeTypeDefinitions(outputPath, content, config = {}) {
+/**
+ * Writes TypeScript type definitions to output directory
+ * @param {string} outputPath - Output directory path
+ * @param {string} content - TypeScript definitions content
+ * @param {object} config - Configuration options (typesFileName)
+ * @returns {Promise<object>} Write operation result
+ */
+export async function writeTypeDefinitions(outputPath, content, config = {}) {
     const fileName = config.typesFileName || 'api.ts';
     const filePath = join(outputPath, fileName);
     
-    return this.writeFile(filePath, content, { format: true });
+    return writeFile(filePath, content, { format: true });
   }
 
-  static async writeApiClient(outputPath, content, config = {}) {
+/**
+ * Writes API client code to output directory
+ * @param {string} outputPath - Output directory path
+ * @param {string} content - API client content
+ * @param {object} config - Configuration options (clientFileName)
+ * @returns {Promise<object>} Write operation result
+ */
+export async function writeApiClient(outputPath, content, config = {}) {
     const fileName = config.clientFileName || 'client.ts';
     const filePath = join(outputPath, fileName);
     
-    return this.writeFile(filePath, content, { format: true });
+    return writeFile(filePath, content, { format: true });
   }
 
-  static async writeDocumentation(projectPath, content, config = {}) {
+/**
+ * Writes documentation files to project directory
+ * @param {string} projectPath - Project root path
+ * @param {string} content - Documentation content
+ * @param {object} config - Configuration options (docsFileName)
+ * @returns {Promise<object>} Write operation result
+ */
+export async function writeDocumentation(projectPath, content, config = {}) {
     const fileName = config.docsFileName || 'README.md';
     const filePath = join(projectPath, fileName);
     
-    return this.writeFile(filePath, content, { format: false }); // Don't format markdown as TypeScript
+    return writeFile(filePath, content, { format: false }); // Don't format markdown as TypeScript
   }
 
-  static async formatTypeScript(content) {
+/**
+ * Formats TypeScript content with basic formatting rules
+ * @param {string} content - TypeScript content to format
+ * @returns {Promise<string>} Formatted TypeScript content
+ */
+export async function formatTypeScript(content) {
     // Basic TypeScript formatting
     // In a real implementation, you might use prettier or similar
     return content
@@ -78,7 +114,7 @@ class FileGenerator {
       .trim() + '\n'; // Ensure file ends with newline
   }
 
-  static generateSummaryReport(results) {
+export function generateSummaryReport(results) {
     const successful = results.filter(r => r.success);
     const failed = results.filter(r => !r.success);
 
@@ -99,7 +135,7 @@ class FileGenerator {
     return report;
   }
 
-  static printGenerationReport(report, verbose = false) {
+export function printGenerationReport(report, verbose = false) {
     console.log(`\n✅ Generated ${report.successful} of ${report.total} files successfully`);
     
     if (report.successful > 0) {
@@ -125,55 +161,3 @@ class FileGenerator {
     }
   }
 
-  static createGitignoreEntry() {
-    const timestamp = new Date().toLocaleString();
-    return `# ‼️ DO NOT EDIT ‼️ This section is automatically managed
-# Generated by SpecJet CLI on ${timestamp}
-# Uncomment the lines below if you want to ignore generated files
-# src/types/api.ts
-# src/api/client.ts
-`;
-  }
-
-  static async writeGitignoreEntry(projectRoot, config = {}) {
-    if (!config.updateGitignore) {
-      return { success: true, skipped: true };
-    }
-
-    const gitignorePath = join(projectRoot, '.gitignore');
-    const entry = this.createGitignoreEntry();
-
-    try {
-      let existingContent = '';
-      if (fs.existsSync(gitignorePath)) {
-        existingContent = fs.readFileSync(gitignorePath, 'utf8');
-      }
-
-      // Only add if not already present
-      if (!existingContent.includes('Generated by SpecJet CLI')) {
-        const newContent = existingContent + '\n' + entry;
-        fs.writeFileSync(gitignorePath, newContent, 'utf8');
-        
-        return {
-          success: true,
-          path: gitignorePath,
-          action: 'updated'
-        };
-      }
-
-      return {
-        success: true,
-        path: gitignorePath,
-        action: 'already_present'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        path: gitignorePath,
-        error: error.message
-      };
-    }
-  }
-}
-
-export default FileGenerator;

@@ -240,52 +240,105 @@ class APIValidator {
     const issues = [];
     const statusCode = response.status.toString();
 
-    // Check if status code is defined in contract with intelligent fallback
-    let responseSpec = endpoint.responses[statusCode];
+    const responseSpec = this.findResponseSpecification(endpoint, statusCode);
 
     if (!responseSpec) {
-      // Smart fallback for common success status codes
-      if (statusCode === '201' && endpoint.responses['200']) {
-        responseSpec = endpoint.responses['200'];
-        this.logger.log(`🔄 Using 200 response spec for 201 status code (${endpoint.method} ${endpoint.path})`);
-      } else if (statusCode === '200' && endpoint.responses['201']) {
-        responseSpec = endpoint.responses['201'];
-        this.logger.log(`🔄 Using 201 response spec for 200 status code (${endpoint.method} ${endpoint.path})`);
-      } else {
-        // Fall back to default response
-        responseSpec = endpoint.responses['default'];
-      }
-    }
-
-    if (!responseSpec) {
-      issues.push(this.createIssue(
-        'unexpected_status_code',
-        null,
-        `Status code ${statusCode} not defined in contract`,
-        {
-          actualStatus: statusCode,
-          expectedStatuses: Object.keys(endpoint.responses)
-        }
-      ));
+      issues.push(this.createUnexpectedStatusCodeIssue(statusCode, endpoint));
       return issues;
     }
 
-    // Validate response schema if present
-    if (responseSpec.schema && response.data) {
-      const schemaIssues = await this.schemaValidator.validateResponse(
-        response.data,
-        responseSpec.schema
-      );
-      issues.push(...schemaIssues);
-    }
+    const schemaIssues = await this.validateResponseSchema(responseSpec, response);
+    issues.push(...schemaIssues);
 
-    // Validate required headers if defined in contract
-    if (responseSpec.headers) {
-      const headerIssues = this.validateHeaders(response.headers, responseSpec.headers);
-      issues.push(...headerIssues);
-    }
+    const headerIssues = this.validateResponseHeaders(responseSpec, response);
+    issues.push(...headerIssues);
 
     return issues;
+  }
+
+  /**
+   * Find appropriate response specification for status code
+   * @param {object} endpoint - Endpoint definition
+   * @param {string} statusCode - HTTP status code
+   * @returns {object|null} Response specification
+   */
+  findResponseSpecification(endpoint, statusCode) {
+    let responseSpec = endpoint.responses[statusCode];
+
+    if (!responseSpec) {
+      responseSpec = this.findFallbackResponseSpec(endpoint, statusCode);
+    }
+
+    return responseSpec;
+  }
+
+  /**
+   * Find fallback response specification using smart matching
+   * @param {object} endpoint - Endpoint definition
+   * @param {string} statusCode - HTTP status code
+   * @returns {object|null} Fallback response specification
+   */
+  findFallbackResponseSpec(endpoint, statusCode) {
+    // Smart fallback for common success status codes
+    if (statusCode === '201' && endpoint.responses['200']) {
+      this.logger.log(`🔄 Using 200 response spec for 201 status code (${endpoint.method} ${endpoint.path})`);
+      return endpoint.responses['200'];
+    } else if (statusCode === '200' && endpoint.responses['201']) {
+      this.logger.log(`🔄 Using 201 response spec for 200 status code (${endpoint.method} ${endpoint.path})`);
+      return endpoint.responses['201'];
+    }
+
+    // Fall back to default response
+    return endpoint.responses['default'];
+  }
+
+  /**
+   * Create issue for unexpected status code
+   * @param {string} statusCode - Actual status code
+   * @param {object} endpoint - Endpoint definition
+   * @returns {object} Validation issue
+   */
+  createUnexpectedStatusCodeIssue(statusCode, endpoint) {
+    return this.createIssue(
+      'unexpected_status_code',
+      null,
+      `Status code ${statusCode} not defined in contract`,
+      {
+        actualStatus: statusCode,
+        expectedStatuses: Object.keys(endpoint.responses)
+      }
+    );
+  }
+
+  /**
+   * Validate response schema
+   * @param {object} responseSpec - Response specification
+   * @param {object} response - HTTP response
+   * @returns {Promise<Array>} Schema validation issues
+   */
+  async validateResponseSchema(responseSpec, response) {
+    if (!responseSpec.schema || !response.data) {
+      return [];
+    }
+
+    return await this.schemaValidator.validateResponse(
+      response.data,
+      responseSpec.schema
+    );
+  }
+
+  /**
+   * Validate response headers
+   * @param {object} responseSpec - Response specification
+   * @param {object} response - HTTP response
+   * @returns {Array} Header validation issues
+   */
+  validateResponseHeaders(responseSpec, response) {
+    if (!responseSpec.headers) {
+      return [];
+    }
+
+    return this.validateHeaders(response.headers, responseSpec.headers);
   }
 
   /**

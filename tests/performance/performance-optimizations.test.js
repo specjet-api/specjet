@@ -3,7 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { writeFileSync, existsSync, mkdirSync, rmSync } from 'fs';
 import ContractParser from '#src/core/parser.js';
-import ConfigLoader from '#src/core/config.js';
+import { validateConfig } from '#src/core/config.js';
 import TypeScriptGenerator from '#src/codegen/typescript.js';
 import MockServer from '#src/mock-server/server.js';
 
@@ -163,7 +163,7 @@ describe.skipIf(!process.env.RUN_PERFORMANCE_TESTS)('Performance and Scalability
       };
 
       expect(() => {
-        ConfigLoader.validateConfig(invalidConfig);
+        validateConfig(invalidConfig);
       }).toThrow();
     });
 
@@ -183,7 +183,7 @@ describe.skipIf(!process.env.RUN_PERFORMANCE_TESTS)('Performance and Scalability
       };
 
       expect(() => {
-        ConfigLoader.validateConfig(configWithSamePort);
+        validateConfig(configWithSamePort);
       }).toThrow(/same port/);
     });
 
@@ -196,7 +196,7 @@ describe.skipIf(!process.env.RUN_PERFORMANCE_TESTS)('Performance and Scalability
       };
 
       try {
-        ConfigLoader.validateConfig(configMissingRequired);
+        validateConfig(configMissingRequired);
       } catch (error) {
         expect(error.message).toContain('💡'); // Look for suggestion emoji
         expect(error.message).toContain('Contract file path must be specified');
@@ -287,12 +287,11 @@ describe.skipIf(!process.env.RUN_PERFORMANCE_TESTS)('Performance and Scalability
   describe('JSDoc Documentation', () => {
     test('should have comprehensive JSDoc on main classes', () => {
       // Test that classes have proper JSDoc by checking toString
-      const configLoader = ConfigLoader.toString();
       const parser = new ContractParser();
       const generator = new TypeScriptGenerator();
-      
+
       // Verify JSDoc exists (basic check for documentation structure)
-      expect(configLoader).toContain('ConfigLoader'); // Check for class name instead
+      expect(validateConfig.toString()).toContain('validateConfig'); // Check for function name
       expect(parser.constructor.toString()).toBeDefined();
       expect(generator.constructor.toString()).toBeDefined();
     });

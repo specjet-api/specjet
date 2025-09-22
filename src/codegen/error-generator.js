@@ -1,5 +1,8 @@
-class ErrorGenerator {
-  generateErrorInterface() {
+/**
+ * Generates TypeScript error class interfaces for API client
+ * @returns {string} TypeScript error class definitions
+ */
+export function generateErrorInterface() {
     return `// API Error classes
 export class ApiError extends Error {
   constructor(
@@ -68,8 +71,12 @@ export class ServiceUnavailableError extends ApiError {
   }
 }`;
   }
-  
-  generateErrorHandlingMethod() {
+
+/**
+ * Generates TypeScript error handling method for API client
+ * @returns {string} TypeScript error handling method implementation
+ */
+export function generateErrorHandlingMethod() {
     return `  private async handleErrorResponse(response: Response): Promise<never> {
     const status = response.status;
     const statusText = response.statusText;
@@ -111,6 +118,3 @@ export class ServiceUnavailableError extends ApiError {
     }
   }`;
   }
-}
-
-export default ErrorGenerator;

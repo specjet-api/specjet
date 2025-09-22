@@ -1,13 +1,12 @@
 import { relative, dirname, resolve } from 'path';
 import TypeMapper from './type-mapper.js';
 import AuthGenerator from './auth-generator.js';
-import ErrorGenerator from './error-generator.js';
+import { generateErrorInterface, generateErrorHandlingMethod } from './error-generator.js';
 
 class ApiClientGenerator {
   constructor() {
     this.typeMapper = new TypeMapper();
     this.authGenerator = new AuthGenerator();
-    this.errorGenerator = new ErrorGenerator();
   }
   
   generateApiClient(endpoints, schemas, config = {}) {
@@ -27,7 +26,7 @@ class ApiClientGenerator {
       `import type { ${Array.from(imports).join(', ')} } from '${relativePath}';\n\n` : '';
     
     const authInterface = this.authGenerator.generateAuthInterface();
-    const errorInterface = this.errorGenerator.generateErrorInterface();
+    const errorInterface = generateErrorInterface();
     const clientCode = `${authInterface}
 
 ${errorInterface}
@@ -73,7 +72,7 @@ ${methods.join('\n\n')}
 
 ${this.authGenerator.generateBuildHeadersMethod()}
 
-${this.errorGenerator.generateErrorHandlingMethod()}
+${generateErrorHandlingMethod()}
 }`;
 
     return this.wrapInFileTemplate(importSection + clientCode);
@@ -82,61 +81,109 @@ ${this.errorGenerator.generateErrorHandlingMethod()}
   endpointToMethod(endpoint, schemas) {
     const methodName = this.pathToMethodName(endpoint.path, endpoint.method, endpoint.operationId);
     const imports = new Set();
-    
-    // Generate parameters
-    const pathParams = endpoint.parameters.filter(p => p.in === 'path');
-    const queryParams = endpoint.parameters.filter(p => p.in === 'query');
-    const headerParams = endpoint.parameters.filter(p => p.in === 'header');
-    
-    // Build method signature parameters
-    const methodParams = [];
-    
-    // Add path parameters
-    pathParams.forEach(param => {
-      const paramType = this.typeMapper.mapOpenApiTypeToTypeScript(param.schema, schemas);
-      methodParams.push(`${param.name}: ${paramType}`);
-    });
-    
-    // Add request body parameter
-    let requestBodyType = null;
-    if (endpoint.requestBody) {
-      const bodySchema = endpoint.requestBody.schema;
-      if (bodySchema) {
-        // Try to find a named type first
-        const namedType = this.typeMapper.findNamedTypeForSchema(bodySchema, schemas);
-        requestBodyType = namedType || this.typeMapper.mapOpenApiTypeToTypeScript(bodySchema, schemas);
-        methodParams.push(`data: ${requestBodyType}`);
-        this.typeMapper.extractImportsFromType(requestBodyType, imports);
-      }
-    }
-    
-    // Add query parameters as optional object
-    if (queryParams.length > 0) {
-      const queryParamType = this.generateQueryParamsType(queryParams, schemas);
-      methodParams.push(`params?: ${queryParamType}`);
-    }
-    
-    // Add header parameters as optional object
-    if (headerParams.length > 0) {
-      const headerParamType = this.generateHeaderParamsType(headerParams, schemas);
-      methodParams.push(`headers?: ${headerParamType}`);
-    }
-    
-    // Add options parameter
-    methodParams.push('options?: RequestInit');
-    
-    // Determine return type
+
+    const parameters = this.categorizeEndpointParameters(endpoint);
+    const methodParams = this.buildMethodSignature(endpoint, parameters, schemas, imports);
     const returnType = this.getReturnType(endpoint, schemas, imports);
-    
-    // Generate method body
-    const pathWithParams = this.generatePathWithParams(endpoint.path, pathParams);
-    const methodBody = this.generateMethodBody(endpoint, pathParams, queryParams, headerParams, pathWithParams);
-    
+    const methodBody = this.generateMethodBody(endpoint, parameters.path, parameters.query, parameters.header, this.generatePathWithParams(endpoint.path, parameters.path));
+
     const code = `  async ${methodName}(${methodParams.join(', ')}): Promise<${returnType}> {
 ${methodBody}
   }`;
 
     return { code, imports };
+  }
+
+  /**
+   * Categorize endpoint parameters by type
+   * @param {object} endpoint - Endpoint definition
+   * @returns {object} Categorized parameters
+   */
+  categorizeEndpointParameters(endpoint) {
+    return {
+      path: endpoint.parameters.filter(p => p.in === 'path'),
+      query: endpoint.parameters.filter(p => p.in === 'query'),
+      header: endpoint.parameters.filter(p => p.in === 'header')
+    };
+  }
+
+  /**
+   * Build method signature parameters
+   * @param {object} endpoint - Endpoint definition
+   * @param {object} parameters - Categorized parameters
+   * @param {object} schemas - OpenAPI schemas
+   * @param {Set} imports - Import tracker
+   * @returns {Array} Method parameter strings
+   */
+  buildMethodSignature(endpoint, parameters, schemas, imports) {
+    const methodParams = [];
+
+    this.addPathParameters(methodParams, parameters.path, schemas);
+    this.addRequestBodyParameter(methodParams, endpoint.requestBody, schemas, imports);
+    this.addQueryParameters(methodParams, parameters.query, schemas);
+    this.addHeaderParameters(methodParams, parameters.header, schemas);
+
+    methodParams.push('options?: RequestInit');
+
+    return methodParams;
+  }
+
+  /**
+   * Add path parameters to method signature
+   * @param {Array} methodParams - Method parameters array
+   * @param {Array} pathParams - Path parameters
+   * @param {object} schemas - OpenAPI schemas
+   */
+  addPathParameters(methodParams, pathParams, schemas) {
+    pathParams.forEach(param => {
+      const paramType = this.typeMapper.mapOpenApiTypeToTypeScript(param.schema, schemas);
+      methodParams.push(`${param.name}: ${paramType}`);
+    });
+  }
+
+  /**
+   * Add request body parameter to method signature
+   * @param {Array} methodParams - Method parameters array
+   * @param {object} requestBody - Request body definition
+   * @param {object} schemas - OpenAPI schemas
+   * @param {Set} imports - Import tracker
+   */
+  addRequestBodyParameter(methodParams, requestBody, schemas, imports) {
+    if (!requestBody) return;
+
+    const bodySchema = requestBody.schema;
+    if (bodySchema) {
+      const namedType = this.typeMapper.findNamedTypeForSchema(bodySchema, schemas);
+      const requestBodyType = namedType || this.typeMapper.mapOpenApiTypeToTypeScript(bodySchema, schemas);
+      methodParams.push(`data: ${requestBodyType}`);
+      this.typeMapper.extractImportsFromType(requestBodyType, imports);
+    }
+  }
+
+  /**
+   * Add query parameters to method signature
+   * @param {Array} methodParams - Method parameters array
+   * @param {Array} queryParams - Query parameters
+   * @param {object} schemas - OpenAPI schemas
+   */
+  addQueryParameters(methodParams, queryParams, schemas) {
+    if (queryParams.length > 0) {
+      const queryParamType = this.generateQueryParamsType(queryParams, schemas);
+      methodParams.push(`params?: ${queryParamType}`);
+    }
+  }
+
+  /**
+   * Add header parameters to method signature
+   * @param {Array} methodParams - Method parameters array
+   * @param {Array} headerParams - Header parameters
+   * @param {object} schemas - OpenAPI schemas
+   */
+  addHeaderParameters(methodParams, headerParams, schemas) {
+    if (headerParams.length > 0) {
+      const headerParamType = this.generateHeaderParamsType(headerParams, schemas);
+      methodParams.push(`headers?: ${headerParamType}`);
+    }
   }
   
   pathToMethodName(path, method, operationId) {
@@ -220,11 +267,33 @@ ${methodBody}
   
   generateMethodBody(endpoint, _pathParams, queryParams, headerParams, pathWithParams) {
     const lines = [];
-    
-    // Build path
+
+    this.addPathGeneration(lines, pathWithParams);
+    this.addQueryParameterHandling(lines, queryParams);
+
+    const requestOptions = this.buildRequestOptions(endpoint, headerParams);
+    this.addRequestOptionsGeneration(lines, requestOptions, headerParams);
+
+    this.addRequestExecution(lines, endpoint, queryParams, requestOptions);
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Add path generation to method body
+   * @param {Array} lines - Method body lines
+   * @param {string} pathWithParams - Path template with parameters
+   */
+  addPathGeneration(lines, pathWithParams) {
     lines.push(`    const path = \`${pathWithParams}\`;`);
-    
-    // Build query parameters
+  }
+
+  /**
+   * Add query parameter handling to method body
+   * @param {Array} lines - Method body lines
+   * @param {Array} queryParams - Query parameters
+   */
+  addQueryParameterHandling(lines, queryParams) {
     if (queryParams.length > 0) {
       lines.push('    const url = new URL(path, this.baseUrl);');
       lines.push('    if (params) {');
@@ -235,16 +304,37 @@ ${methodBody}
       lines.push('      });');
       lines.push('    }');
     }
-    
-    // Build request options
+  }
+
+  /**
+   * Build request options configuration
+   * @param {object} endpoint - Endpoint definition
+   * @param {Array} headerParams - Header parameters
+   * @returns {Array} Request options array
+   */
+  buildRequestOptions(endpoint, headerParams) {
     const requestOptions = [];
+
     requestOptions.push(`method: '${endpoint.method}'`);
-    
+
     if (endpoint.requestBody) {
       requestOptions.push('body: JSON.stringify(data)');
     }
-    
-    // Add headers
+
+    if (headerParams.length > 0) {
+      requestOptions.push('headers: requestHeaders');
+    }
+
+    return requestOptions;
+  }
+
+  /**
+   * Add request options generation to method body
+   * @param {Array} lines - Method body lines
+   * @param {Array} requestOptions - Request options
+   * @param {Array} headerParams - Header parameters
+   */
+  addRequestOptionsGeneration(lines, requestOptions, headerParams) {
     if (headerParams.length > 0) {
       lines.push('    const requestHeaders: Record<string, string> = {};');
       lines.push('    if (headers) {');
@@ -254,23 +344,28 @@ ${methodBody}
       lines.push('        }');
       lines.push('      });');
       lines.push('    }');
-      requestOptions.push('headers: requestHeaders');
     }
-    
+
     if (requestOptions.length > 0) {
       lines.push('    const requestOptions: RequestInit = {');
       lines.push(`      ${requestOptions.join(',\n      ')},`);
       lines.push('      ...options,');
       lines.push('    };');
     }
-    
-    // Make the request
+  }
+
+  /**
+   * Add request execution to method body
+   * @param {Array} lines - Method body lines
+   * @param {object} endpoint - Endpoint definition
+   * @param {Array} queryParams - Query parameters
+   * @param {Array} requestOptions - Request options
+   */
+  addRequestExecution(lines, endpoint, queryParams, requestOptions) {
     const pathVar = queryParams.length > 0 ? 'url.pathname + url.search' : 'path';
     const optionsVar = requestOptions.length > 0 ? 'requestOptions' : 'options';
-    
+
     lines.push(`    return this.request<${this.getReturnTypeForRequest(endpoint)}>(${pathVar}, ${optionsVar});`);
-    
-    return lines.join('\n');
   }
   
   getReturnTypeForRequest(endpoint) {
