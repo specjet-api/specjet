@@ -6,6 +6,7 @@ import http from 'http';
 // Internal modules
 import { SpecJetError } from './errors.js';
 import { validateTimeout, validateMaxRetries } from './parameter-validator.js';
+import Logger from './logger.js';
 
 class HttpClient {
   constructor(baseURL, defaultHeaders = {}, options = {}) {
@@ -28,6 +29,9 @@ class HttpClient {
     if (this.resourceManager) {
       this.resourceManager.register(this, () => this.cleanup(), 'http-client');
     }
+
+    // Initialize logger
+    this.logger = options.logger || new Logger({ context: 'HttpClient' });
   }
 
   createAgent(options) {
@@ -100,13 +104,13 @@ class HttpClient {
     const startTime = Date.now();
 
     return new Promise((resolve, reject) => {
-      console.log(`🌐 ${method.toUpperCase()} ${url}`);
+      this.logger.http(method.toUpperCase(), url, 0, 0, { stage: 'request-start' });
 
       const client = parsedUrl.protocol === 'https:' ? https : http;
 
       const req = client.request(requestOptions, (res) => {
         const responseTime = Date.now() - startTime;
-        console.log(`✅ ${res.statusCode} ${res.statusMessage} (${responseTime}ms)`);
+        this.logger.http(method.toUpperCase(), url, res.statusCode, responseTime);
 
         this.processNativeResponse(res, responseTime, url)
           .then(resolve)
@@ -116,7 +120,7 @@ class HttpClient {
       // Handle request timeout
       req.setTimeout(validatedTimeout, () => {
         req.destroy();
-        console.error(`⏰ Request timeout after ${validatedTimeout}ms`);
+        this.logger.error('Request timeout', null, { timeout: validatedTimeout, url });
         reject(new SpecJetError(
           `Request timeout after ${validatedTimeout}ms`,
           'REQUEST_TIMEOUT',
@@ -134,7 +138,7 @@ class HttpClient {
         const responseTime = Date.now() - startTime;
 
         if (error.code === 'ENOTFOUND') {
-          console.error(`🔍 DNS lookup failed for ${url}`);
+          this.logger.error('DNS lookup failed', error, { url });
           reject(new SpecJetError(
             `Cannot resolve hostname: ${parsedUrl.hostname}`,
             'DNS_LOOKUP_FAILED',
@@ -146,7 +150,7 @@ class HttpClient {
             ]
           ));
         } else if (error.code === 'ECONNREFUSED') {
-          console.error(`🚫 Connection refused to ${url}`);
+          this.logger.error('Connection refused', error, { url });
           reject(new SpecJetError(
             `Connection refused to ${url}`,
             'CONNECTION_REFUSED',
@@ -158,7 +162,7 @@ class HttpClient {
             ]
           ));
         } else {
-          console.error(`❌ Request failed: ${error.message} (${responseTime}ms)`);
+          this.logger.error('Request failed', error, { url, responseTime });
           reject(new SpecJetError(
             `HTTP request failed: ${error.message}`,
             'HTTP_REQUEST_FAILED',
@@ -357,16 +361,16 @@ class HttpClient {
   }
 
   cleanup() {
-    console.log('🧹 Cleaning up HTTP client...');
+    this.logger.debug('Cleaning up HTTP client');
 
     // Destroy HTTP agents to close keep-alive connections
     if (this.httpAgent && this.httpAgent.destroy) {
       this.httpAgent.destroy();
-      console.log('✅ HTTP agent destroyed');
+      this.logger.debug('HTTP agent destroyed');
     }
     if (this.httpsAgent && this.httpsAgent.destroy) {
       this.httpsAgent.destroy();
-      console.log('✅ HTTPS agent destroyed');
+      this.logger.debug('HTTPS agent destroyed');
     }
 
     // Clear agent references

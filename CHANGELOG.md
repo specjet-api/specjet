@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2025-09-23
+
+### Changed
+- Improved logging throughout the application
+- Updated dependency injection pattern for service-container
+- Standardized logging implementation
+- Improved resource cleanup
+- Replaced magic numbers with constants
+- Updated JSDoc blocks and decision framework
+- Refactored class-based files to functional exports
+
 ## [0.2.3] - 2025-09-21
 
 ### Fixed

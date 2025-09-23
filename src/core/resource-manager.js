@@ -1,17 +1,19 @@
 import { SpecJetError } from './errors.js';
+import Logger from './logger.js';
 
 /**
  * Resource manager for handling cleanup of resources like HTTP clients,
  * file handles, timers, and other resources that need proper disposal
  */
 class ResourceManager {
-  constructor() {
+  constructor(logger = null) {
     this.resources = new Set();
     this.cleanupHandlers = new Map();
     this.timers = new Set();
     this.processListeners = new Map();
     this.isCleaningUp = false;
     this.cleanupPromise = null;
+    this.logger = logger || new Logger({ context: 'ResourceManager' });
 
     // Register global cleanup handlers
     this.setupGlobalCleanupHandlers();
@@ -25,7 +27,7 @@ class ResourceManager {
    */
   register(resource, cleanupFn, type = 'unknown') {
     if (this.isCleaningUp) {
-      console.warn('⚠️  Cannot register resources during cleanup');
+      this.logger.warn('Cannot register resources during cleanup');
       return;
     }
 
@@ -116,16 +118,16 @@ class ResourceManager {
     const cleanupPromises = [];
     const cleanupResults = [];
 
-    console.log(`🧹 Cleaning up ${this.resources.size} resources...`);
+    this.logger.info('Starting resource cleanup', { resourceCount: this.resources.size });
 
     // Clear all timers first
     for (const { timer, description } of this.timers) {
       try {
         clearTimeout(timer);
         clearInterval(timer);
-        console.log(`⏰ Cleared timer: ${description}`);
+        this.logger.debug('Timer cleared', { description });
       } catch {
-        console.warn(`⚠️  Failed to clear timer ${description}`);
+        this.logger.warn('Failed to clear timer', { description });
       }
     }
     this.timers.clear();
@@ -145,7 +147,7 @@ class ResourceManager {
 
       results.forEach((result) => {
         if (result.status === 'rejected') {
-          console.warn(`⚠️  Resource cleanup failed:`, result.reason?.message || result.reason);
+          this.logger.warn('Resource cleanup failed', { error: result.reason?.message || result.reason });
         }
         cleanupResults.push(result);
       });
@@ -162,15 +164,15 @@ class ResourceManager {
     const failureCount = cleanupResults.filter(r => r.status === 'rejected').length;
 
     if (failureCount > 0) {
-      console.log(`🧹 Cleanup completed: ${successCount} succeeded, ${failureCount} failed`);
+      this.logger.info('Resource cleanup completed', { successCount, failureCount });
     } else {
-      console.log(`✅ All resources cleaned up successfully (${successCount} items)`);
+      this.logger.info('All resources cleaned up successfully', { successCount });
     }
   }
 
   async _safeCleanup(resource, handler) {
     try {
-      console.log(`🧹 Cleaning up ${handler.type} resource...`);
+      this.logger.debug('Cleaning up resource', { type: handler.type });
 
       const result = handler.cleanup(resource);
 
@@ -179,9 +181,9 @@ class ResourceManager {
         await result;
       }
 
-      console.log(`✅ ${handler.type} resource cleaned up`);
+      this.logger.debug('Resource cleaned up successfully', { type: handler.type });
     } catch (error) {
-      console.warn(`⚠️  Failed to cleanup ${handler.type} resource:`, error.message);
+      this.logger.warn('Failed to cleanup resource', error, { type: handler.type });
       throw error;
     }
   }
@@ -203,7 +205,7 @@ class ResourceManager {
       // Check if we already have too many listeners
       const currentListeners = process.listenerCount(signal);
       if (currentListeners >= 10) {
-        console.warn(`⚠️  Too many listeners for ${signal}, skipping ResourceManager handler`);
+        this.logger.warn('Too many listeners for signal, skipping ResourceManager handler', { signal });
         continue;
       }
 
@@ -237,20 +239,20 @@ class ResourceManager {
   }
 
   async _handleProcessExit(signal) {
-    console.log(`\n🛑 Received ${signal}, cleaning up resources...`);
+    this.logger.info('Received signal, cleaning up resources', { signal });
 
     try {
       await this.cleanup(true);
-      console.log('🎯 Graceful shutdown completed');
+      this.logger.info('Graceful shutdown completed');
       process.exit(0);
     } catch (error) {
-      console.error('❌ Error during graceful shutdown:', error.message);
+      this.logger.error('Error during graceful shutdown', error);
       process.exit(1);
     }
   }
 
   _handleUncaughtException(error) {
-    console.error('💥 Uncaught Exception:', error);
+    this.logger.error('Uncaught Exception', error);
 
     // Attempt emergency cleanup
     this.cleanup(true).finally(() => {
@@ -259,7 +261,7 @@ class ResourceManager {
   }
 
   _handleUnhandledRejection(reason, promise) {
-    console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+    this.logger.error('Unhandled Rejection', reason, { promise });
 
     // Don't exit immediately, but log the issue
     // The application should handle this appropriately
@@ -285,7 +287,7 @@ class ResourceManager {
    * Force cleanup of all resources (emergency cleanup)
    */
   forceCleanup() {
-    console.log('🚨 Force cleanup initiated...');
+    this.logger.warn('Force cleanup initiated');
 
     // Clear all timers synchronously
     for (const { timer } of this.timers) {
@@ -315,7 +317,7 @@ class ResourceManager {
     this.timers.clear();
     this._removeProcessListeners();
 
-    console.log('🚨 Force cleanup completed');
+    this.logger.warn('Force cleanup completed');
   }
 
   /**
@@ -336,6 +338,7 @@ class ScopedResourceManager {
     this.parent = parentManager;
     this.scopedResources = new Set();
     this.disposed = false;
+    this.logger = parentManager.logger.child({ component: 'ScopedResourceManager' });
   }
 
   register(resource, cleanupFn, type = 'scoped') {

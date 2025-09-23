@@ -1,4 +1,5 @@
 import ValidationResults from './validation-results.js';
+import Logger from './logger.js';
 
 /**
  * Circuit breaker pattern implementation for fault tolerance
@@ -119,6 +120,7 @@ class ValidationBatchProcessor {
     this.delay = options.delay || 100;
     this.retryHandler = options.retryHandler;
     this.progressCallback = options.progressCallback;
+    this.logger = options.logger || new Logger({ context: 'BatchProcessor' });
 
     // Initialize rate limiter and circuit breaker
     this.rateLimiter = new RateLimiter(options.requestsPerSecond || 10);
@@ -148,15 +150,15 @@ class ValidationBatchProcessor {
       return [];
     }
 
-    console.log(`📦 Starting batch processing of ${endpoints.length} endpoints`);
-    console.log(`⚙️  Concurrency: ${this.concurrency}, Delay: ${this.delay}ms`);
+    this.logger.info('Starting batch processing', { endpointCount: endpoints.length });
+    this.logger.info('Batch processing configuration', { concurrency: this.concurrency, delay: this.delay });
 
     const results = [];
     const batches = this.createBatches(endpoints, this.concurrency);
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
-      console.log(`📦 Processing batch ${i + 1}/${batches.length} (${batch.length} endpoints)`);
+      this.logger.info('Processing batch', { batchNumber: i + 1, totalBatches: batches.length, batchSize: batch.length });
 
       const batchResults = await this.processBatch(batch, options);
       results.push(...batchResults);
@@ -167,7 +169,7 @@ class ValidationBatchProcessor {
       }
     }
 
-    console.log(`✅ Batch processing complete. ${results.length} endpoints processed`);
+    this.logger.info('Batch processing complete', { endpointsProcessed: results.length });
     return results;
   }
 
@@ -220,7 +222,7 @@ class ValidationBatchProcessor {
               path: endpoint.path,
               method: endpoint.method,
               onRetry: (attempt, maxRetries, error, backoffTime) => {
-                console.warn(`⚠️  Retry ${attempt}/${maxRetries} for ${endpoint.method} ${endpoint.path} (${backoffTime}ms delay)`);
+                this.logger.warn('Retrying endpoint validation', { method: endpoint.method, path: endpoint.path, attempt, maxRetries, backoffTime });
               }
             }
           );
@@ -246,7 +248,7 @@ class ValidationBatchProcessor {
 
       if (error.message === 'Circuit breaker is OPEN') {
         this.stats.circuitBreakerTripped++;
-        console.warn(`🔌 Circuit breaker OPEN for ${endpoint.method} ${endpoint.path}`);
+        this.logger.warn('Circuit breaker OPEN for endpoint', { method: endpoint.method, path: endpoint.path });
 
         // Return circuit breaker error result
         return ValidationResults.createResult(
