@@ -4,12 +4,13 @@ import { loadConfig, validateConfig, resolveContractPath, resolveOutputPaths } f
 import { writeTypeDefinitions, writeApiClient, generateSummaryReport, printGenerationReport } from '#src/codegen/files.js';
 import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
 import FileWatcher from '#src/core/watcher.js';
+import Logger from '#src/core/logger.js';
 
 // Constants for progress feedback
 const LARGE_SCHEMA_THRESHOLD = 50;
 const VERY_LARGE_SCHEMA_THRESHOLD = 100;
 
-async function performGeneration(config, options) {
+async function performGeneration(config, options, logger = new Logger({ context: 'Generate' })) {
   const contractPath = resolveContractPath(config);
   const outputPaths = resolveOutputPaths(config);
   
@@ -17,13 +18,15 @@ async function performGeneration(config, options) {
   ErrorHandler.validateContractFile(contractPath);
   
   if (!options.watch) {
-    console.log(`   Contract: ${contractPath}`);
-    console.log(`   Types output: ${outputPaths.types}`);
-    console.log(`   Client output: ${outputPaths.client}`);
+    logger.info('Configuration paths', {
+      contract: contractPath,
+      typesOutput: outputPaths.types,
+      clientOutput: outputPaths.client
+    });
   }
 
   // Parse OpenAPI contract
-  if (!options.watch) console.log('\n📖 Parsing OpenAPI contract...');
+  if (!options.watch) logger.info('Parsing OpenAPI contract');
   const parser = new ContractParser();
   let parsedContract;
   try {
@@ -36,23 +39,22 @@ async function performGeneration(config, options) {
   const endpointCount = parsedContract.endpoints.length;
   
   if (!options.watch) {
-    console.log(`   Found ${schemaCount} schemas`);
-    console.log(`   Found ${endpointCount} endpoints`);
+    logger.info('Contract analysis complete', { schemaCount, endpointCount });
     
     // Show progress indicators for large schemas
     if (schemaCount >= VERY_LARGE_SCHEMA_THRESHOLD) {
-      console.log(`   ⚠️  Very large schema detected (${schemaCount} schemas), this may take longer...`);
+      logger.warn('Very large schema detected, generation may take longer', { schemaCount });
     } else if (schemaCount >= LARGE_SCHEMA_THRESHOLD) {
-      console.log(`   ⏳ Large schema detected (${schemaCount} schemas), processing...`);
+      logger.info('Large schema detected, processing', { schemaCount });
     }
   }
 
   // Generate TypeScript interfaces
   if (!options.watch) {
     if (schemaCount >= LARGE_SCHEMA_THRESHOLD) {
-      console.log(`\n🔧 Generating ${schemaCount} TypeScript interfaces (this may take a moment)...`);
+      logger.info('Generating TypeScript interfaces (large schema, may take a moment)', { schemaCount });
     } else {
-      console.log('\n🔧 Generating TypeScript interfaces...');
+      logger.info('Generating TypeScript interfaces');
     }
   }
   
@@ -68,15 +70,15 @@ async function performGeneration(config, options) {
   
   const generationTime = Date.now() - startTime;
   if (!options.watch && schemaCount >= LARGE_SCHEMA_THRESHOLD && generationTime > 1000) {
-    console.log(`   ✨ Generated ${schemaCount} interfaces in ${(generationTime / 1000).toFixed(1)}s`);
+    logger.performance('TypeScript interface generation', generationTime, { schemaCount });
   }
 
   // Generate API client
   if (!options.watch) {
     if (endpointCount >= LARGE_SCHEMA_THRESHOLD) {
-      console.log(`🔧 Generating API client for ${endpointCount} endpoints...`);
+      logger.info('Generating API client', { endpointCount });
     } else {
-      console.log('🔧 Generating API client...');
+      logger.info('Generating API client');
     }
   }
   
@@ -95,11 +97,11 @@ async function performGeneration(config, options) {
   
   const clientGenerationTime = Date.now() - clientStartTime;
   if (!options.watch && endpointCount >= LARGE_SCHEMA_THRESHOLD && clientGenerationTime > 1000) {
-    console.log(`   ✨ Generated client with ${endpointCount} endpoints in ${(clientGenerationTime / 1000).toFixed(1)}s`);
+    logger.performance('API client generation', clientGenerationTime, { endpointCount });
   }
 
   // Write files
-  if (!options.watch) console.log('\n📝 Writing generated files...');
+  if (!options.watch) logger.info('Writing generated files');
   const writeResults = [];
 
   // Write type definitions
@@ -134,7 +136,7 @@ async function performGeneration(config, options) {
     printGenerationReport(report, options.verbose);
   } else {
     // Abbreviated output for watch mode
-    console.log(`✨ Regenerated ${report.successful} files at ${new Date().toLocaleTimeString()}`);
+    logger.info('Files regenerated', { successful: report.successful, time: new Date().toLocaleTimeString() });
   }
 
   if (report.failed > 0) {
@@ -148,31 +150,32 @@ async function performGeneration(config, options) {
  * Generate TypeScript types and API client from OpenAPI contract
  */
 async function generateCommand(options = {}) {
+  const logger = new Logger({ context: 'Generate' });
+
   return ErrorHandler.withErrorHandling(async () => {
-    console.log('🚀 Starting TypeScript generation...\n');
+    logger.info('Starting TypeScript generation');
 
     // 1. Load configuration
-    console.log('📋 Loading configuration...');
+    logger.info('Loading configuration');
     const config = await loadConfig(options.config);
     validateConfig(config);
 
     // 2. Perform initial generation
-    const { contractPath } = await performGeneration(config, options);
+    const { contractPath } = await performGeneration(config, options, logger);
     
     if (!options.watch) {
-      console.log('\n✨ TypeScript generation completed successfully!');
+      logger.info('TypeScript generation completed successfully');
     }
 
     // 3. Optional: Generate mock files if requested
     if (options.withMock || config.generateMocks) {
-      console.log('\n🎭 Mock generation requested but not yet implemented');
-      console.log('   This will be available in Sprint 3!');
+      logger.info('Mock generation requested but not yet implemented - available in Sprint 3');
     }
 
     // 4. Optional: Watch mode
     if (options.watch) {
-      console.log('\n✨ Initial generation completed successfully!');
-      console.log('\n👀 Enabling watch mode...');
+      logger.info('Initial generation completed successfully');
+      logger.info('Enabling watch mode');
       
       const watcher = new FileWatcher();
       
@@ -182,12 +185,12 @@ async function generateCommand(options = {}) {
       // Start watching the contract file
       await watcher.watchContract(contractPath, async () => {
         try {
-          await performGeneration(config, { ...options, watch: true });
+          await performGeneration(config, { ...options, watch: true }, logger);
         } catch (error) {
           // Don't exit in watch mode, just log the error
-          console.error('❌ Regeneration failed:', error.message);
+          logger.error('Regeneration failed', error);
           if (options.verbose) {
-            console.error(error.stack);
+            logger.error('Full stack trace', null, { stack: error.stack });
           }
         }
       });

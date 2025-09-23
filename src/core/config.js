@@ -3,6 +3,7 @@ import { resolve } from 'path';
 import { pathToFileURL, URL } from 'url';
 import { SpecJetError } from './errors.js';
 import SecureConfigValidator from './secure-config-validator.js';
+import Logger from './logger.js';
 
 /**
  * Loads and validates SpecJet CLI configuration from file or defaults
@@ -267,10 +268,14 @@ export function validateConfig(config) {
 
     // Display warnings if any
     if (warnings.length > 0) {
-      console.log('\n⚠️  Configuration warnings:');
+      const logger = new Logger({ context: 'Config' });
+      logger.warn('Configuration warnings detected');
       warnings.forEach(warning => {
-        console.log(`   ${warning.field}: ${warning.message}`);
-        console.log(`   💡 ${warning.suggestion}`);
+        logger.warn('Configuration warning', {
+          field: warning.field,
+          message: warning.message,
+          suggestion: warning.suggestion
+        });
       });
     }
 
@@ -317,7 +322,8 @@ export function substituteVariables(value) {
               ]
             );
           }
-          console.warn(`⚠️  Environment variable ${varName} is not defined, using empty string`);
+          const logger = new Logger({ context: 'Config' });
+          logger.warn('Environment variable not defined, using empty string', { varName });
           return '';
         }
         return envValue;

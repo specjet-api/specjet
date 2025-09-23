@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { faker } from '@faker-js/faker';
+import Logger from '../core/logger.js';
 
 // Constants for better maintainability
 const DEFAULT_MAX_ITEMS = 1000;
@@ -26,6 +27,7 @@ class MockServer {
     this.app = express();
     this.contract = contract;
     this.scenario = scenario;
+    this.logger = options.logger || new Logger({ context: 'MockServer' });
     
     // Store resolved schemas for $ref resolution
     this.schemas = contract.components?.schemas || {};
@@ -462,7 +464,7 @@ class MockServer {
     }
     
     // Fallback: return a basic schema structure
-    console.warn(`⚠️  Schema reference not found: ${ref}`);
+    this.logger.warn('Schema reference not found', { ref });
     return {
       type: 'object',
       properties: {
@@ -578,7 +580,7 @@ class MockServer {
   generateMockData(schema, scenario, params = {}, context = {}) {
     // Null safety: never return null/undefined from this method
     if (!schema) {
-      console.warn('⚠️  generateMockData called with null/undefined schema');
+      this.logger.warn('generateMockData called with null/undefined schema');
       return { _mock: true };
     }
     
@@ -873,7 +875,7 @@ class MockServer {
       }
       
       // Final fallback for ID fields without explicit type - warn and use integer for demo
-      console.warn(`⚠️  ID field '${propName}' has no explicit type in schema, defaulting to integer for scenario '${scenario}'`);
+      this.logger.warn('ID field has no explicit type in schema, defaulting to integer', { propName, scenario });
       return scenario === 'demo' ? faker.number.int({ min: 1, max: 100 }) : faker.string.uuid();
     }
     
@@ -960,11 +962,11 @@ class MockServer {
         
       case 'array':
         // Arrays should not reach here - they should be handled in generateMockData
-        console.error('⚠️  Array type reached generatePrimitiveValue - this should not happen');
+        this.logger.error('Array type reached generatePrimitiveValue - this should not happen');
         return [];
         
       default:
-        console.warn(`⚠️  Unknown primitive type: ${type}, defaulting to string`);
+        this.logger.warn('Unknown primitive type, defaulting to string', { type });
         return faker.lorem.words(2);
     }
   }
@@ -1142,14 +1144,14 @@ class MockServer {
         if (err) {
           reject(err);
         } else {
-          console.log(`🚀 Mock server started at http://localhost:${port}`);
+          this.logger.info('Mock server started', { url: `http://localhost:${port}` });
           resolve(`http://localhost:${port}`);
         }
       });
 
       // Handle server errors
       this.server.on('error', (error) => {
-        console.error('❌ Mock server error:', error.message);
+        this.logger.error('Mock server error', error);
         reject(error);
       });
     });
@@ -1166,13 +1168,13 @@ class MockServer {
         return;
       }
 
-      console.log('🛑 Stopping mock server...');
+      this.logger.info('Stopping mock server');
 
       this.server.close((err) => {
         if (err) {
-          console.warn('⚠️  Error stopping server:', err.message);
+          this.logger.warn('Error stopping server', err);
         } else {
-          console.log('✅ Mock server stopped');
+          this.logger.info('Mock server stopped');
         }
 
         // Clear data stores

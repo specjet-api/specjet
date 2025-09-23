@@ -1,12 +1,14 @@
 import fs from 'fs-extra';
 import { resolve, dirname } from 'path';
 import { ErrorHandler, SpecJetError } from './errors.js';
+import Logger from './logger.js';
 
 export class FileWatcher {
-  constructor() {
+  constructor(options = {}) {
     this.watchers = new Map();
     this.isWatching = false;
     this.debounceTimers = new Map();
+    this.logger = options.logger || new Logger({ context: 'FileWatcher' });
   }
 
   async watchContract(contractPath, onChange) {
@@ -16,17 +18,16 @@ export class FileWatcher {
       throw SpecJetError.contractNotFound(absolutePath);
     }
 
-    console.log(`👀 Watching contract file: ${contractPath}`);
-    console.log('   Changes will trigger automatic regeneration...');
+    this.logger.info('Watching contract file for changes', { contractPath });
 
     try {
       // Watch the contract file itself
       const watcher = fs.watch(absolutePath, { persistent: true }, (eventType, _filename) => {
         if (eventType === 'change') {
           this.debounceCallback(contractPath, () => {
-            console.log(`\n🔄 Contract file changed, regenerating...`);
+            this.logger.info('Contract file changed, regenerating');
             onChange().catch(error => {
-              console.error('\n❌ Auto-regeneration failed:');
+              this.logger.error('Auto-regeneration failed', error);
               ErrorHandler.handle(error, { verbose: false });
             });
           });
@@ -40,9 +41,9 @@ export class FileWatcher {
           // File was renamed/replaced, trigger regeneration after a delay
           setTimeout(() => {
             if (fs.existsSync(absolutePath)) {
-              console.log(`\n🔄 Contract file replaced, regenerating...`);
+              this.logger.info('Contract file replaced, regenerating');
               onChange().catch(error => {
-                console.error('\n❌ Auto-regeneration failed:');
+                this.logger.error('Auto-regeneration failed', error);
                 ErrorHandler.handle(error, { verbose: false });
               });
             }
