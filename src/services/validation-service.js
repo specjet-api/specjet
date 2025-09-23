@@ -13,9 +13,59 @@ import ValidatorFactory from '../factories/validator-factory.js';
  * Business logic service for API validation
  * Orchestrates the entire validation workflow
  * Can be used by CLI, tests, or future web platform
+ *
+ * Supports both new DI pattern and legacy object-based dependency injection for backward compatibility
  */
 class ValidationService {
-  constructor(dependencies = {}) {
+  constructor(...args) {
+    // Check if using new DI pattern (all individual parameters) or legacy pattern (single object)
+    if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
+      // Legacy pattern: constructor(dependencies = {})
+      this._initWithLegacyDI(args[0]);
+    } else if (args.length >= 15) {
+      // New DI pattern: constructor(loadConfig, validateConfig, ...)
+      this._initWithNewDI(...args);
+    } else {
+      // Fallback to legacy with empty dependencies
+      this._initWithLegacyDI({});
+    }
+  }
+
+  _initWithNewDI(
+    loadConfig,
+    validateConfig,
+    getEnvironmentConfig,
+    getAvailableEnvironments,
+    listEnvironments,
+    contractFinder,
+    envValidator,
+    validateOptions,
+    validateTimeout,
+    validateConcurrency,
+    validateDelay,
+    validatorFactory,
+    resultsFormatter,
+    logger,
+    resourceManager
+  ) {
+    this.loadConfig = loadConfig;
+    this.validateConfig = validateConfig;
+    this.getEnvConfig = getEnvironmentConfig;
+    this.getAvailableEnvironments = getAvailableEnvironments;
+    this.listEnvironments = listEnvironments;
+    this.contractFinder = contractFinder;
+    this.envValidator = envValidator;
+    this.validateOptions = validateOptions;
+    this.validateTimeout = validateTimeout;
+    this.validateConcurrency = validateConcurrency;
+    this.validateDelay = validateDelay;
+    this.validatorFactory = validatorFactory;
+    this.resultsFormatter = resultsFormatter;
+    this.logger = logger;
+    this.resourceManager = resourceManager;
+  }
+
+  _initWithLegacyDI(dependencies = {}) {
     this.loadConfig = dependencies.loadConfig || loadConfig;
     this.validateConfig = dependencies.validateConfig || validateConfig;
     this.getEnvConfig = dependencies.getEnvironmentConfig || getEnvironmentConfig;
@@ -32,6 +82,14 @@ class ValidationService {
     this.serviceContainer = dependencies.serviceContainer || new ServiceContainer();
     this.logger = dependencies.logger || console;
     this.resourceManager = dependencies.resourceManager || new ResourceManager();
+  }
+
+  /**
+   * Factory method for creating instances with legacy dependency injection
+   * @deprecated Use service container for dependency injection instead
+   */
+  static createWithLegacyDI(dependencies = {}) {
+    return new ValidationService(dependencies);
   }
 
   /**

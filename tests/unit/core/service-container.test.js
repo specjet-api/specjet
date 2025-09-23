@@ -19,10 +19,10 @@ describe('ServiceContainer', () => {
       expect(retrieved).toBe(mockService);
     });
 
-    test('should create new instances for non-singleton services', () => {
+    test('should create new instances for transient services', () => {
       const factory = () => ({ id: Math.random() });
 
-      container.register('randomService', factory, false);
+      container.register('randomService', factory, { singleton: false });
 
       const instance1 = container.get('randomService');
       const instance2 = container.get('randomService');
@@ -31,16 +31,26 @@ describe('ServiceContainer', () => {
       expect(instance1.id).not.toBe(instance2.id);
     });
 
-    test('should return same instance for singleton services', () => {
+    test('should return same instance for singleton services (default)', () => {
       const factory = () => ({ id: Math.random() });
 
-      container.register('singletonService', factory, true);
+      container.register('singletonService', factory);
 
       const instance1 = container.get('singletonService');
       const instance2 = container.get('singletonService');
 
       expect(instance1).toBe(instance2);
       expect(instance1.id).toBe(instance2.id);
+    });
+
+    test('should inject dependencies automatically', () => {
+      container.register('dependency', () => 'injected-value');
+      container.register('service', (dep) => ({ dependency: dep }), {
+        dependencies: ['dependency']
+      });
+
+      const service = container.get('service');
+      expect(service.dependency).toBe('injected-value');
     });
   });
 
@@ -399,6 +409,132 @@ describe('ServiceContainer', () => {
       expect(apiService.stagingUrl).toBe('https://staging.api.com');
       expect(apiService.prodUrl).toBe('https://prod.api.com');
       expect(apiService.timeout).toBe(30000);
+    });
+  });
+
+  describe('New Dependency Injection Features', () => {
+    test('should support convenience methods', () => {
+      // Test singleton method
+      container.singleton('singletonService', () => ({ type: 'singleton' }));
+      const singleton1 = container.get('singletonService');
+      const singleton2 = container.get('singletonService');
+      expect(singleton1).toBe(singleton2);
+
+      // Test transient method
+      container.transient('transientService', () => ({ type: 'transient', id: Math.random() }));
+      const transient1 = container.get('transientService');
+      const transient2 = container.get('transientService');
+      expect(transient1).not.toBe(transient2);
+
+      // Test value method
+      container.value('configValue', { setting: 'test' });
+      expect(container.get('configValue')).toEqual({ setting: 'test' });
+    });
+
+    test('should support class registration', () => {
+      class TestService {
+        constructor(config, logger) {
+          this.config = config;
+          this.logger = logger;
+        }
+      }
+
+      container.value('config', { environment: 'test' });
+      container.value('logger', { log: vi.fn() });
+      container.class('testService', TestService, ['config', 'logger']);
+
+      const service = container.get('testService');
+      expect(service).toBeInstanceOf(TestService);
+      expect(service.config.environment).toBe('test');
+      expect(service.logger.log).toBeDefined();
+    });
+
+    test('should support factory registration', () => {
+      container.value('prefix', 'test-');
+      container.factory('itemFactory', (prefix, name, type) => ({
+        name: prefix + name,
+        type
+      }), ['prefix']);
+
+      const factory = container.get('itemFactoryFactory');
+      const item = factory('widget', 'component');
+      expect(item.name).toBe('test-widget');
+      expect(item.type).toBe('component');
+    });
+
+    test('should detect circular dependencies', () => {
+      container.register('serviceA', (b) => ({ b }), { dependencies: ['serviceB'] });
+      container.register('serviceB', (a) => ({ a }), { dependencies: ['serviceA'] });
+
+      expect(() => {
+        container.get('serviceA');
+      }).toThrow('Circular dependency detected');
+    });
+
+    test('should resolve nested dependencies', () => {
+      container.register('level1', () => 'base-value');
+      container.register('level2', (l1) => ({ level1: l1, value: 'level2' }), {
+        dependencies: ['level1']
+      });
+      container.register('level3', (l2) => ({ level2: l2, value: 'level3' }), {
+        dependencies: ['level2']
+      });
+
+      const service = container.get('level3');
+      expect(service.level2.level1).toBe('base-value');
+      expect(service.level2.value).toBe('level2');
+      expect(service.value).toBe('level3');
+    });
+
+    test('should provide service information', () => {
+      container.register('dep1', () => 'dep1-value');
+      container.register('dep2', () => 'dep2-value');
+      container.register('testService', (d1, d2) => ({ d1, d2 }), {
+        singleton: true,
+        dependencies: ['dep1', 'dep2']
+      });
+
+      const info = container.getServiceInfo('testService');
+      expect(info.name).toBe('testService');
+      expect(info.singleton).toBe(true);
+      expect(info.dependencies).toEqual(['dep1', 'dep2']);
+      expect(info.metadata.type).toBe('service');
+      expect(info.hasInstance).toBe(false);
+
+      // Create instance
+      const service = container.get('testService');
+      expect(service.d1).toBe('dep1-value');
+      expect(service.d2).toBe('dep2-value');
+
+      const infoAfter = container.getServiceInfo('testService');
+      expect(infoAfter.hasInstance).toBe(true);
+    });
+
+    test('should list all service information', () => {
+      container.register('service1', () => ({}));
+      container.register('service2', () => ({}), { singleton: false });
+
+      const allInfo = container.getAllServiceInfo();
+      expect(allInfo).toHaveLength(2);
+
+      const names = allInfo.map(s => s.name);
+      expect(names).toContain('service1');
+      expect(names).toContain('service2');
+    });
+
+    test('should clear resolving state properly', () => {
+      container.register('service', () => {
+        throw new Error('Factory error');
+      });
+
+      expect(() => {
+        container.get('service');
+      }).toThrow('Factory error');
+
+      // Should be able to resolve other services after error
+      container.register('workingService', () => ({ works: true }));
+      const working = container.get('workingService');
+      expect(working.works).toBe(true);
     });
   });
 });

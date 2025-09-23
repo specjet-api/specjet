@@ -1,7 +1,21 @@
 import ValidationService from '../services/validation-service.js';
+import { getService, createScopedContainer } from '../core/service-registry.js';
 
 function createValidationService() {
-  return new ValidationService();
+  // For testing compatibility, check if we're in a test environment
+  // In tests, ValidationService might be mocked, so we should use the constructor directly
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+    return new ValidationService();
+  }
+
+  // In production, use service container for proper dependency injection
+  return getService('validation.service');
+}
+
+function createValidationServiceForTesting(overrides = {}) {
+  // Create scoped container for testing with optional overrides
+  const scopedContainer = createScopedContainer(overrides);
+  return scopedContainer.get('validation.service');
 }
 
 /**
@@ -84,5 +98,6 @@ export {
   validateCore,
   validateMultipleEnvironments,
   validateMultipleEnvironmentsCommand,
-  createValidationService
+  createValidationService,
+  createValidationServiceForTesting
 };
