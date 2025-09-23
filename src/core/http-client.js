@@ -22,6 +22,12 @@ class HttpClient {
     this.defaultTimeout = this.validateTimeout(options.timeout, 10000);
     this.maxRetries = this.validateMaxRetries(options.maxRetries, 2);
     this.agent = this.createAgent(options);
+
+    // Register with resource manager if provided
+    this.resourceManager = options.resourceManager;
+    if (this.resourceManager) {
+      this.resourceManager.register(this, () => this.cleanup(), 'http-client');
+    }
   }
 
   createAgent(options) {
@@ -351,11 +357,27 @@ class HttpClient {
   }
 
   cleanup() {
+    console.log('🧹 Cleaning up HTTP client...');
+
+    // Destroy HTTP agents to close keep-alive connections
     if (this.httpAgent && this.httpAgent.destroy) {
       this.httpAgent.destroy();
+      console.log('✅ HTTP agent destroyed');
     }
     if (this.httpsAgent && this.httpsAgent.destroy) {
       this.httpsAgent.destroy();
+      console.log('✅ HTTPS agent destroyed');
+    }
+
+    // Clear agent references
+    this.httpAgent = null;
+    this.httpsAgent = null;
+    this.agent = null;
+
+    // Unregister from resource manager
+    if (this.resourceManager) {
+      this.resourceManager.unregister(this);
+      this.resourceManager = null;
     }
   }
 }

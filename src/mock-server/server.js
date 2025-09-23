@@ -1138,14 +1138,59 @@ class MockServer {
    */
   start(port = 3001) {
     return new Promise((resolve, reject) => {
-      this.app.listen(port, (err) => {
+      this.server = this.app.listen(port, (err) => {
         if (err) {
           reject(err);
         } else {
+          console.log(`🚀 Mock server started at http://localhost:${port}`);
           resolve(`http://localhost:${port}`);
         }
       });
+
+      // Handle server errors
+      this.server.on('error', (error) => {
+        console.error('❌ Mock server error:', error.message);
+        reject(error);
+      });
     });
+  }
+
+  /**
+   * Stop the mock server and cleanup resources
+   * @returns {Promise<void>}
+   */
+  async stop() {
+    return new Promise((resolve) => {
+      if (!this.server) {
+        resolve();
+        return;
+      }
+
+      console.log('🛑 Stopping mock server...');
+
+      this.server.close((err) => {
+        if (err) {
+          console.warn('⚠️  Error stopping server:', err.message);
+        } else {
+          console.log('✅ Mock server stopped');
+        }
+
+        // Clear data stores
+        this.dataStore.clear();
+        this.deletedRecords.clear();
+        this.nextId = 1;
+
+        this.server = null;
+        resolve();
+      });
+    });
+  }
+
+  /**
+   * Cleanup mock server resources
+   */
+  cleanup() {
+    return this.stop();
   }
 }
 

@@ -2,6 +2,7 @@ import MockServer from '#src/mock-server/server.js';
 import ContractParser from '#src/core/parser.js';
 import { loadConfig, validateConfig, resolveContractPath } from '#src/core/config.js';
 import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
+import ResourceManager from '#src/core/resource-manager.js';
 
 // Constants for progress feedback
 const LARGE_SCHEMA_THRESHOLD = 50;
@@ -13,6 +14,9 @@ const VERY_LARGE_SCHEMA_THRESHOLD = 100;
 async function mockCommand(options = {}) {
   return ErrorHandler.withErrorHandling(async () => {
     console.log('🎭 Starting mock server...\n');
+
+    // Initialize resource manager for cleanup
+    const resourceManager = new ResourceManager();
 
     // 1. Load configuration
     console.log('📋 Loading configuration...');
@@ -91,6 +95,9 @@ async function mockCommand(options = {}) {
     
     const mockServer = new MockServer(parsedContract, scenario, mockServerOptions);
 
+    // Register mock server with resource manager
+    resourceManager.register(mockServer, () => mockServer.cleanup(), 'mock-server');
+
     let serverUrl;
     try {
       serverUrl = await mockServer.start(port);
@@ -127,15 +134,32 @@ async function mockCommand(options = {}) {
 
     console.log('\n🛑 Press Ctrl+C to stop the server');
 
-    // Keep the process alive
-    process.on('SIGINT', () => {
-      console.log('\n\n👋 Shutting down mock server...');
-      process.exit(0);
-    });
+    // Setup graceful shutdown with resource cleanup
+    const shutdown = async (signal) => {
+      console.log(`\n\n🛑 Received ${signal}, shutting down mock server...`);
 
-    process.on('SIGTERM', () => {
-      console.log('\n\n👋 Shutting down mock server...');
-      process.exit(0);
+      try {
+        await resourceManager.cleanup();
+        console.log('👋 Mock server stopped successfully');
+        process.exit(0);
+      } catch (error) {
+        console.error('❌ Error during shutdown:', error.message);
+        process.exit(1);
+      }
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+    // Also handle uncaught exceptions to ensure cleanup
+    process.on('uncaughtException', async (error) => {
+      console.error('💥 Uncaught Exception:', error);
+      try {
+        await resourceManager.cleanup();
+      } catch {
+        // Ignore cleanup errors in exception handler
+      }
+      process.exit(1);
     });
   }, options);
 }

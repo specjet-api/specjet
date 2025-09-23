@@ -116,16 +116,28 @@ export class FileWatcher {
     this.isWatching = false;
   }
 
-  setupGracefulShutdown() {
+  setupGracefulShutdown(resourceManager = null) {
     const shutdown = () => {
       this.stopWatching();
-      console.log('\n👋 Shutting down...');
-      process.exit(0);
+
+      // If a resource manager is provided, trigger cleanup
+      if (resourceManager && typeof resourceManager.cleanup === 'function') {
+        resourceManager.cleanup().then(() => {
+          console.log('\n👋 Shutting down...');
+          process.exit(0);
+        }).catch((error) => {
+          console.error('❌ Error during shutdown cleanup:', error.message);
+          process.exit(1);
+        });
+      } else {
+        console.log('\n👋 Shutting down...');
+        process.exit(0);
+      }
     };
 
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
-    
+
     // Handle Ctrl+C gracefully
     process.stdin.resume();
     process.stdin.setEncoding('utf8');
