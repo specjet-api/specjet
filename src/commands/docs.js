@@ -7,12 +7,15 @@ import { loadConfig, validateConfig, resolveContractPath } from '#src/core/confi
 import HtmlDocumentationGenerator from '#src/codegen/html-docs.js';
 import MockServer from '#src/mock-server/server.js';
 import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
+import telemetry from '#src/core/telemetry.js';
 
 /**
  * Generate and serve interactive API documentation
  */
 async function docsCommand(options = {}) {
+  const commandStartTime = Date.now();
   return ErrorHandler.withErrorHandling(async () => {
+    try {
     console.log('📖 Starting documentation server...\n');
 
     // 1. Load configuration
@@ -51,12 +54,14 @@ async function docsCommand(options = {}) {
       const outputPath = resolve(options.output);
       fs.writeFileSync(outputPath, htmlContent, 'utf8');
       console.log(`✅ Documentation saved to: ${outputPath}`);
-      
+
       if (options.open) {
         console.log('\n🌐 Opening documentation in browser...');
         openInBrowser(`file://${outputPath}`);
       }
-      
+
+      // Track successful static docs generation
+      await telemetry.trackDocs(options, true, Date.now() - commandStartTime);
       return;
     }
 
@@ -73,12 +78,13 @@ async function docsCommand(options = {}) {
     
 
     // Start the server
-    const server = app.listen(port, (err) => {
+    const server = app.listen(port, async (err) => {
       if (err) {
         console.error(`❌ Failed to start documentation server: ${err.message}`);
+        await telemetry.trackDocs(options, false, Date.now() - commandStartTime);
         process.exit(1);
       }
-      
+
       const serverUrl = `http://localhost:${port}`;
       console.log(`\n✅ Documentation server started!`);
       console.log(`📖 Documentation: ${serverUrl}`);
@@ -86,7 +92,7 @@ async function docsCommand(options = {}) {
       console.log(`   📝 ${parsedContract.info?.title || 'API Documentation'} v${parsedContract.info?.version || '1.0.0'}`);
       console.log(`   🔗 ${parsedContract.endpoints.length} endpoints`);
       console.log(`   📋 ${Object.keys(parsedContract.schemas).length} schemas`);
-      
+
       if (options.open) {
         console.log('\n🌐 Opening documentation in browser...');
         openInBrowser(serverUrl);
@@ -96,6 +102,9 @@ async function docsCommand(options = {}) {
       console.log('   • Click the theme toggle (🌓) for dark/light mode');
       console.log('   • Copy code examples with the copy buttons');
       console.log('   • Press Ctrl+C to stop the server');
+
+      // Track successful docs server start
+      await telemetry.trackDocs(options, true, Date.now() - commandStartTime);
     });
 
     // Graceful shutdown
@@ -109,7 +118,12 @@ async function docsCommand(options = {}) {
 
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
-  });
+    } catch (error) {
+      // Track failed docs generation
+      await telemetry.trackDocs(options, false, Date.now() - commandStartTime);
+      throw error;
+    }
+  }, options);
 }
 
 function openInBrowser(url) {

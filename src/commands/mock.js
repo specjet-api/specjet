@@ -123,7 +123,7 @@ async function mockCommand(options = {}) {
     const setupTime = Date.now() - startTime;
 
     // Track successful mock start
-    await telemetry.trackMockStart(options, true, setupTime);
+    await telemetry.trackMock(options, true, setupTime);
     console.log(`\n✅ Mock server running successfully!`);
     console.log(`   🌐 Server: ${serverUrl}`);
     if (setupTime > 1000) {
@@ -169,7 +169,7 @@ async function mockCommand(options = {}) {
     });
     } catch (error) {
       // Track failed mock start
-      await telemetry.trackMockStart(options, false, Date.now() - commandStartTime);
+      await telemetry.trackMock(options, false, Date.now() - commandStartTime);
       throw error;
     }
   }, options);

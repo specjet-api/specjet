@@ -180,10 +180,10 @@ describe('Telemetry Service', () => {
     });
 
     it('should track mock start', async () => {
-      await telemetry.trackMockStart({ port: '8080', scenario: 'large' }, true, 800);
+      await telemetry.trackMock({ port: '8080', scenario: 'large' }, true, 800);
 
       expect(telemetry.track).toHaveBeenCalledWith(
-        'specjet_mock_start',
+        'specjet_mock',
         {
           port: 8080,
           scenario: 'large',

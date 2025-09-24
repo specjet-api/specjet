@@ -169,8 +169,8 @@ export class Telemetry {
    * @param {boolean} success - Whether mock server started successfully
    * @param {number} [durationMs] - Startup duration
    */
-  async trackMockStart(options = {}, success = true, durationMs = null) {
-    await this.track('specjet_mock_start', {
+  async trackMock(options = {}, success = true, durationMs = null) {
+    await this.track('specjet_mock', {
       port: parseInt(options.port) || 3001,
       scenario: options.scenario || 'demo',
       custom_config: Boolean(options.config),

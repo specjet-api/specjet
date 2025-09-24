@@ -292,10 +292,8 @@ Exit Codes:
   • 2: Configuration or setup errors
 `)
   .action(async (environment, options) => {
-    const startTime = Date.now();
     try {
       const result = await commands.validate(environment, options);
-      await telemetry.trackValidate(environment, options, true, Date.now() - startTime);
       return result;
     } catch (error) {
       await telemetry.trackError('validate', error.name || 'ValidationError', error.code);
