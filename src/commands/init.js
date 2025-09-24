@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
+import telemetry from '#src/core/telemetry.js';
 
 const DEFAULT_CONFIG_ESM = `export default {
   // Contract file location
@@ -371,6 +372,7 @@ async function detectProjectModuleSystem(targetDir) {
  * Initialize a new SpecJet project with configuration and sample contract
  */
 async function initCommand(projectName, options = {}) {
+  const startTime = Date.now();
   try {
     // Determine target directory
     const targetDir = projectName === '.' ? process.cwd() : path.resolve(projectName || 'my-specjet-project');
@@ -494,8 +496,22 @@ async function initCommand(projectName, options = {}) {
     console.log('   specjet --help               # Show all available commands\n');
     
     console.log('📚 Documentation: https://docs.specjet.dev');
-    
+
+    // Track successful init
+    await telemetry.trackInit({
+      template: options.template,
+      force: options.force,
+      projectName: projectName
+    }, true, Date.now() - startTime);
+
   } catch (error) {
+    // Track failed init
+    await telemetry.trackInit({
+      template: options.template,
+      force: options.force,
+      projectName: projectName
+    }, false, Date.now() - startTime);
+
     ErrorHandler.handle(error, options);
     process.exit(1);
   }

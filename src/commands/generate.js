@@ -5,6 +5,7 @@ import { writeTypeDefinitions, writeApiClient, generateSummaryReport, printGener
 import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
 import FileWatcher from '#src/core/watcher.js';
 import Logger from '#src/core/logger.js';
+import telemetry from '#src/core/telemetry.js';
 
 // Constants for progress feedback
 const LARGE_SCHEMA_THRESHOLD = 50;
@@ -143,7 +144,7 @@ async function performGeneration(config, options, logger = new Logger({ context:
     throw new Error(`Failed to generate ${report.failed} files`);
   }
 
-  return { config, contractPath, report };
+  return { config, contractPath, report, stats: { schemaCount, endpointCount } };
 }
 
 /**
@@ -151,20 +152,24 @@ async function performGeneration(config, options, logger = new Logger({ context:
  */
 async function generateCommand(options = {}) {
   const logger = new Logger({ context: 'Generate' });
+  const startTime = Date.now();
 
   return ErrorHandler.withErrorHandling(async () => {
-    logger.info('Starting TypeScript generation');
+    try {
+      logger.info('Starting TypeScript generation');
 
-    // 1. Load configuration
-    logger.info('Loading configuration');
-    const config = await loadConfig(options.config);
-    validateConfig(config);
+      // 1. Load configuration
+      logger.info('Loading configuration');
+      const config = await loadConfig(options.config);
+      validateConfig(config);
 
-    // 2. Perform initial generation
-    const { contractPath } = await performGeneration(config, options, logger);
+      // 2. Perform initial generation
+      const { contractPath, stats } = await performGeneration(config, options, logger);
     
     if (!options.watch) {
       logger.info('TypeScript generation completed successfully');
+      // Track successful generation
+      await telemetry.trackGenerate(options, true, Date.now() - startTime, stats);
     }
 
     // 3. Optional: Generate mock files if requested
@@ -189,6 +194,7 @@ async function generateCommand(options = {}) {
         } catch (error) {
           // Don't exit in watch mode, just log the error
           logger.error('Regeneration failed', error);
+          await telemetry.trackGenerate(options, false, null, { schemaCount: 0, endpointCount: 0 });
           if (options.verbose) {
             logger.error('Full stack trace', null, { stack: error.stack });
           }
@@ -203,6 +209,11 @@ async function generateCommand(options = {}) {
         // This promise never resolves, keeping the process running
         // Shutdown is handled by the watcher's signal handlers
       });
+    }
+    } catch (error) {
+      // Track failed generation
+      await telemetry.trackGenerate(options, false, Date.now() - startTime, { schemaCount: 0, endpointCount: 0 });
+      throw error;
     }
   }, options);
 }

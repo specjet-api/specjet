@@ -3,6 +3,7 @@ import ContractParser from '#src/core/parser.js';
 import { loadConfig, validateConfig, resolveContractPath } from '#src/core/config.js';
 import { ErrorHandler, SpecJetError } from '#src/core/errors.js';
 import ResourceManager from '#src/core/resource-manager.js';
+import telemetry from '#src/core/telemetry.js';
 
 // Constants for progress feedback
 const LARGE_SCHEMA_THRESHOLD = 50;
@@ -12,11 +13,13 @@ const VERY_LARGE_SCHEMA_THRESHOLD = 100;
  * Start a mock server with realistic data based on OpenAPI contract
  */
 async function mockCommand(options = {}) {
+  const commandStartTime = Date.now();
   return ErrorHandler.withErrorHandling(async () => {
-    console.log('🎭 Starting mock server...\n');
+    try {
+      console.log('🎭 Starting mock server...\n');
 
-    // Initialize resource manager for cleanup
-    const resourceManager = new ResourceManager();
+      // Initialize resource manager for cleanup
+      const resourceManager = new ResourceManager();
 
     // 1. Load configuration
     console.log('📋 Loading configuration...');
@@ -118,6 +121,9 @@ async function mockCommand(options = {}) {
     }
 
     const setupTime = Date.now() - startTime;
+
+    // Track successful mock start
+    await telemetry.trackMockStart(options, true, setupTime);
     console.log(`\n✅ Mock server running successfully!`);
     console.log(`   🌐 Server: ${serverUrl}`);
     if (setupTime > 1000) {
@@ -161,6 +167,11 @@ async function mockCommand(options = {}) {
       }
       process.exit(1);
     });
+    } catch (error) {
+      // Track failed mock start
+      await telemetry.trackMockStart(options, false, Date.now() - commandStartTime);
+      throw error;
+    }
   }, options);
 }
 

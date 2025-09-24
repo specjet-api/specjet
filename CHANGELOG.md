@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2025-09-24
+
+### Added
+- **Anonymous Telemetry System** - Optional usage analytics to help improve SpecJet
+  - New `specjet telemetry` command to manage telemetry settings (enable/disable/status)
+  - Google Analytics 4 integration via Measurement Protocol API for anonymous usage tracking
+  - First-run consent flow with clear privacy explanation and opt-in design
+  - Privacy-focused implementation: no personal data, project names, or file contents collected
+  - Fire-and-forget telemetry pattern that never blocks or affects CLI performance
+  - Tracks command usage, success/error rates, CLI version, and platform information
+  - User can enable/disable anytime with full transparency about data collected
+
 ## [0.2.4] - 2025-09-23
 
 ### Changed

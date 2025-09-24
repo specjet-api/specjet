@@ -51,7 +51,8 @@
     "fs-extra": "^11.2.0",
     "handlebars": "^4.7.8",
     "js-yaml": "^4.1.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

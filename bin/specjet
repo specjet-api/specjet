@@ -6,6 +6,9 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { ErrorHandler } from '../src/core/errors.js';
+import userConfig from '../src/core/user-config.js';
+import telemetry from '../src/core/telemetry.js';
+import { createInterface } from 'readline';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,6 +22,47 @@ try {
 }
 
 const program = new Command();
+
+// First-run consent flow for telemetry
+async function handleFirstRunConsent() {
+  try {
+    const isFirstRun = await userConfig.isFirstRun();
+    if (isFirstRun) {
+      const rl = createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+
+      return new Promise((resolve) => {
+        console.log('\n📊 Help improve SpecJet');
+        console.log('SpecJet can collect anonymous usage data to help improve the tool:');
+        console.log('- Commands used (init, generate, mock)');
+        console.log('- Success/error rates');
+        console.log('- CLI version and platform');
+        console.log('- No personal data, project names, or file contents\n');
+
+        rl.question('Enable anonymous telemetry? [y/N]: ', async (answer) => {
+          rl.close();
+          const consent = answer.toLowerCase().trim() === 'y' || answer.toLowerCase().trim() === 'yes';
+
+          if (consent) {
+            await userConfig.enableTelemetry();
+            console.log('\n✅ Telemetry enabled. Thank you for helping improve SpecJet!');
+            console.log('   You can disable anytime with: specjet telemetry disable');
+          } else {
+            console.log('\n❌ Telemetry disabled. You can enable later with: specjet telemetry enable');
+          }
+
+          await userConfig.markFirstRunComplete();
+          console.log('');
+          resolve();
+        });
+      });
+    }
+  } catch {
+    // Silent failure for consent flow
+  }
+}
 
 program
   .name('specjet')
@@ -62,7 +106,14 @@ What this creates:
   • src/types/            Generated TypeScript types directory
   • src/api/              Generated API client directory
 `)
-  .action(commands.init);
+  .action(async (projectName, options) => {
+    try {
+      await commands.init(projectName, options);
+    } catch (error) {
+      await telemetry.trackError('init', error.name || 'InitError', error.code);
+      throw error;
+    }
+  });
 
 // specjet generate [options]
 program
@@ -84,7 +135,14 @@ Watch mode:
   Automatically regenerates when your OpenAPI contract changes.
   Perfect for development workflows. Press Ctrl+C to stop watching.
 `)
-  .action(commands.generate);
+  .action(async (options) => {
+    try {
+      await commands.generate(options);
+    } catch (error) {
+      await telemetry.trackError('generate', error.name || 'GenerateError', error.code);
+      throw error;
+    }
+  });
 
 // specjet mock [options]
 program
@@ -115,7 +173,14 @@ Features:
   
   For API documentation, run: specjet docs --port 3002
 `)
-  .action(commands.mock);
+  .action(async (options) => {
+    try {
+      await commands.mock(options);
+    } catch (error) {
+      await telemetry.trackError('mock', error.name || 'MockError', error.code);
+      throw error;
+    }
+  });
 
 // specjet docs [options]
 program
@@ -149,7 +214,14 @@ Documentation Features:
   • 🎯 Smart code examples using your generated TypeScript client
   • 📋 Clean mock response examples for development
 `)
-  .action(commands.docs);
+  .action(async (options) => {
+    try {
+      await commands.docs(options);
+    } catch (error) {
+      await telemetry.trackError('docs', error.name || 'DocsError', error.code);
+      throw error;
+    }
+  });
 
 // specjet validate <environment>
 program
@@ -219,7 +291,17 @@ Exit Codes:
   • 1: Validation failures found
   • 2: Configuration or setup errors
 `)
-  .action(commands.validate);
+  .action(async (environment, options) => {
+    const startTime = Date.now();
+    try {
+      const result = await commands.validate(environment, options);
+      await telemetry.trackValidate(environment, options, true, Date.now() - startTime);
+      return result;
+    } catch (error) {
+      await telemetry.trackError('validate', error.name || 'ValidationError', error.code);
+      throw error;
+    }
+  });
 // 
 // // specjet sync (Future)
 // program
@@ -238,17 +320,57 @@ Exit Codes:
 // `)
 //   .action(commands.sync);
 
+// specjet telemetry <action>
+program
+  .command('telemetry')
+  .description('📊 Manage anonymous usage telemetry settings')
+  .argument('<action>', 'Action to perform: enable, disable, status')
+  .option('--force', 'Skip confirmation prompts')
+  .addHelpText('after', `
+Examples:
+  $ specjet telemetry status     Show current telemetry status
+  $ specjet telemetry enable     Enable anonymous telemetry tracking
+  $ specjet telemetry disable    Disable telemetry tracking
+  $ specjet telemetry enable --force   Enable without confirmation
+
+Data Collection:
+  ✅ Commands used and success/error rates
+  ✅ CLI version and platform information
+  ✅ Performance metrics and usage patterns
+
+  ❌ Personal information or project names
+  ❌ File contents or API specifications
+  ❌ Environment variables or secrets
+
+Telemetry helps improve SpecJet by understanding how it's used.
+All data is anonymous and aggregated. No personal information is collected.
+`)
+  .action(commands.telemetry);
+
 // Handle uncaught exceptions and rejections
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', async (error) => {
   console.error('\n🚨 Uncaught Exception:');
+  await telemetry.trackError('uncaught', error.name || 'UncaughtException', error.code);
   ErrorHandler.handle(error, { verbose: program.opts().verbose });
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', async (reason) => {
   console.error('\n🚨 Unhandled Promise Rejection:');
+  await telemetry.trackError('unhandled', reason?.name || 'UnhandledRejection', reason?.code);
   ErrorHandler.handle(reason, { verbose: program.opts().verbose });
   process.exit(1);
 });
 
-program.parse();
+// Check for first-run consent before parsing commands
+(async () => {
+  // Only show consent on interactive commands (not --help, --version, etc.)
+  const args = process.argv.slice(2);
+  const isInteractiveCommand = args.length > 0 && !args.includes('--help') && !args.includes('-h') && !args.includes('--version') && !args.includes('-V');
+
+  if (isInteractiveCommand && !args.includes('telemetry')) {
+    await handleFirstRunConsent();
+  }
+
+  program.parse();
+})();
