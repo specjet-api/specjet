@@ -2,7 +2,7 @@
 
 > **Design APIs together, build separately, integrate seamlessly**
 
-SpecJet is an API contract collaboration tool that enables frontend and backend developers to design APIs together, then provides automatic TypeScript generation and realistic mock servers for immediate development.
+SpecJet is an API contract collaboration tool that enables frontend and backend developers to design APIs together in [OpenAPI](https://learn.openapis.org/specification/structure.html), then provides automatic TypeScript generation and realistic mock servers for immediate development.
 
 [![npm](https://img.shields.io/npm/v/specjet.svg)](https://www.npmjs.com/package/specjet)
 [![npm](https://img.shields.io/npm/l/specjet.svg)](https://www.npmjs.com/package/specjet)
@@ -74,7 +74,34 @@ Or add scripts to your `package.json`:
 
 ### Getting Started
 
-Choose your path:
+#### 📝 Author your API Design
+For example, a minimal "Hello World" OpenAPI document:
+```yaml
+# api-contract.yaml
+---
+openapi: 3.0.0
+info:
+  title: Example API
+  version: 1.0.0
+paths:
+  /hello:
+    get:
+      summary: Say hello
+      responses:
+        '200':
+          description: Greeting message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                example:
+                  message: "Hello, world!"
+```
+
+Then choose your path:
 
 #### 🆕 New Project
 ```bash
