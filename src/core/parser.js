@@ -7,7 +7,8 @@ const MAX_ENDPOINT_COUNT = 500;
 
 /**
  * OpenAPI contract parser with validation and optimization features
- * Handles parsing, dereferencing, validation, and extraction of OpenAPI 3.0 contracts
+ * Handles parsing, dereferencing, validation, and extraction of OpenAPI 3.x contracts
+ * Supports OpenAPI 3.0.x and 3.1.x specifications (3.2.0+ pending library support)
  * Provides performance optimizations and helpful feedback for large schemas
  * @class ContractParser
  */
@@ -27,16 +28,17 @@ class ContractParser {
     try {
       // Use dereference to resolve all $ref pointers
       const api = await SwaggerParser.dereference(filePath);
-      
+
       // Validate the resolved API
       await SwaggerParser.validate(api);
-      
+
       const parsed = {
         info: api.info,
         paths: api.paths,
         components: api.components,
         schemas: this.extractSchemas(api),
-        endpoints: this.extractEndpoints(api)
+        endpoints: this.extractEndpoints(api),
+        openapi: api.openapi // Track version for feature support
       };
 
       this.validateParsedContract(parsed);
@@ -61,6 +63,8 @@ class ContractParser {
       throw new Error(`❌ Contract parsing failed in ${filePath}:\n   ${error.message}`);
     } else if (error.name === 'ValidatorError') {
       throw new Error(`❌ Contract validation failed in ${filePath}:\n   ${error.message}`);
+    } else if (error.message?.includes('Unsupported OpenAPI version') && error.message?.includes('3.2')) {
+      throw new Error(`❌ OpenAPI 3.2.0 is not yet supported by the parser library.\n   Please use OpenAPI 3.1.1 or earlier.\n   3.2.0 support will be added when the ecosystem catches up.`);
     } else {
       throw new Error(`❌ Contract processing failed: ${error.message}`);
     }
@@ -141,7 +145,7 @@ class ContractParser {
     for (const [path, methods] of Object.entries(contract.paths || {})) {
       for (const [method, spec] of Object.entries(methods)) {
         // Skip non-HTTP methods (like parameters, summary, etc.)
-        if (!['get', 'post', 'put', 'patch', 'delete', 'head', 'options'].includes(method.toLowerCase())) {
+        if (!['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'].includes(method.toLowerCase())) {
           continue;
         }
 
@@ -161,7 +165,7 @@ class ContractParser {
         endpoints.push(endpoint);
       }
     }
-    
+
     return endpoints;
   }
 
