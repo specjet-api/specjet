@@ -13,7 +13,9 @@ export default [
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         setInterval: 'readonly',
-        clearInterval: 'readonly'
+        clearInterval: 'readonly',
+        fetch: 'readonly',
+        globalThis: 'readonly'
       }
     },
     settings: {
