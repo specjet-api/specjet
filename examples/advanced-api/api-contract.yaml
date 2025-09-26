@@ -1,9 +1,10 @@
-openapi: 3.0.0
+openapi: 3.1.1
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: Advanced Project Management API
   version: 1.0.0
   description: |
-    A comprehensive project management API demonstrating advanced SpecJet patterns including:
+    A comprehensive project management API demonstrating advanced SpecJet patterns:
     - Complex nested resources and relationships
     - Advanced filtering, search, and aggregation
     - File upload operations and webhooks
@@ -11,7 +12,7 @@ info:
     - Realistic business workflows and status management
     
     This API showcases sophisticated patterns for team collaboration, task management,
-    and productivity tracking without the complexity of payment processing or multi-tenancy.
+    and productivity tracking.
   contact:
     name: SpecJet Team
     url: https://specjet.dev
@@ -481,9 +482,10 @@ paths:
               type: object
               properties:
                 assigneeId:
-                  type: string
-                  format: uuid
-                  nullable: true
+                  oneOf:
+                    - type: string
+                      format: uuid
+                    - type: "null"
                   description: User ID to assign to, null to unassign
               required:
                 - assigneeId
@@ -643,7 +645,7 @@ paths:
               properties:
                 file:
                   type: string
-                  format: binary
+                  contentMediaType: application/octet-stream
                   description: File to upload
                 description:
                   type: string
@@ -757,7 +759,7 @@ paths:
             application/octet-stream:
               schema:
                 type: string
-                format: binary
+                contentMediaType: application/octet-stream
 
   # Milestones - Timeline and progress tracking
   /projects/{projectId}/milestones:
@@ -1167,9 +1169,10 @@ components:
           type: string
           format: email
         avatar:
-          type: string
-          format: uri
-          nullable: true
+          oneOf:
+            - type: string
+              format: uri
+            - type: "null"
         role:
           $ref: '#/components/schemas/UserRole'
         isActive:
@@ -1208,8 +1211,9 @@ components:
         name:
           type: string
         description:
-          type: string
-          nullable: true
+          oneOf:
+            - type: string
+            - type: "null"
         owner:
           $ref: '#/components/schemas/User'
         settings:
@@ -1295,7 +1299,6 @@ components:
           type: string
         description:
           type: string
-          nullable: true
         status:
           $ref: '#/components/schemas/ProjectStatus'
         visibility:
@@ -1308,11 +1311,9 @@ components:
         startDate:
           type: string
           format: date
-          nullable: true
         dueDate:
           type: string
           format: date
-          nullable: true
         progress:
           type: object
           properties:
@@ -1507,7 +1508,6 @@ components:
           type: string
         description:
           type: string
-          nullable: true
         status:
           $ref: '#/components/schemas/TaskStatus'
         priority:
@@ -1515,26 +1515,30 @@ components:
         project:
           $ref: '#/components/schemas/Project'
         assignee:
-          $ref: '#/components/schemas/User'
-          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/User'
+            - type: "null"
         reporter:
           $ref: '#/components/schemas/User'
         milestone:
-          $ref: '#/components/schemas/Milestone'
-          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/Milestone'
+            - type: "null"
         labels:
           type: array
           items:
             type: string
         dueDate:
-          type: string
-          format: date-time
-          nullable: true
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
         estimatedHours:
-          type: number
-          format: decimal
-          minimum: 0
-          nullable: true
+          oneOf:
+            - type: number
+              format: decimal
+              minimum: 0
+            - type: "null"
         actualHours:
           type: number
           format: decimal
@@ -1561,10 +1565,11 @@ components:
           format: date-time
           readOnly: true
         completedAt:
-          type: string
-          format: date-time
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
           readOnly: true
-          nullable: true
       required:
         - id
         - title
@@ -1621,11 +1626,9 @@ components:
         assigneeId:
           type: string
           format: uuid
-          nullable: true
         milestoneId:
           type: string
           format: uuid
-          nullable: true
         labels:
           type: array
           items:
@@ -1662,11 +1665,9 @@ components:
         assigneeId:
           type: string
           format: uuid
-          nullable: true
         milestoneId:
           type: string
           format: uuid
-          nullable: true
         labels:
           type: array
           items:
@@ -1675,12 +1676,10 @@ components:
         dueDate:
           type: string
           format: date-time
-          nullable: true
         estimatedHours:
           type: number
           format: decimal
           minimum: 0
-          nullable: true
         dependencies:
           type: array
           items:
@@ -1736,9 +1735,10 @@ components:
           type: string
           format: uuid
         parentId:
-          type: string
-          format: uuid
-          nullable: true
+          oneOf:
+            - type: string
+              format: uuid
+            - type: "null"
           description: Parent comment for threading
         mentions:
           type: array
@@ -1788,7 +1788,6 @@ components:
         parentId:
           type: string
           format: uuid
-          nullable: true
       required:
         - content
 
@@ -1832,7 +1831,6 @@ components:
           description: File size in bytes
         description:
           type: string
-          nullable: true
         tags:
           type: array
           items:
@@ -1842,10 +1840,11 @@ components:
           format: uri
           readOnly: true
         thumbnailUrl:
-          type: string
-          format: uri
+          oneOf:
+            - type: string
+              format: uri
+            - type: "null"
           readOnly: true
-          nullable: true
         uploader:
           $ref: '#/components/schemas/User'
         entityType:
@@ -1894,7 +1893,6 @@ components:
               type: string
               format: date-time
               readOnly: true
-              nullable: true
             versions:
               type: array
               items:
@@ -1929,27 +1927,22 @@ components:
           type: string
         description:
           type: string
-          nullable: true
         status:
           $ref: '#/components/schemas/MilestoneStatus'
         project:
           $ref: '#/components/schemas/Project'
         owner:
           $ref: '#/components/schemas/User'
-          nullable: true
         startDate:
           type: string
           format: date
-          nullable: true
         dueDate:
           type: string
           format: date
-          nullable: true
         completedAt:
           type: string
           format: date-time
           readOnly: true
-          nullable: true
         progress:
           type: object
           properties:
@@ -2038,7 +2031,6 @@ components:
           $ref: '#/components/schemas/User'
         description:
           type: string
-          nullable: true
         hours:
           type: number
           format: decimal
@@ -2049,11 +2041,9 @@ components:
         startTime:
           type: string
           format: time
-          nullable: true
         endTime:
           type: string
           format: time
-          nullable: true
         isBillable:
           type: boolean
         tags:
@@ -2120,12 +2110,10 @@ components:
           type: string
         description:
           type: string
-          nullable: true
         workspace:
           $ref: '#/components/schemas/Workspace'
         leader:
           $ref: '#/components/schemas/User'
-          nullable: true
         memberCount:
           type: integer
           readOnly: true
@@ -2418,11 +2406,9 @@ components:
             assigneeId:
               type: string
               format: uuid
-              nullable: true
             milestoneId:
               type: string
               format: uuid
-              nullable: true
             labels:
               type: array
               items:
@@ -2430,7 +2416,6 @@ components:
             dueDate:
               type: string
               format: date-time
-              nullable: true
       required:
         - taskIds
         - updates
@@ -2446,10 +2431,8 @@ components:
           $ref: '#/components/schemas/Task'
         assignee:
           $ref: '#/components/schemas/User'
-          nullable: true
         previousAssignee:
           $ref: '#/components/schemas/User'
-          nullable: true
         assignedBy:
           $ref: '#/components/schemas/User'
         timestamp:
@@ -2489,3 +2472,37 @@ components:
         - project
         - updatedBy
         - timestamp
+
+# OpenAPI 3.1.1 Webhooks - Outgoing notifications from this API
+webhooks:
+  taskAssignment:
+    post:
+      summary: Task Assignment Notification
+      description: Triggered when a task is assigned or unassigned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskAssignmentWebhook'
+      responses:
+        '200':
+          description: Webhook received successfully
+        '400':
+          description: Invalid webhook payload
+
+  projectUpdate:
+    post:
+      summary: Project Update Notification
+      description: Triggered when a project is created, updated, or completed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdateWebhook'
+      responses:
+        '200':
+          description: Webhook received successfully
+        '400':
+          description: Invalid webhook payload

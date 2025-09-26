@@ -1,4 +1,5 @@
-openapi: 3.0.0
+openapi: 3.1.1
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: Basic API Example
   version: 1.0.0
@@ -35,6 +36,22 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/User'
+              examples:
+                users:
+                  summary: Example users list
+                  value:
+                    - id: 1
+                      name: "John Doe"
+                      email: "john@example.com"
+                      isActive: true
+                      createdAt: "2024-01-15T10:30:00Z"
+                      updatedAt: "2024-01-15T10:30:00Z"
+                    - id: 2
+                      name: "Jane Smith"
+                      email: "jane@example.com"
+                      isActive: false
+                      createdAt: "2024-01-16T14:20:00Z"
+                      updatedAt: "2024-01-20T09:15:00Z"
     
     post:
       summary: Create a new user
@@ -137,7 +154,9 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type:
+            - integer
+            - string
           description: Unique identifier
         name:
           type: string
@@ -150,6 +169,12 @@ components:
           type: boolean
           description: Whether the user is active
           default: true
+        lastLoginAt:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+          description: When the user last logged in (null if never)
         createdAt:
           type: string
           format: date-time
@@ -158,6 +183,13 @@ components:
           type: string
           format: date-time
           description: When the user was last updated
+        metadata:
+          type: object
+          description: Additional user metadata
+          patternProperties:
+            "^x-":
+              type: string
+          additionalProperties: false
       required:
         - id
         - name

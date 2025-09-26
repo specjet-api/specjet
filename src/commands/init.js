@@ -55,7 +55,8 @@ const DEFAULT_CONFIG_COMMONJS = `module.exports = {
 };
 `;
 
-const DEFAULT_CONTRACT = `openapi: 3.0.0
+const DEFAULT_CONTRACT = `openapi: 3.1.1
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: {{PROJECT_NAME}} API
   version: 1.0.0
